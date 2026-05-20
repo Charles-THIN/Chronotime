@@ -8,6 +8,12 @@ Points d’entrée observés manuellement, sous forme anonymisée :
 - `GET /chronotime/rest/agenda/YYYYMMDD%2CYYYYMMDD%2C<MATRICULE>?type=...&combos=1`
 - `GET /chronotime/rest/agenda/<MATRICULE>/avenir?statuts=...&types=A&combos=1`
 
+Point d’entrée des soldes de congés :
+
+- `GET /chronotime/rest/soldeabs/<MATRICULE>%2CYYYYMMDD%2Ctrue%2Ctrue?index=1&nbrang=75`
+- la réponse renvoie une liste de compteurs ;
+- chaque compteur contient notamment `code`, `libelle`, `precedent`, `courant` et `suivant`.
+
 Ne pas committer :
 
 - le vrai domaine ;

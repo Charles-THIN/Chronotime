@@ -1,0 +1,54 @@
+[
+  {
+    "code": "GCP",
+    "libelle": " CONGES PAYES ",
+    "precedent": null,
+    "courant": {
+      "droit": "25j00",
+      "pris": "1j90",
+      "solde": "23j96"
+    },
+    "suivant": {
+      "droit": "25j00",
+      "pris": "2j00",
+      "solde": "23j00"
+    }
+  },
+  {
+    "code": "JRTT",
+    "libelle": "JOURS RTT",
+    "precedent": null,
+    "courant": {
+      "droit": "12j00",
+      "pris": "3j00",
+      "solde": "9j00"
+    },
+    "suivant": null
+  },
+  {
+    "code": "CANC",
+    "libelle": "CONGES ANNUELS",
+    "precedent": {
+      "droit": "5j00",
+      "pris": "1j00",
+      "solde": "4j00"
+    },
+    "courant": {
+      "droit": "10j00",
+      "pris": "2j00",
+      "solde": "8j00"
+    },
+    "suivant": null
+  },
+  {
+    "code": "REHV",
+    "libelle": " RECUPERATION HEURES SUPPLEMENTAIRES ",
+    "precedent": null,
+    "courant": {
+      "droit": "2h30m",
+      "pris": "0h00m",
+      "solde": "2h30m"
+    },
+    "suivant": null
+  }
+]
