@@ -282,3 +282,61 @@ Le format attendu sépare :
 - les lectures prêtes pour les vues.
 
 La projection demi-journalière peut être recalculée à tout moment. Elle ne doit pas être éditée directement comme source de vérité.
+
+## Projection Demi-Journalière
+
+Le projecteur demi-journalier produit une sortie dérivée à partir de données déjà normalisées.
+
+Forme générale :
+
+```json
+{
+  "source": "projection.demi_journees",
+  "periode": {
+    "debut": "2026-05-20",
+    "fin": "2026-12-31"
+  },
+  "etat_initial": {
+    "date": "2026-05-20",
+    "soldes": {
+      "GCP": 20.0,
+      "JRTT": 4.0,
+      "CANC": 5.0
+    }
+  },
+  "soldes_initiaux": {
+    "GCP": 20.0,
+    "JRTT": 4.0,
+    "CANC": 5.0
+  },
+  "evenements_sources": [],
+  "demi_journees": [
+    {
+      "date": "2026-05-20",
+      "portion": "matin",
+      "index_demi_journee": 0,
+      "evenements": [],
+      "consommations": {},
+      "soldes_avant": {},
+      "soldes_apres": {},
+      "alertes": []
+    }
+  ],
+  "soldes_aux_dates_cibles": [],
+  "alertes": [],
+  "resume": {
+    "nombre_demi_journees": 0,
+    "nombre_evenements_sources": 0,
+    "nombre_alertes": 0
+  }
+}
+```
+
+Règles principales :
+
+- `projection.demi_journees` est une projection dérivée, non une source éditable ;
+- chaque date contient deux portions, `matin` et `apres_midi` ;
+- les événements sources viennent des obligations restantes et des blocs actifs du scénario ;
+- les soldes sont propagés demi-journée par demi-journée ;
+- une alerte est produite si une consommation dépasse le solde disponible ;
+- les soldes aux dates cibles sont lus après la dernière demi-journée de la date.

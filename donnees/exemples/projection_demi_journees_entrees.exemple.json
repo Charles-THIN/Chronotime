@@ -1,0 +1,194 @@
+{
+  "source": "projection.demi_journees.entrees",
+  "soldes": {
+    "source": "chronotime.soldeabs",
+    "compteurs": [
+      {
+        "code": "GCP",
+        "libelle": "Congés payés",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "20j00",
+              "unite": "jour",
+              "valeur": 20.0
+            }
+          }
+        }
+      },
+      {
+        "code": "JRTT",
+        "libelle": "Jours RTT",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "4j00",
+              "unite": "jour",
+              "valeur": 4.0
+            }
+          }
+        }
+      },
+      {
+        "code": "CANC",
+        "libelle": "Congés d'ancienneté",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "5j00",
+              "unite": "jour",
+              "valeur": 5.0
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scenario": {
+    "source": "simulation.locale",
+    "scenario": {
+      "identifiant": "scenario_projection_exemple",
+      "libelle": "Scénario de projection exemple",
+      "periode": {
+        "debut": "2026-05-20",
+        "fin": "2026-12-31"
+      },
+      "dates_cibles": [
+        {
+          "identifiant": "noel",
+          "libelle": "Noël",
+          "date": "2026-12-25"
+        }
+      ],
+      "preferences": {
+        "ordre_consommation": "expiration_la_plus_proche",
+        "conserver_solde_minimum": []
+      },
+      "blocs": [
+        {
+          "identifiant_local": "bloc_scenario_gcp",
+          "libelle": "Pont simulé en congés payés",
+          "type": "bloc_simule",
+          "source": "simulation.locale",
+          "date_debut": "2026-06-01",
+          "date_fin": "2026-06-02",
+          "unite": "jours_ouvres",
+          "fraction_jour": 1.0,
+          "compteur_souhaite": "GCP",
+          "compteur_reellement_consomme": null,
+          "statut": "simule",
+          "verrouillage": false,
+          "priorite": 50,
+          "date_limite": null,
+          "notes_locales": "Bloc artificiel utilisé par l'exemple de projection.",
+          "actif": true,
+          "duree": {
+            "unite": "jours_ouvres",
+            "valeur": 2.0,
+            "methode": "jours_lundi_a_vendredi"
+          }
+        },
+        {
+          "identifiant_local": "bloc_scenario_desactive",
+          "libelle": "Bloc désactivé sans consommation",
+          "type": "bloc_desactive",
+          "source": "simulation.locale",
+          "date_debut": "2026-06-10",
+          "date_fin": "2026-06-10",
+          "unite": "jours_ouvres",
+          "fraction_jour": 1.0,
+          "compteur_souhaite": "GCP",
+          "compteur_reellement_consomme": null,
+          "statut": "desactive",
+          "verrouillage": false,
+          "priorite": 10,
+          "date_limite": null,
+          "notes_locales": "Bloc artificiel ignoré par le projecteur.",
+          "actif": false,
+          "duree": {
+            "unite": "jours_ouvres",
+            "valeur": 1.0,
+            "methode": "jours_lundi_a_vendredi"
+          }
+        }
+      ]
+    },
+    "resume": {
+      "nombre_blocs": 2,
+      "nombre_blocs_actifs": 1,
+      "nombre_blocs_inactifs": 1
+    }
+  },
+  "verification_obligations": {
+    "source": "verification.obligations",
+    "obligations": [
+      {
+        "identifiant": "rtt_2026_05_25",
+        "libelle": "Journée de solidarité du lundi 25 mai 2026",
+        "date_debut": "2026-05-25",
+        "date_fin": "2026-05-25",
+        "unite": "jours_ouvres",
+        "compteur_prefere": "JRTT",
+        "priorite": 100,
+        "statut_obligation": "a_poser",
+        "quantite_requise": 1.0,
+        "quantite_satisfaite": 0.0,
+        "quantite_restante": 1.0,
+        "compteurs_autorises": ["JRTT"],
+        "evenements_compatibles": []
+      },
+      {
+        "identifiant": "fermeture_ete_2026_08_10_2026_08_14",
+        "libelle": "Fermeture du lundi 10 août au vendredi 14 août 2026",
+        "date_debut": "2026-08-10",
+        "date_fin": "2026-08-14",
+        "unite": "jours_ouvres",
+        "compteur_prefere": "GCP",
+        "priorite": 100,
+        "statut_obligation": "a_poser",
+        "quantite_requise": 5.0,
+        "quantite_satisfaite": 0.0,
+        "quantite_restante": 5.0,
+        "compteurs_autorises": ["GCP"],
+        "evenements_compatibles": []
+      },
+      {
+        "identifiant": "fermeture_noel_2026_12_25_2026_12_31",
+        "libelle": "Fermeture du vendredi 25 décembre au jeudi 31 décembre 2026",
+        "date_debut": "2026-12-25",
+        "date_fin": "2026-12-31",
+        "unite": "jours_ouvres",
+        "compteur_prefere": null,
+        "priorite": 100,
+        "statut_obligation": "a_poser",
+        "quantite_requise": 4.0,
+        "quantite_satisfaite": 0.0,
+        "quantite_restante": 4.0,
+        "compteurs_autorises": ["GCP", "JRTT", "CANC"],
+        "evenements_compatibles": []
+      }
+    ],
+    "resume": {
+      "nombre_obligations": 3,
+      "nombre_satisfaites": 0,
+      "nombre_partielles": 0,
+      "nombre_a_poser": 3,
+      "quantite_totale_requise": 10.0,
+      "quantite_totale_satisfaite": 0.0,
+      "quantite_totale_restante": 10.0
+    }
+  },
+  "parametres_projection": {
+    "periode_compteurs": "courant",
+    "date_depart": "2026-05-20",
+    "date_fin": "2026-12-31",
+    "dates_cibles": [
+      {
+        "identifiant": "noel",
+        "libelle": "Noël",
+        "date": "2026-12-25"
+      }
+    ],
+    "ordre_compteurs_sans_preference": ["CANC", "JRTT", "GCP"]
+  }
+}
