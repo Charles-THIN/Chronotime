@@ -75,3 +75,13 @@ La sortie suit la source :
 ## Limite
 
 Cette projection ne modifie pas Chronotime. Elle ne remplace pas les règles réelles de Chronotime et ne prétend pas être juridiquement complète.
+
+## Limites métier connues
+
+- acquisition future non gérée ;
+- expiration non gérée ;
+- pose de congés non provisionnés non tranchée ;
+- parentalité non détaillée ;
+- règles Valeo à vérifier.
+
+Les limites métier sont à lire avec la mémoire des règles de congés : [docs/MÉMOIRE_RÈGLES_CONGÉS.md](./MÉMOIRE_RÈGLES_CONGÉS.md).

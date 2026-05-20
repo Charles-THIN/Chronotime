@@ -2,6 +2,8 @@
 
 Le modèle éditable du dépôt reste événementiel. La demi-journée n’est pas la source de vérité, c’est une projection dérivée.
 
+Voir aussi la mémoire dédiée des règles de congés : [docs/MÉMOIRE_RÈGLES_CONGÉS.md](./MÉMOIRE_RÈGLES_CONGÉS.md).
+
 ## Source De Vérité Éditable
 
 La source de vérité éditable contient :

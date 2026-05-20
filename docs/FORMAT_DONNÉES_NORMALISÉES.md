@@ -275,6 +275,8 @@ La vérification ne conserve que les champs utiles des événements compatibles 
 
 Les données normalisées Chronotime et les scénarios locaux restent des sources distinctes.
 
+La mémoire de référence des règles de congés est documentée dans [docs/MÉMOIRE_RÈGLES_CONGÉS.md](./MÉMOIRE_RÈGLES_CONGÉS.md).
+
 Le format attendu sépare :
 
 - le modèle source événementiel, éditable ;
