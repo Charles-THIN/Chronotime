@@ -221,7 +221,7 @@ Si une commande ne peut pas être lancée, l’indiquer explicitement.
 
 ## Format du rapport Codex
 
-Le fichier `CODEX_REPORT_LOCAL.md` doit suivre ce format :
+Le fichier `RAPPORT_CODEX_LOCAL.md` doit suivre ce format :
 
 # Codex report
 
