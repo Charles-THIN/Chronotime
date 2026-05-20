@@ -219,3 +219,54 @@ Forme générale :
 ```
 
 Les obligations locales ne créent pas de droits. Elles indiquent seulement des quantités à poser sur des compteurs existants.
+
+## Vérification Des Obligations Locales
+
+Le vérificateur compare des obligations locales normalisées avec un agenda Chronotime normalisé.
+
+Forme générale :
+
+```json
+{
+  "source": "verification.obligations",
+  "obligations": [
+    {
+      "identifiant": "rtt_2026_05_25",
+      "libelle": "Journée de solidarité du lundi 25 mai 2026",
+      "statut_obligation": "satisfaite",
+      "quantite_requise": 1.0,
+      "quantite_satisfaite": 1.0,
+      "quantite_restante": 0.0,
+      "compteurs_autorises": ["JRTT"],
+      "evenements_compatibles": [
+        {
+          "date": "2026-05-25",
+          "code": "JRTT",
+          "libelle": "RTT posé",
+          "unite": {
+            "code": "J",
+            "libelle": "Jour complet",
+            "fraction_jour": 1.0
+          },
+          "fraction_utilisee": 1.0,
+          "statut": {
+            "code": "A",
+            "libelle": "Accepté"
+          }
+        }
+      ]
+    }
+  ],
+  "resume": {
+    "nombre_obligations": 1,
+    "nombre_satisfaites": 1,
+    "nombre_partielles": 0,
+    "nombre_a_poser": 0,
+    "quantite_totale_requise": 1.0,
+    "quantite_totale_satisfaite": 1.0,
+    "quantite_totale_restante": 0.0
+  }
+}
+```
+
+La vérification ne conserve que les champs utiles des événements compatibles et ne modifie pas Chronotime.

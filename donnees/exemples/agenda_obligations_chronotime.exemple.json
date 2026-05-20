@@ -1,0 +1,89 @@
+{
+  "source": "chronotime.agenda",
+  "plage_dates": {
+    "debut": "2026-01-01",
+    "fin": "2026-12-31"
+  },
+  "evenements": [
+    {
+      "date": "2026-05-25",
+      "categorie": "absence",
+      "code": "JRTT",
+      "libelle": "RTT posé",
+      "unite": {
+        "code": "J",
+        "libelle": "Jour complet",
+        "fraction_jour": 1.0
+      },
+      "statut": {
+        "code": "A",
+        "libelle": "Accepté"
+      },
+      "type_evenement_source": "1"
+    },
+    {
+      "date": "2026-08-10",
+      "categorie": "absence",
+      "code": "GCP",
+      "libelle": "Congé payé",
+      "unite": {
+        "code": "J",
+        "libelle": "Jour complet",
+        "fraction_jour": 1.0
+      },
+      "statut": {
+        "code": "A",
+        "libelle": "Accepté"
+      },
+      "type_evenement_source": "1"
+    },
+    {
+      "date": "2026-08-11",
+      "categorie": "absence",
+      "code": "GCP",
+      "libelle": "Congé payé",
+      "unite": {
+        "code": "J",
+        "libelle": "Jour complet",
+        "fraction_jour": 1.0
+      },
+      "statut": {
+        "code": "A",
+        "libelle": "Accepté"
+      },
+      "type_evenement_source": "1"
+    },
+    {
+      "date": "2026-08-12",
+      "categorie": "absence",
+      "code": "GCP",
+      "libelle": "Congé payé",
+      "unite": {
+        "code": "J",
+        "libelle": "Jour complet",
+        "fraction_jour": 1.0
+      },
+      "statut": {
+        "code": "A",
+        "libelle": "Accepté"
+      },
+      "type_evenement_source": "1"
+    },
+    {
+      "date": "2026-08-13",
+      "categorie": "absence",
+      "code": "TELV",
+      "libelle": "Télétravail",
+      "unite": {
+        "code": "J",
+        "libelle": "Jour complet",
+        "fraction_jour": 1.0
+      },
+      "statut": {
+        "code": "A",
+        "libelle": "Accepté"
+      },
+      "type_evenement_source": "1"
+    }
+  ]
+}
