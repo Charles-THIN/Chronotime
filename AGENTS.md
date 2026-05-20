@@ -41,9 +41,9 @@ Ne pas redessiner l’architecture sauf nécessité technique réelle et explici
 
 Après implémentation, écrire un rapport local court dans :
 
-    CODEX_REPORT_LOCAL.md
+    RAPPORT_CODEX_LOCAL.md
 
-Ne pas committer `CODEX_REPORT_LOCAL.md` sauf instruction explicite.
+Ne pas committer `RAPPORT_CODEX_LOCAL.md` sauf instruction explicite.
 
 Le rapport doit contenir :
 
@@ -81,7 +81,7 @@ N’utiliser que des données d’exemple anonymisées.
 
 Les données privées ou semi-privées doivent rester hors dépôt, par exemple dans :
 
-    local_data/
+    donnees_locales/
 
 Ce dossier doit rester ignoré par Git.
 

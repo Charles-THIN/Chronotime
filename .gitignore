@@ -1,0 +1,11 @@
+donnees_locales/
+*.har
+RAPPORT_CODEX_LOCAL.md
+credentials.json
+token.pickle
+**/credentials.json
+**/token.pickle
+.env
+.venv/
+__pycache__/
+*.pyc
