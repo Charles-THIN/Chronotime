@@ -107,7 +107,7 @@
       {
         "identifiant_local": "bloc_ignore",
         "libelle": "Bloc désactivé",
-        "type": "bloc_ignored",
+        "type": "bloc_ignore",
         "source": "simulation.locale",
         "date_debut": "2026-11-02",
         "date_fin": "2026-11-03",

@@ -117,3 +117,57 @@ Il faut distinguer :
 - le résultat de calcul futur, qui dépend du scénario mais ne doit pas se confondre avec lui.
 
 Cette séparation évite de mélanger les faits importés, les hypothèses de simulation et les projections calculées.
+
+## Scénario Local Normalisé
+
+Le chargeur de scénarios transforme un fichier de simulation local en scénario normalisé.
+
+Forme générale :
+
+```json
+{
+  "source": "simulation.locale",
+  "scenario": {
+    "identifiant": "scenario_exemple",
+    "libelle": "Scénario exemple anonymisé",
+    "periode": {
+      "debut": "2026-05-01",
+      "fin": "2027-04-30"
+    },
+    "dates_cibles": [],
+    "preferences": {},
+    "blocs": [
+      {
+        "identifiant_local": "bloc_vacances_ete",
+        "libelle": "Vacances d'été",
+        "type": "bloc_simule",
+        "source": "simulation.locale",
+        "date_debut": "2026-08-03",
+        "date_fin": "2026-08-14",
+        "unite": "jours_ouvrables",
+        "fraction_jour": 1.0,
+        "compteur_souhaite": "GCP",
+        "compteur_reellement_consomme": null,
+        "statut": "simule",
+        "verrouillage": false,
+        "priorite": 50,
+        "date_limite": "2026-12-31",
+        "notes_locales": "",
+        "actif": true,
+        "duree": {
+          "unite": "jours_ouvrables",
+          "valeur": 10.0,
+          "methode": "jours_lundi_a_samedi"
+        }
+      }
+    ]
+  },
+  "resume": {
+    "nombre_blocs": 1,
+    "nombre_blocs_actifs": 1,
+    "nombre_blocs_inactifs": 0
+  }
+}
+```
+
+Les durées sont des estimations locales provisoires. Elles ne tiennent pas encore compte des jours fériés, des calendriers entreprise, des fermetures ou des règles Chronotime exactes.

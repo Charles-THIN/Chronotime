@@ -68,3 +68,20 @@ Un modèle minimal de scénario doit permettre de décrire :
 - les blocs simulés posés par l’utilisateur ;
 - les congés imposés déjà posés ou encore à poser ;
 - les préférences de conservation de certains soldes.
+
+## Forme Normalisée
+
+Le chargeur de scénarios produit une forme normalisée exploitable par les futurs calculs.
+
+Il ajoute notamment :
+
+- `actif`, pour indiquer si un bloc doit participer aux calculs futurs ;
+- `duree`, pour porter une durée simple calculée à partir des dates et de l’unité ;
+- `resume`, pour compter les blocs actifs et inactifs.
+
+Le calcul de durée est provisoire. Il ne tient pas encore compte :
+
+- des jours fériés ;
+- des calendriers entreprise ;
+- des fermetures ;
+- des règles Chronotime exactes.
