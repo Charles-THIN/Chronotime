@@ -9,6 +9,8 @@ import unittest
 
 from outils.chronotime.parseur_agenda import (
     MODELE_SOURCE,
+    construire_dictionnaires_normalises,
+    indexer_par_code,
     normaliser_date_chronotime,
     normaliser_donnees,
     normaliser_horaire_chronotime,
@@ -57,6 +59,35 @@ class TestParseurAgenda(unittest.TestCase):
             {"code": "A", "libelle": "Accepté"},
         )
 
+    def test_indexer_liste_par_cod(self) -> None:
+        self.assertEqual(indexer_par_code([{"cod": "A", "lib": "Accepté"}]), {"A": {"cod": "A", "lib": "Accepté"}})
+
+    def test_indexer_liste_par_code(self) -> None:
+        self.assertEqual(indexer_par_code([{"code": "M", "libelle": "Matin"}]), {"M": {"code": "M", "libelle": "Matin"}})
+
+    def test_dictionnaires_sous_forme_de_listes(self) -> None:
+        donnees = self._charger_exemple_normalise()
+        self.assertEqual(donnees["dictionnaires"]["absences"]["CANC"]["groupe_code"], "C")
+        self.assertEqual(donnees["dictionnaires"]["statuts"]["A"]["libelle"], "Accepté")
+        self.assertEqual(donnees["dictionnaires"]["unites"]["M"]["libelle"], "Matin")
+        self.assertEqual(donnees["dictionnaires"]["unites"]["S"]["libelle"], "Après-midi")
+        self.assertEqual(donnees["dictionnaires"]["unites"]["J"]["libelle"], "Jour complet")
+        self.assertEqual(donnees["dictionnaires"]["unites"]["H"]["libelle"], "Heure")
+
+    def test_compatibilite_dictionnaires_indexes(self) -> None:
+        dictionnaires = construire_dictionnaires_normalises(
+            {
+                "abs": {"CANC": {"lib": "ABS CP ANCIENNETE", "grp": "C"}},
+                "wkf": {"A": {"lib": "Accepté"}},
+                "untabs": {"M": {"lib": "Matin"}},
+                "hor": {"JTRAV": {"lib": "Jour travaillé", "re": False}},
+            }
+        )
+        self.assertEqual(dictionnaires["absences"]["CANC"]["libelle"], "ABS CP ANCIENNETE")
+        self.assertEqual(dictionnaires["statuts"]["A"]["libelle"], "Accepté")
+        self.assertEqual(dictionnaires["unites"]["M"]["libelle"], "Matin")
+        self.assertEqual(dictionnaires["horaires"]["JTRAV"]["repos"], False)
+
     def test_parsing_absence_canc_matin(self) -> None:
         donnees = self._charger_exemple_normalise()
         evenement = next(
@@ -65,9 +96,11 @@ class TestParseurAgenda(unittest.TestCase):
             if evenement["categorie"] == "absence" and evenement["code"] == "CANC"
         )
         self.assertEqual(evenement["date"], "2026-05-18")
-        self.assertEqual(evenement["libelle"], "ABS CP ANCIENNETE")
+        self.assertEqual(evenement["libelle"], "ABS CP ANCIENNETE (CANC)")
         self.assertEqual(evenement["unite"]["code"], "M")
         self.assertEqual(evenement["unite"]["fraction_jour"], 0.5)
+        self.assertEqual(evenement["horaire"]["debut_brut"], 0)
+        self.assertEqual(evenement["horaire"]["fin_brut"], 1159)
         self.assertEqual(evenement["horaire"]["debut"], "00:00")
         self.assertEqual(evenement["horaire"]["fin"], "11:59")
         self.assertEqual(evenement["statut"]["code"], "A")
@@ -80,9 +113,11 @@ class TestParseurAgenda(unittest.TestCase):
             if evenement["categorie"] == "absence" and evenement["code"] == "TELV"
         )
         self.assertEqual(evenement["date"], "2026-05-18")
-        self.assertEqual(evenement["libelle"], "TELE CONTRA VARIABLE")
+        self.assertEqual(evenement["libelle"], "TELE CONTRA VARIABLE (TELV)")
         self.assertEqual(evenement["unite"]["code"], "S")
         self.assertEqual(evenement["unite"]["libelle"], "Après-midi")
+        self.assertEqual(evenement["horaire"]["debut_brut"], 1159)
+        self.assertEqual(evenement["horaire"]["fin_brut"], 2359)
         self.assertEqual(evenement["statut"]["libelle"], "Accepté")
 
     def test_parsing_evenement_horaire(self) -> None:
@@ -90,10 +125,25 @@ class TestParseurAgenda(unittest.TestCase):
         evenement = next(
             evenement
             for evenement in donnees["evenements"]
-            if evenement["categorie"] == "horaire" and evenement["code"] == "REPOSCAL"
+            if evenement["categorie"] == "horaire" and evenement["code"] == "230019001"
         )
-        self.assertEqual(evenement["libelle"], "Repos calendaire")
+        self.assertEqual(evenement["libelle"], "4CRC Rep calendaire")
         self.assertTrue(evenement["repos"])
+
+    def test_code_horaire_numerique_jour_travaille(self) -> None:
+        donnees = self._charger_exemple_normalise()
+        evenement = next(
+            evenement
+            for evenement in donnees["evenements"]
+            if evenement["categorie"] == "horaire" and evenement["code"] == "230010003"
+        )
+        self.assertEqual(evenement["libelle"], "4C01 Forfait jour 7h/j")
+        self.assertFalse(evenement["repos"])
+
+    def test_sortie_sans_identifiants_internes(self) -> None:
+        texte = json.dumps(self._charger_exemple_normalise(), ensure_ascii=False)
+        for cle_interdite in ("uid", "row", "acn", "acp", "<ID>", "<USER>"):
+            self.assertNotIn(cle_interdite, texte)
 
     def test_resume_types_ignores(self) -> None:
         donnees = self._charger_exemple_normalise()

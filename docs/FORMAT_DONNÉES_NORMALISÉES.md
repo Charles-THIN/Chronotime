@@ -103,4 +103,5 @@ Règles principales :
 - `evt["1"]` est normalisé en événements de catégorie `absence` ;
 - `evt["0"]` est normalisé en événements de catégorie `horaire` ;
 - les dictionnaires utiles de `dts` sont simplifiés et nettoyés ;
+- les dictionnaires Chronotime fournis sous forme de listes sont indexés par `cod` ou `code` ;
 - les types `evt["2"]` et `evt["9"]` sont seulement résumés dans `resume_source`.

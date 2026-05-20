@@ -13,7 +13,7 @@
         "dat": "20260518",
         "evt": [
           {
-            "cod": "JTRAV"
+            "cod": 230010003
           }
         ]
       },
@@ -21,7 +21,7 @@
         "dat": "20260519",
         "evt": [
           {
-            "cod": "REPOSCAL"
+            "cod": 230019001
           }
         ]
       }
@@ -31,29 +31,44 @@
         "dat": "20260518",
         "evt": [
           {
+            "uid": "<ID>",
             "cod": "CANC",
             "val": "M",
-            "sta": "A",
-            "hed": 0,
-            "hef": 1159,
             "dts": {
               "par": {
-                "@absLibelleMotif": " ABS CP ANCIENNETE ",
-                "@absUniteDate": "M"
-              }
+                "@absLibelleMotif": " ABS CP ANCIENNETE (CANC)",
+                "@absUniteDate": "M",
+                "@absUniteDateLibelle": "Matin",
+                "@absDateDebut": "20260518",
+                "@absDateFin": "20260518"
+              },
+              "sta": "A",
+              "eta": "A",
+              "hed": 0,
+              "hef": 1159,
+              "row": "<ID>",
+              "acn": "<USER>",
+              "acp": "<USER>"
             }
           },
           {
+            "uid": "<ID>",
             "cod": "TELV",
             "val": "S",
-            "eta": "A",
-            "hed": 1200,
-            "hef": 2359,
             "dts": {
               "par": {
-                "@absLibelleMotif": " TELE CONTRA VARIABLE ",
-                "@absUniteDate": "S"
-              }
+                "@absLibelleMotif": " TELE CONTRA VARIABLE (TELV)",
+                "@absUniteDate": "S",
+                "@absUniteDateLibelle": "Après-midi",
+                "@absDateDebut": "20260518",
+                "@absDateFin": "20260518"
+              },
+              "eta": "A",
+              "hed": 1159,
+              "hef": 2359,
+              "row": "<ID>",
+              "acn": "<USER>",
+              "acp": "<USER>"
             }
           }
         ]
@@ -89,60 +104,77 @@
     ]
   },
   "dts": {
-    "abs": {
-      "CANC": {
+    "abs": [
+      {
         "lib": "ABS CP ANCIENNETE",
-        "grp": "CP"
+        "grp": "C",
+        "cod": "CANC"
       },
-      "TELV": {
+      {
         "lib": "TELE CONTRA VARIABLE",
-        "grp": "TELV"
+        "grp": "T",
+        "cod": "TELV"
       }
-    },
-    "grpabs": {
-      "CP": {
+    ],
+    "grpabs": [
+      {
+        "cod": "C",
         "lib": "Congés payés"
       },
-      "TELV": {
+      {
+        "cod": "T",
         "lib": "Télétravail"
       }
-    },
-    "wkf": {
-      "A": {
-        "lib": "Accepté"
+    ],
+    "wkf": [
+      {
+        "lib": "Accepté",
+        "cod": "A"
       }
-    },
-    "unt": {
-      "D": {
-        "lib": "Jour complet"
+    ],
+    "unt": [
+      {
+        "code": "D",
+        "libelle": "Jour complet"
       },
-      "H": {
-        "lib": "Heure"
+      {
+        "code": "H",
+        "libelle": "Heure"
       }
-    },
-    "untabs": {
-      "M": {
-        "lib": "Matin"
+    ],
+    "untabs": [
+      {
+        "code": "M",
+        "libelle": "Matin",
+        "abrege": "M"
       },
-      "S": {
-        "lib": "Après-midi"
+      {
+        "code": "S",
+        "libelle": "Après-midi",
+        "abrege": "S"
       },
-      "J": {
-        "lib": "Jour complet"
+      {
+        "code": "J",
+        "libelle": "Jour complet",
+        "abrege": "J"
       },
-      "H": {
-        "lib": "Heure"
+      {
+        "code": "H",
+        "libelle": "Heure",
+        "abrege": "H"
       }
-    },
-    "hor": {
-      "JTRAV": {
-        "lib": "Jour travaillé",
+    ],
+    "hor": [
+      {
+        "lib": "4C01 Forfait jour 7h/j",
+        "cod": 230010003,
         "re": false
       },
-      "REPOSCAL": {
-        "lib": "Repos calendaire",
+      {
+        "lib": "4CRC Rep calendaire",
+        "cod": 230019001,
         "re": true
       }
-    }
+    ]
   }
 }

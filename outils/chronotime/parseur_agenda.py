@@ -127,12 +127,29 @@ def _extraire_groupe_depuis_entree(entree: Any) -> str | None:
     return None
 
 
+def indexer_par_code(objets: Any, cles_code: tuple[str, ...] = ("cod", "code")) -> dict[str, Any]:
+    if isinstance(objets, dict):
+        return {str(code): entree for code, entree in objets.items()}
+    if not isinstance(objets, list):
+        return {}
+
+    resultat = {}
+    for entree in objets:
+        if not isinstance(entree, dict):
+            continue
+        for cle_code in cles_code:
+            if cle_code in entree and entree.get(cle_code) is not None:
+                resultat[str(entree[cle_code])] = entree
+                break
+    return resultat
+
+
 def construire_dictionnaires_normalises(dictionnaires_bruts: Any) -> dict[str, dict[str, Any]]:
     if not isinstance(dictionnaires_bruts, dict):
         dictionnaires_bruts = {}
 
     absences = {}
-    for code, entree in (dictionnaires_bruts.get("abs") or {}).items():
+    for code, entree in indexer_par_code(dictionnaires_bruts.get("abs")).items():
         groupe_code = _extraire_groupe_depuis_entree(entree)
         absences[str(code)] = {
             "code": str(code),
@@ -141,14 +158,14 @@ def construire_dictionnaires_normalises(dictionnaires_bruts: Any) -> dict[str, d
         }
 
     groupes_absence = {}
-    for code, entree in (dictionnaires_bruts.get("grpabs") or {}).items():
+    for code, entree in indexer_par_code(dictionnaires_bruts.get("grpabs")).items():
         groupes_absence[str(code)] = {
             "code": str(code),
             "libelle": _extraire_libelle_depuis_entree(entree),
         }
 
     statuts = {}
-    for code, entree in (dictionnaires_bruts.get("wkf") or {}).items():
+    for code, entree in indexer_par_code(dictionnaires_bruts.get("wkf")).items():
         statuts[str(code)] = {
             "code": str(code),
             "libelle": _extraire_libelle_depuis_entree(entree),
@@ -156,7 +173,7 @@ def construire_dictionnaires_normalises(dictionnaires_bruts: Any) -> dict[str, d
 
     unite_sources = {}
     for nom_source in ("unt", "untabs"):
-        for code, entree in (dictionnaires_bruts.get(nom_source) or {}).items():
+        for code, entree in indexer_par_code(dictionnaires_bruts.get(nom_source)).items():
             unite_sources[str(code)] = _extraire_libelle_depuis_entree(entree)
 
     unites = {}
@@ -164,7 +181,7 @@ def construire_dictionnaires_normalises(dictionnaires_bruts: Any) -> dict[str, d
         unites[code] = normaliser_unite(code, unite_sources)
 
     horaires = {}
-    for code, entree in (dictionnaires_bruts.get("hor") or {}).items():
+    for code, entree in indexer_par_code(dictionnaires_bruts.get("hor")).items():
         horaires[str(code)] = {
             "code": str(code),
             "libelle": _extraire_libelle_depuis_entree(entree),
@@ -247,7 +264,7 @@ def normaliser_absences(
 
     unites_sources = {}
     for nom_source in ("untabs", "unt"):
-        for code, entree in (dictionnaires_bruts.get(nom_source) or {}).items():
+        for code, entree in indexer_par_code(dictionnaires_bruts.get(nom_source)).items():
             unites_sources[str(code)] = _extraire_libelle_depuis_entree(entree)
 
     for groupe in evenements_bruts:
@@ -258,6 +275,8 @@ def normaliser_absences(
             if not isinstance(evenement, dict):
                 continue
             details = evenement.get("dts") or {}
+            if not isinstance(details, dict):
+                details = {}
             parametres = details.get("par") if isinstance(details, dict) else {}
             if not isinstance(parametres, dict):
                 parametres = {}
@@ -271,7 +290,9 @@ def normaliser_absences(
                 libelle = nettoyer_libelle(dictionnaire_absence.get("libelle"))
 
             code_unite = parametres.get("@absUniteDate") or evenement.get("val")
-            code_statut = evenement.get("sta") or evenement.get("eta")
+            code_statut = details.get("sta") or details.get("eta") or evenement.get("sta") or evenement.get("eta")
+            debut_brut = details.get("hed") if "hed" in details else evenement.get("hed")
+            fin_brut = details.get("hef") if "hef" in details else evenement.get("hef")
             resultat.append(
                 {
                     "date": date,
@@ -279,7 +300,7 @@ def normaliser_absences(
                     "code": code_texte,
                     "libelle": libelle,
                     "unite": normaliser_unite(code_unite, unites_sources),
-                    "horaire": normaliser_horaire_intervalle(evenement.get("hed"), evenement.get("hef")),
+                    "horaire": normaliser_horaire_intervalle(debut_brut, fin_brut),
                     "statut": normaliser_statut(code_statut, dictionnaires_normalises["statuts"]),
                     "type_evenement_source": "1",
                 }
