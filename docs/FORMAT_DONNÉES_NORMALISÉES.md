@@ -171,3 +171,51 @@ Forme générale :
 ```
 
 Les durées sont des estimations locales provisoires. Elles ne tiennent pas encore compte des jours fériés, des calendriers entreprise, des fermetures ou des règles Chronotime exactes.
+
+## Obligations Locales Normalisées
+
+Le chargeur d’obligations transforme un fichier local d’obligations de congés en contraintes normalisées.
+
+Forme générale :
+
+```json
+{
+  "source": "obligations.locales",
+  "annee": 2026,
+  "perimetre": {
+    "site": "creteil",
+    "societe": "vcda"
+  },
+  "obligations": [
+    {
+      "identifiant": "rtt_2026_01_02",
+      "libelle": "Fermeture du vendredi 2 janvier 2026",
+      "type": "rtt_a_positionner",
+      "date_debut": "2026-01-02",
+      "date_fin": "2026-01-02",
+      "unite": "jours_ouvres",
+      "quantite": 1.0,
+      "compteurs_autorises": ["JRTT"],
+      "compteur_prefere": "JRTT",
+      "statut": "a_poser",
+      "verrouillage": true,
+      "priorite": 100,
+      "notes": "",
+      "duree_calculee": {
+        "unite": "jours_ouvres",
+        "valeur": 1.0,
+        "methode": "quantite_declaree"
+      }
+    }
+  ],
+  "resume": {
+    "nombre_obligations": 1,
+    "quantite_totale": 1.0,
+    "quantites_par_compteur_prefere": {
+      "JRTT": 1.0
+    }
+  }
+}
+```
+
+Les obligations locales ne créent pas de droits. Elles indiquent seulement des quantités à poser sur des compteurs existants.

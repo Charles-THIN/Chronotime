@@ -1,0 +1,100 @@
+{
+  "source": "obligations.locales",
+  "annee": 2026,
+  "perimetre": {
+    "site": "creteil",
+    "societe": "vcda"
+  },
+  "obligations": [
+    {
+      "identifiant": "rtt_2026_01_02",
+      "libelle": "Fermeture du vendredi 2 janvier 2026",
+      "type": "rtt_a_positionner",
+      "date_debut": "2026-01-02",
+      "date_fin": "2026-01-02",
+      "unite": "jours_ouvres",
+      "quantite": 1.0,
+      "compteurs_autorises": ["JRTT"],
+      "compteur_prefere": "JRTT",
+      "statut": "a_poser",
+      "verrouillage": true,
+      "priorite": 100,
+      "notes": ""
+    },
+    {
+      "identifiant": "rtt_2026_05_15",
+      "libelle": "Fermeture du vendredi 15 mai 2026",
+      "type": "rtt_a_positionner",
+      "date_debut": "2026-05-15",
+      "date_fin": "2026-05-15",
+      "unite": "jours_ouvres",
+      "quantite": 1.0,
+      "compteurs_autorises": ["JRTT"],
+      "compteur_prefere": "JRTT",
+      "statut": "a_poser",
+      "verrouillage": true,
+      "priorite": 100,
+      "notes": ""
+    },
+    {
+      "identifiant": "rtt_2026_05_25",
+      "libelle": "Journée de solidarité du lundi 25 mai 2026",
+      "type": "rtt_a_positionner",
+      "date_debut": "2026-05-25",
+      "date_fin": "2026-05-25",
+      "unite": "jours_ouvres",
+      "quantite": 1.0,
+      "compteurs_autorises": ["JRTT"],
+      "compteur_prefere": "JRTT",
+      "statut": "a_poser",
+      "verrouillage": true,
+      "priorite": 100,
+      "notes": "RTT à positionner pour la journée de solidarité / Pentecôte."
+    },
+    {
+      "identifiant": "rtt_2026_07_13",
+      "libelle": "Fermeture du lundi 13 juillet 2026",
+      "type": "rtt_a_positionner",
+      "date_debut": "2026-07-13",
+      "date_fin": "2026-07-13",
+      "unite": "jours_ouvres",
+      "quantite": 1.0,
+      "compteurs_autorises": ["JRTT"],
+      "compteur_prefere": "JRTT",
+      "statut": "a_poser",
+      "verrouillage": true,
+      "priorite": 100,
+      "notes": ""
+    },
+    {
+      "identifiant": "fermeture_ete_2026_08_10_2026_08_14",
+      "libelle": "Fermeture du lundi 10 août au vendredi 14 août 2026",
+      "type": "conges_payes_imposes",
+      "date_debut": "2026-08-10",
+      "date_fin": "2026-08-14",
+      "unite": "jours_ouvres",
+      "quantite": 5.0,
+      "compteurs_autorises": ["GCP"],
+      "compteur_prefere": "GCP",
+      "statut": "a_poser",
+      "verrouillage": true,
+      "priorite": 100,
+      "notes": "Cinq jours à prendre obligatoirement en congé payé."
+    },
+    {
+      "identifiant": "fermeture_noel_2026_12_25_2026_12_31",
+      "libelle": "Fermeture du vendredi 25 décembre au jeudi 31 décembre 2026",
+      "type": "minimum_a_poser",
+      "date_debut": "2026-12-25",
+      "date_fin": "2026-12-31",
+      "unite": "jours_ouvres",
+      "quantite": 4.0,
+      "compteurs_autorises": ["GCP", "JRTT", "CANC"],
+      "compteur_prefere": null,
+      "statut": "a_poser",
+      "verrouillage": true,
+      "priorite": 100,
+      "notes": "Quatre jours minimum à prendre en congé payé, RTT ou congé d’ancienneté."
+    }
+  ]
+}

@@ -85,3 +85,9 @@ Le calcul de durée est provisoire. Il ne tient pas encore compte :
 - des calendriers entreprise ;
 - des fermetures ;
 - des règles Chronotime exactes.
+
+## Obligations Locales
+
+Les obligations locales restent séparées des scénarios.
+
+Elles représentent des contraintes de pose connues localement, par exemple une fermeture ou un RTT à positionner. Elles pourront être converties plus tard en blocs verrouillés de scénario, mais elles ne sont pas encore fusionnées avec les scénarios dans cette étape.
