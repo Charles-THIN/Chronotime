@@ -29,13 +29,14 @@ Les identifiants techniques, noms de paquets, commandes, API, variables et noms 
 
 ## Flux de travail principal
 
-Avant toute modification, lire :
+La tâche courante peut être donnée directement dans le prompt Codex.
+Sinon, lire :
 
     docs/PROCHAINE_TÂCHE.md
 
-Ce fichier est la tâche courante faisant autorité.
+Si le prompt direct et `docs/PROCHAINE_TÂCHE.md` se contredisent, le prompt direct prime.
 
-Ne pas élargir la tâche.
+Ne pas modifier `docs/PROCHAINE_TÂCHE.md` sauf demande explicite.
 
 Ne pas redessiner l’architecture sauf nécessité technique réelle et explicitement signalée dans le rapport.
 
@@ -43,7 +44,7 @@ Après implémentation, écrire un rapport local court dans :
 
     RAPPORT_CODEX_LOCAL.md
 
-Ne pas committer `RAPPORT_CODEX_LOCAL.md` sauf instruction explicite.
+Ne pas committer `RAPPORT_CODEX_LOCAL.md` sauf demande explicite.
 
 Le rapport doit contenir :
 
