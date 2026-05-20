@@ -91,3 +91,11 @@ Le calcul de durée est provisoire. Il ne tient pas encore compte :
 Les obligations locales restent séparées des scénarios.
 
 Elles représentent des contraintes de pose connues localement, par exemple une fermeture ou un RTT à positionner. Elles pourront être converties plus tard en blocs verrouillés de scénario, mais elles ne sont pas encore fusionnées avec les scénarios dans cette étape.
+
+## Modèle Événementiel
+
+Les blocs du scénario font partie du modèle événementiel source.
+
+Le scénario n’est pas une grille de jours. C’est une liste compacte d’intentions et de contraintes, dont les blocs simulés, les blocages, les congés imposés et les choix de consommation des compteurs.
+
+La projection demi-journalière reste dérivée. Elle n’est pas l’objet de saisie principal.

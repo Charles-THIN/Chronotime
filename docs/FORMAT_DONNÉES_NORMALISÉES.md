@@ -270,3 +270,15 @@ Forme générale :
 ```
 
 La vérification ne conserve que les champs utiles des événements compatibles et ne modifie pas Chronotime.
+
+## Architecture Hybride
+
+Les données normalisées Chronotime et les scénarios locaux restent des sources distinctes.
+
+Le format attendu sépare :
+
+- le modèle source événementiel, éditable ;
+- la projection dérivée `projection.demi_journees` ;
+- les lectures prêtes pour les vues.
+
+La projection demi-journalière peut être recalculée à tout moment. Elle ne doit pas être éditée directement comme source de vérité.

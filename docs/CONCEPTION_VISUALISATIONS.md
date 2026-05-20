@@ -17,7 +17,7 @@ Elle sert à :
 - ouvrir un éditeur détaillé ;
 - zoomer entre année, trimestre, mois et semaine.
 
-La frise doit rester la référence d’édition. Les autres vues reflètent ses modifications.
+La frise est la vue principale d’édition, mais ses modifications doivent être traduites en modifications du modèle événementiel. La frise affiche ensuite la projection demi-journalière recalculée.
 
 ## Vue 2 : Projection Des Soldes
 
