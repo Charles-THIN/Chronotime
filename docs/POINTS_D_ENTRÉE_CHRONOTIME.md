@@ -14,6 +14,15 @@ Point d’entrée des soldes de congés :
 - la réponse renvoie une liste de compteurs ;
 - chaque compteur contient notamment `code`, `libelle`, `precedent`, `courant` et `suivant`.
 
+Point d’entrée de l’agenda :
+
+- `GET /chronotime/rest/agenda/YYYYMMDD%2CYYYYMMDD%2C<MATRICULE>?type=...&combos=1`
+- la réponse observée contient une plage de dates avec `datd` et `datf` ;
+- elle contient des lignes ou éléments sous `elt` ;
+- elle contient des événements groupés par type sous `evt` ;
+- elle contient des dictionnaires sous `dts` ;
+- les absences observées sont notamment portées dans `evt["1"]`.
+
 Ne pas committer :
 
 - le vrai domaine ;

@@ -1,0 +1,148 @@
+{
+  "datd": "20260517",
+  "datf": "20260524",
+  "elt": [
+    {
+      "code": "ligne_principale",
+      "libelle": "Agenda anonymisé"
+    }
+  ],
+  "evt": {
+    "0": [
+      {
+        "dat": "20260518",
+        "evt": [
+          {
+            "cod": "JTRAV"
+          }
+        ]
+      },
+      {
+        "dat": "20260519",
+        "evt": [
+          {
+            "cod": "REPOSCAL"
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "dat": "20260518",
+        "evt": [
+          {
+            "cod": "CANC",
+            "val": "M",
+            "sta": "A",
+            "hed": 0,
+            "hef": 1159,
+            "dts": {
+              "par": {
+                "@absLibelleMotif": " ABS CP ANCIENNETE ",
+                "@absUniteDate": "M"
+              }
+            }
+          },
+          {
+            "cod": "TELV",
+            "val": "S",
+            "eta": "A",
+            "hed": 1200,
+            "hef": 2359,
+            "dts": {
+              "par": {
+                "@absLibelleMotif": " TELE CONTRA VARIABLE ",
+                "@absUniteDate": "S"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "dat": "20260518",
+        "evt": [
+          {
+            "cod": "TRACE_A"
+          },
+          {
+            "cod": "TRACE_B"
+          }
+        ]
+      }
+    ],
+    "9": [
+      {
+        "dat": "20260518",
+        "evt": [
+          { "cod": "PROFIL_1" },
+          { "cod": "PROFIL_2" },
+          { "cod": "PROFIL_3" },
+          { "cod": "PROFIL_4" },
+          { "cod": "PROFIL_5" },
+          { "cod": "PROFIL_6" },
+          { "cod": "PROFIL_7" },
+          { "cod": "PROFIL_8" }
+        ]
+      }
+    ]
+  },
+  "dts": {
+    "abs": {
+      "CANC": {
+        "lib": "ABS CP ANCIENNETE",
+        "grp": "CP"
+      },
+      "TELV": {
+        "lib": "TELE CONTRA VARIABLE",
+        "grp": "TELV"
+      }
+    },
+    "grpabs": {
+      "CP": {
+        "lib": "Congés payés"
+      },
+      "TELV": {
+        "lib": "Télétravail"
+      }
+    },
+    "wkf": {
+      "A": {
+        "lib": "Accepté"
+      }
+    },
+    "unt": {
+      "D": {
+        "lib": "Jour complet"
+      },
+      "H": {
+        "lib": "Heure"
+      }
+    },
+    "untabs": {
+      "M": {
+        "lib": "Matin"
+      },
+      "S": {
+        "lib": "Après-midi"
+      },
+      "J": {
+        "lib": "Jour complet"
+      },
+      "H": {
+        "lib": "Heure"
+      }
+    },
+    "hor": {
+      "JTRAV": {
+        "lib": "Jour travaillé",
+        "re": false
+      },
+      "REPOSCAL": {
+        "lib": "Repos calendaire",
+        "re": true
+      }
+    }
+  }
+}
