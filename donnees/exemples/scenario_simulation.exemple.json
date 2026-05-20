@@ -1,0 +1,126 @@
+{
+  "source": "simulation.locale",
+  "scenario": {
+    "identifiant": "scenario_exemple",
+    "libelle": "Scénario exemple anonymisé",
+    "periode": {
+      "debut": "2026-05-01",
+      "fin": "2027-04-30"
+    },
+    "dates_cibles": [
+      {
+        "identifiant": "noel",
+        "libelle": "Noël",
+        "date": "2026-12-25"
+      }
+    ],
+    "preferences": {
+      "ordre_consommation": "expiration_la_plus_proche",
+      "conserver_solde_minimum": []
+    },
+    "blocs": [
+      {
+        "identifiant_local": "bloc_vacances_ete",
+        "libelle": "Vacances d'été",
+        "type": "bloc_simule",
+        "source": "simulation.locale",
+        "date_debut": "2026-08-03",
+        "date_fin": "2026-08-14",
+        "unite": "jours_ouvrables",
+        "fraction_jour": 1.0,
+        "compteur_souhaite": "GCP",
+        "compteur_reellement_consomme": null,
+        "statut": "simule",
+        "verrouillage": false,
+        "priorite": 50,
+        "date_limite": "2026-12-31",
+        "notes_locales": "Bloc de vacances d'été pour tester l'impact avant Noël."
+      },
+      {
+        "identifiant_local": "bloc_noel",
+        "libelle": "Vacances de Noël",
+        "type": "bloc_simule",
+        "source": "simulation.locale",
+        "date_debut": "2026-12-24",
+        "date_fin": "2026-12-31",
+        "unite": "jours_calendaires",
+        "fraction_jour": 1.0,
+        "compteur_souhaite": "CANC",
+        "compteur_reellement_consomme": null,
+        "statut": "simule",
+        "verrouillage": false,
+        "priorite": 60,
+        "date_limite": null,
+        "notes_locales": "Bloc simulé pour vérifier le reste à Noël."
+      },
+      {
+        "identifiant_local": "conge_impose_ete",
+        "libelle": "Congé imposé d'été",
+        "type": "conge_impose_non_pose",
+        "source": "regle.locale",
+        "date_debut": "2026-08-17",
+        "date_fin": "2026-08-21",
+        "unite": "jours_ouvrables",
+        "fraction_jour": 1.0,
+        "compteur_souhaite": "JRTT",
+        "compteur_reellement_consomme": null,
+        "statut": "a_poser",
+        "verrouillage": true,
+        "priorite": 80,
+        "date_limite": "2026-09-30",
+        "notes_locales": "Congé imposé à poser avant la fin de l'été."
+      },
+      {
+        "identifiant_local": "conge_canc_pose",
+        "libelle": "Congé CANC déjà posé",
+        "type": "conge_impose_pose",
+        "source": "chronotime.importe",
+        "date_debut": "2026-06-15",
+        "date_fin": "2026-06-16",
+        "unite": "jours_ouvrables",
+        "fraction_jour": 1.0,
+        "compteur_souhaite": "CANC",
+        "compteur_reellement_consomme": "CANC",
+        "statut": "pose",
+        "verrouillage": true,
+        "priorite": 90,
+        "date_limite": "2026-06-30",
+        "notes_locales": "Bloc importé puis conservé comme congé imposé déjà posé."
+      },
+      {
+        "identifiant_local": "bloc_parentalite",
+        "libelle": "Congé parentalité fictif",
+        "type": "bloc_parentalite",
+        "source": "simulation.locale",
+        "date_debut": "2026-09-01",
+        "date_fin": "2026-09-30",
+        "unite": "jours_calendaires",
+        "fraction_jour": 1.0,
+        "compteur_souhaite": "PAREN",
+        "compteur_reellement_consomme": null,
+        "statut": "simule",
+        "verrouillage": false,
+        "priorite": 70,
+        "date_limite": "2026-10-31",
+        "notes_locales": "Bloc parentalité artificiel pour documenter des règles spécifiques."
+      },
+      {
+        "identifiant_local": "bloc_ignore",
+        "libelle": "Bloc désactivé",
+        "type": "bloc_ignored",
+        "source": "simulation.locale",
+        "date_debut": "2026-11-02",
+        "date_fin": "2026-11-03",
+        "unite": "jours_ouvrables",
+        "fraction_jour": 1.0,
+        "compteur_souhaite": "GCP",
+        "compteur_reellement_consomme": null,
+        "statut": "desactive",
+        "verrouillage": false,
+        "priorite": 10,
+        "date_limite": null,
+        "notes_locales": "Bloc conservé pour démontrer un élément ignoré ou désactivé."
+      }
+    ]
+  }
+}

@@ -105,3 +105,15 @@ Règles principales :
 - les dictionnaires utiles de `dts` sont simplifiés et nettoyés ;
 - les dictionnaires Chronotime fournis sous forme de listes sont indexés par `cod` ou `code` ;
 - les types `evt["2"]` et `evt["9"]` sont seulement résumés dans `resume_source`.
+
+## Séparation Des Scénarios
+
+Les données normalisées Chronotime restent distinctes des scénarios locaux.
+
+Il faut distinguer :
+
+- les données importées ou normalisées depuis Chronotime ;
+- le scénario local, qui contient les blocs simulés et les préférences de l’utilisateur ;
+- le résultat de calcul futur, qui dépend du scénario mais ne doit pas se confondre avec lui.
+
+Cette séparation évite de mélanger les faits importés, les hypothèses de simulation et les projections calculées.
