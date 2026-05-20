@@ -223,35 +223,35 @@ Si une commande ne peut pas être lancée, l’indiquer explicitement.
 
 Le fichier `RAPPORT_CODEX_LOCAL.md` doit suivre ce format :
 
-# Codex report
+# Rapport Codex
 
-## Summary
+## Résumé
 
 Résumé court des changements.
 
-## Files changed
+## Fichiers créés ou modifiés
 
 Liste des fichiers créés ou modifiés.
 
-## Commands run
+## Commandes lancées
 
 Liste des commandes exécutées.
 
-## Results
+## Résultats
 
 Résultats des commandes, tests ou compilation.
 
-## Deviations
+## Déviations
 
 Déviations par rapport à la tâche.
 
-Écrire `None.` s’il n’y en a pas.
+Écrire `Aucune.` s’il n’y en a pas.
 
-## Blockers or questions
+## Blocages ou questions
 
 Blocages ou questions restantes.
 
-Écrire `None.` s’il n’y en a pas.
+Écrire `Aucun.` s’il n’y en a pas.
 
 ## En cas d’incertitude
 
