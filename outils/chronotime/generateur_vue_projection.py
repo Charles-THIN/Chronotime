@@ -43,7 +43,7 @@ VUES = (
     ("vue-frise", "Frise"),
     ("vue-soldes", "Soldes"),
     ("vue-alertes", "Alertes"),
-    ("vue-details", "Détails"),
+    ("vue-evenements", "Événements projetés"),
     ("vue-technique", "Technique"),
 )
 
@@ -184,6 +184,10 @@ def tableau_dates_cibles(dates_cibles: list[Any]) -> str:
     """
 
 
+def ordre_portion(portion: str) -> int:
+    return 0 if portion == "matin" else 1
+
+
 def resume_alerte(alerte: dict[str, Any]) -> str:
     morceaux = []
     if alerte.get("date"):
@@ -278,22 +282,34 @@ def est_repere_jour(date_iso: str) -> bool:
 
 def generer_frise(demi_journees: list[Any]) -> str:
     morceaux = []
-    date_precedente = None
+    par_date: dict[str, dict[str, dict[str, Any]]] = {}
     for demi_journee in demi_journees:
         if not isinstance(demi_journee, dict):
             continue
         date_iso = str(demi_journee.get("date", ""))
-        if date_iso and est_debut_de_mois(date_iso, date_precedente):
+        portion = str(demi_journee.get("portion", ""))
+        if not date_iso or not portion:
+            continue
+        par_date.setdefault(date_iso, {})[portion] = demi_journee
+
+    dates_tries = sorted(par_date.keys())
+    date_precedente = None
+    for date_iso in dates_tries:
+        if est_debut_de_mois(date_iso, date_precedente):
             morceaux.append(f"<div class=\"repere-mois\">{escape(formater_mois_annee(date_iso))}</div>")
-        marqueur_jour = ""
-        if date_iso and demi_journee.get("portion") == "matin" and est_repere_jour(date_iso):
-            marqueur_jour = f"<span class=\"repere-jour\">{date_iso_vers_objet(date_iso).day}</span>"
-        titre = f"{formater_date_francaise(date_iso)} {demi_journee.get('portion', '')}" if date_iso else ""
-        contenu = "M" if demi_journee.get("portion") == "matin" else "A"
+        jour = date_iso_vers_objet(date_iso)
+        cases = []
+        for portion, etiquette in (("matin", "M"), ("apres_midi", "A")):
+            demi_journee = par_date[date_iso].get(portion, {})
+            titre = f"{formater_date_francaise(date_iso)} {portion}"
+            classes = classes_demi_journee(demi_journee) if demi_journee else "case-demi-journee"
+            cases.append(
+                f"<span class=\"{classes}\" title=\"{escape(titre)}\">{etiquette}</span>"
+            )
         morceaux.append(
-            "<span class=\"bloc-case\">"
-            f"{marqueur_jour}"
-            f"<span class=\"{classes_demi_journee(demi_journee)}\" title=\"{escape(titre)}\">{escape(contenu)}</span>"
+            "<span class=\"bloc-jour\">"
+            f"<span class=\"numero-jour\">{jour.day}</span>"
+            f"<span class=\"cases-jour\">{''.join(cases)}</span>"
             "</span>"
         )
         date_precedente = date_iso
@@ -327,11 +343,13 @@ def resume_consommations_detaillees(details: list[Any]) -> str:
     for detail in details:
         if not isinstance(detail, dict):
             continue
-        lignes.append(
+        ligne = (
             f"{detail.get('compteur', '?')} : demandée {formater_quantite_jour(detail.get('quantite_demandee'))}, "
-            f"appliquée {formater_quantite_jour(detail.get('quantite_appliquee'))}, "
-            f"non couverte {formater_quantite_jour(detail.get('quantite_non_couverte'))}"
+            f"appliquée {formater_quantite_jour(detail.get('quantite_appliquee'))}"
         )
+        if float(detail.get("quantite_non_couverte") or 0.0) > 0:
+            ligne += f", non couverte {formater_quantite_jour(detail.get('quantite_non_couverte'))}"
+        lignes.append(ligne)
     return "<br>".join(escape(ligne) for ligne in lignes) if lignes else "Aucune consommation détaillée."
 
 
@@ -369,16 +387,22 @@ def bloc_details_demi_journees(demi_journees: list[Any]) -> str:
             compteurs = sorted(str(compteur) for compteur in demi_journee.get("consommations", {}).keys())
         alertes = demi_journee.get("alertes", [])
         alertes = alertes if isinstance(alertes, list) else []
+        lignes_detail = [
+            f"<dt>Date</dt><dd>{escape(date_lisible)}</dd>",
+            f"<dt>Portion</dt><dd>{escape(str(demi_journee.get('portion', '')))}</dd>",
+            f"<dt>Compteurs consommés</dt><dd>{escape(', '.join(compteurs) if compteurs else 'Aucun')}</dd>",
+            f"<dt>Résumé des consommations</dt><dd>{resume_consommations_detaillees(details)}</dd>",
+            f"<dt>Soldes avant/après</dt><dd>{tableau_soldes_concernes(demi_journee.get('soldes_avant', {}), demi_journee.get('soldes_apres', {}), compteurs) if compteurs else 'Aucun compteur concerné.'}</dd>",
+        ]
+        if alertes:
+            lignes_detail.append(
+                f"<dt>Alertes</dt><dd>{escape(', '.join(type_alerte_lisible(alerte.get('type')) for alerte in alertes if isinstance(alerte, dict)))}</dd>"
+            )
         blocs.append(
             "<article class=\"detail-demi-journee\">"
             f"<h3>{escape(date_lisible)} - {escape(str(demi_journee.get('portion', '')))}</h3>"
             "<dl>"
-            f"<dt>Date</dt><dd>{escape(date_lisible)}</dd>"
-            f"<dt>Portion</dt><dd>{escape(str(demi_journee.get('portion', '')))}</dd>"
-            f"<dt>Compteurs consommés</dt><dd>{escape(', '.join(compteurs) if compteurs else 'Aucun')}</dd>"
-            f"<dt>Résumé des consommations</dt><dd>{resume_consommations_detaillees(details)}</dd>"
-            f"<dt>Soldes avant/après</dt><dd>{tableau_soldes_concernes(demi_journee.get('soldes_avant', {}), demi_journee.get('soldes_apres', {}), compteurs) if compteurs else 'Aucun compteur concerné.'}</dd>"
-            f"<dt>Alertes</dt><dd>{escape(', '.join(type_alerte_lisible(alerte.get('type')) for alerte in alertes if isinstance(alerte, dict)) or 'Aucune')}</dd>"
+            f"{''.join(lignes_detail)}"
             "</dl>"
             f"<details><summary>Détails techniques</summary><pre>{serialiser_objet(demi_journee)}</pre></details>"
             "</article>"
@@ -388,6 +412,214 @@ def bloc_details_demi_journees(demi_journees: list[Any]) -> str:
     <section class="carte">
       <h2>Détails des demi-journées utiles</h2>
       {contenu}
+    </section>
+    """
+
+
+def agreger_evenements_projetes(
+    demi_journees: list[Any],
+    alertes_globales: list[Any] | None = None,
+) -> list[dict[str, Any]]:
+    agregats: dict[str, dict[str, Any]] = {}
+
+    for demi_journee in demi_journees:
+        if not isinstance(demi_journee, dict):
+            continue
+        date_iso = str(demi_journee.get("date", ""))
+        portion = str(demi_journee.get("portion", ""))
+        evenements = demi_journee.get("evenements", [])
+        if not isinstance(evenements, list):
+            evenements = []
+        infos_evenements = {
+            str(evenement.get("identifiant")): evenement
+            for evenement in evenements
+            if isinstance(evenement, dict) and evenement.get("identifiant")
+        }
+        details = demi_journee.get("consommations_detaillees", [])
+        if not isinstance(details, list):
+            details = []
+        alertes_demi = demi_journee.get("alertes", [])
+        if not isinstance(alertes_demi, list):
+            alertes_demi = []
+
+        for detail in details:
+            if not isinstance(detail, dict):
+                continue
+            identifiant = str(detail.get("identifiant_evenement", "")).strip()
+            if not identifiant:
+                continue
+            evenement = infos_evenements.get(identifiant, {})
+            agregat = agregats.setdefault(
+                identifiant,
+                {
+                    "identifiant_evenement": identifiant,
+                    "source": evenement.get("source", detail.get("source", "")),
+                    "libelle": evenement.get("libelle", identifiant),
+                    "dates": [],
+                    "portions": [],
+                    "compteurs": {},
+                    "quantite_demandee_totale": 0.0,
+                    "quantite_appliquee_totale": 0.0,
+                    "quantite_non_couverte_totale": 0.0,
+                    "priorite": detail.get("priorite"),
+                    "alertes": [],
+                    "alertes_vues": set(),
+                    "details_techniques": [],
+                },
+            )
+
+            if date_iso and date_iso not in agregat["dates"]:
+                agregat["dates"].append(date_iso)
+            if portion and portion not in agregat["portions"]:
+                agregat["portions"].append(portion)
+
+            compteur = str(detail.get("compteur", ""))
+            if compteur:
+                compteurs = agregat["compteurs"]
+                compteurs.setdefault(
+                    compteur,
+                    {
+                        "quantite_demandee": 0.0,
+                        "quantite_appliquee": 0.0,
+                        "quantite_non_couverte": 0.0,
+                    },
+                )
+                compteurs[compteur]["quantite_demandee"] += float(detail.get("quantite_demandee") or 0.0)
+                compteurs[compteur]["quantite_appliquee"] += float(detail.get("quantite_appliquee") or 0.0)
+                compteurs[compteur]["quantite_non_couverte"] += float(detail.get("quantite_non_couverte") or 0.0)
+
+            agregat["quantite_demandee_totale"] += float(detail.get("quantite_demandee") or 0.0)
+            agregat["quantite_appliquee_totale"] += float(detail.get("quantite_appliquee") or 0.0)
+            agregat["quantite_non_couverte_totale"] += float(detail.get("quantite_non_couverte") or 0.0)
+            agregat["details_techniques"].append(
+                {
+                    "date": date_iso,
+                    "portion": portion,
+                    "detail": detail,
+                }
+            )
+
+            for alerte in alertes_demi:
+                if not isinstance(alerte, dict):
+                    continue
+                identifiants = []
+                if alerte.get("identifiant_evenement"):
+                    identifiants.append(str(alerte["identifiant_evenement"]))
+                if isinstance(alerte.get("identifiants_evenements"), list):
+                    identifiants.extend(str(valeur) for valeur in alerte["identifiants_evenements"])
+                if identifiant in identifiants:
+                    signature = json.dumps(alerte, ensure_ascii=False, sort_keys=True)
+                    if signature not in agregat["alertes_vues"]:
+                        agregat["alertes"].append(alerte)
+                        agregat["alertes_vues"].add(signature)
+
+    for alerte in alertes_globales or []:
+        if not isinstance(alerte, dict):
+            continue
+        identifiants = []
+        if alerte.get("identifiant_evenement"):
+            identifiants.append(str(alerte["identifiant_evenement"]))
+        if isinstance(alerte.get("identifiants_evenements"), list):
+            identifiants.extend(str(valeur) for valeur in alerte["identifiants_evenements"])
+        for identifiant in identifiants:
+            if identifiant in agregats:
+                signature = json.dumps(alerte, ensure_ascii=False, sort_keys=True)
+                if signature not in agregats[identifiant]["alertes_vues"]:
+                    agregats[identifiant]["alertes"].append(alerte)
+                    agregats[identifiant]["alertes_vues"].add(signature)
+
+    resultat = []
+    for identifiant, agregat in agregats.items():
+        dates_tries = sorted(agregat["dates"])
+        portions_tries = sorted(agregat["portions"], key=ordre_portion)
+        resultat.append(
+            {
+                "identifiant_evenement": identifiant,
+                "source": agregat["source"],
+                "libelle": agregat["libelle"],
+                "date_debut": dates_tries[0] if dates_tries else None,
+                "date_fin": dates_tries[-1] if dates_tries else None,
+                "portions": portions_tries,
+                "compteurs": agregat["compteurs"],
+                "quantite_demandee_totale": agregat["quantite_demandee_totale"],
+                "quantite_appliquee_totale": agregat["quantite_appliquee_totale"],
+                "quantite_non_couverte_totale": agregat["quantite_non_couverte_totale"],
+                "priorite": agregat["priorite"],
+                "alertes": agregat["alertes"],
+                "details_techniques": agregat["details_techniques"],
+            }
+        )
+
+    return sorted(
+        resultat,
+        key=lambda evenement: (
+            evenement["date_debut"] or "",
+            evenement["date_fin"] or "",
+            evenement["identifiant_evenement"],
+        ),
+    )
+
+
+def titre_evenement_projete(evenement: dict[str, Any]) -> str:
+    date_debut = evenement.get("date_debut")
+    date_fin = evenement.get("date_fin")
+    portions = evenement.get("portions", [])
+    if date_debut and date_fin and date_debut == date_fin and len(portions) == 1:
+        return f"{formater_date_francaise(str(date_debut))} — {portions[0]}"
+    if date_debut and date_fin:
+        return formater_periode_francaise(str(date_debut), str(date_fin))
+    if date_debut:
+        return formater_date_francaise(str(date_debut))
+    return evenement.get("identifiant_evenement", "Événement projeté")
+
+
+def lignes_compteurs_evenement(evenement: dict[str, Any]) -> str:
+    lignes = []
+    for compteur, quantites in sorted(evenement.get("compteurs", {}).items()):
+        if not isinstance(quantites, dict):
+            continue
+        quantite_appliquee = float(quantites.get("quantite_appliquee") or 0.0)
+        quantite_demandee = float(quantites.get("quantite_demandee") or 0.0)
+        quantite_non_couverte = float(quantites.get("quantite_non_couverte") or 0.0)
+        ligne = f"{compteur} : {formater_quantite_jour(quantite_appliquee)}"
+        if quantite_non_couverte > 0:
+            ligne += f" · demandé {formater_quantite_jour(quantite_demandee)}"
+        lignes.append(f"<p class=\"ligne-compteur\">{escape(ligne)}</p>")
+    return "".join(lignes)
+
+
+def bloc_evenements_projetes(evenements: list[dict[str, Any]]) -> str:
+    cartes = []
+    for evenement in evenements:
+        alertes = evenement.get("alertes", [])
+        if not isinstance(alertes, list):
+            alertes = []
+        quantite_non_couverte = float(evenement.get("quantite_non_couverte_totale") or 0.0)
+        resume_alertes = ""
+        if alertes:
+            resume_alertes = (
+                f"<p class=\"resume-alerte\">⚠ {len(alertes)} alerte{'s' if len(alertes) > 1 else ''}</p>"
+            )
+        bloc_non_couvert = ""
+        if quantite_non_couverte > 0:
+            bloc_non_couvert = (
+                f"<p class=\"resume-non-couvert\">Non couvert : {escape(formater_quantite_jour(quantite_non_couverte))}</p>"
+            )
+        cartes.append(
+            "<article class=\"carte carte-evenement-projete\">"
+            f"<p class=\"titre-evenement-projete\">{escape(titre_evenement_projete(evenement))}</p>"
+            f"<p class=\"meta-evenement\">{escape(str(evenement.get('libelle') or evenement.get('identifiant_evenement')))}</p>"
+            f"{lignes_compteurs_evenement(evenement)}"
+            f"{bloc_non_couvert}"
+            f"{resume_alertes}"
+            f"<details><summary>Détails techniques</summary><pre>{serialiser_objet(evenement)}</pre></details>"
+            "</article>"
+        )
+    contenu = "".join(cartes) if cartes else "<p>Aucun événement projeté.</p>"
+    return f"""
+    <section class="carte">
+      <h2>Événements projetés</h2>
+      <div class="grille-evenements">{contenu}</div>
     </section>
     """
 
@@ -515,11 +747,17 @@ def vue_alertes(alertes: list[Any]) -> str:
     return liste_alertes(alertes)
 
 
-def vue_details(demi_journees: list[Any]) -> str:
-    return bloc_details_demi_journees(demi_journees)
+def vue_evenements(demi_journees: list[Any], alertes: list[Any]) -> str:
+    evenements = agreger_evenements_projetes(demi_journees, alertes)
+    return bloc_evenements_projetes(evenements)
 
 
-def vue_technique(projection: dict[str, Any], periode: dict[str, Any], resume: dict[str, Any]) -> str:
+def vue_technique(
+    projection: dict[str, Any],
+    periode: dict[str, Any],
+    resume: dict[str, Any],
+    demi_journees: list[Any],
+) -> str:
     parametres = projection.get("parametres_projection", {})
     if not isinstance(parametres, dict):
         parametres = {}
@@ -557,6 +795,7 @@ def vue_technique(projection: dict[str, Any], periode: dict[str, Any], resume: d
         <li>Les règles complètes sur les jours fériés, la parentalité, les chevauchements d’agenda et l’optimisation ne sont pas couvertes ici.</li>
       </ul>
     </section>
+    {bloc_details_demi_journees(demi_journees)}
     <section class="carte">
       <h3>Projection complète</h3>
       <details>
@@ -803,17 +1042,22 @@ def feuille_style() -> str:
       font-weight: 700;
       text-transform: lowercase;
     }
-    .bloc-case {
+    .bloc-jour {
       display: inline-flex;
       flex-direction: column;
       align-items: center;
       gap: 4px;
-      min-width: 22px;
+      min-width: 30px;
     }
-    .repere-jour {
+    .numero-jour {
       color: var(--muted);
       font-size: 0.72rem;
       line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .cases-jour {
+      display: inline-flex;
+      gap: 3px;
     }
     .case-demi-journee {
       display: inline-flex;
@@ -858,6 +1102,42 @@ def feuille_style() -> str:
       font-weight: 700;
     }
     dd { margin: 0; min-width: 0; }
+    .grille-evenements {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .carte-evenement-projete {
+      margin-top: 0;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .titre-evenement-projete {
+      margin: 0;
+      font-size: 1.05rem;
+      color: var(--accent-fort);
+      font-weight: 700;
+    }
+    .meta-evenement {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+    .ligne-compteur,
+    .resume-non-couvert,
+    .resume-alerte {
+      margin: 0;
+    }
+    .resume-non-couvert {
+      color: var(--alerte);
+      font-weight: 700;
+    }
+    .resume-alerte {
+      color: var(--confirmation);
+      font-weight: 700;
+    }
     details {
       margin-top: 12px;
       border-top: 1px dashed var(--trait);
@@ -904,8 +1184,8 @@ def generer_html(projection: dict[str, Any]) -> str:
         envelopper_vue("vue-frise", "Frise", vue_frise(demi_journees)),
         envelopper_vue("vue-soldes", "Soldes", vue_soldes(projection)),
         envelopper_vue("vue-alertes", "Alertes", vue_alertes(alertes)),
-        envelopper_vue("vue-details", "Détails", vue_details(demi_journees)),
-        envelopper_vue("vue-technique", "Technique", vue_technique(projection, periode, resume)),
+        envelopper_vue("vue-evenements", "Événements projetés", vue_evenements(demi_journees, alertes)),
+        envelopper_vue("vue-technique", "Technique", vue_technique(projection, periode, resume, demi_journees)),
     ]
 
     return f"""<!doctype html>

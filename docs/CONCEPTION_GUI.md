@@ -87,6 +87,37 @@ La page reste strictement en lecture seule.
 
 Aucune édition du scénario ou de la projection n’est réalisée.
 
+## V0.3 Événements projetés compacts
+
+La version `V0.3` remplace la vue `Détails` par `Événements projetés`.
+
+Les demi-journées utiles y sont agrégées par identifiant d’événement pour produire des cartes compactes de lecture.
+
+Ces cartes n’affichent que les informations utiles :
+
+- période projetée ;
+- compteur ou compteurs consommés ;
+- quantité appliquée ;
+- quantité non couverte seulement si elle est non nulle ;
+- alertes seulement si elles existent.
+
+Les détails techniques complets restent disponibles dans des blocs repliables.
+
+La frise regroupe plus clairement les paires matin / après-midi par jour, avec le numéro du jour au-dessus des deux cases.
+
+Cette vue reste strictement en lecture seule.
+
+L’agrégation `Événements projetés` est une aide de consultation dérivée de `projection.demi_journees`. Elle ne devient pas un modèle éditable.
+
+## Vue future des soldes dans le temps
+
+Une future vue `Soldes dans le temps` devra représenter :
+
+- les descentes de soldes dues aux consommations ;
+- plus tard, les montées dues aux crédits, acquisitions, ouvertures de validité et reports.
+
+Ces événements de compteur ne sont pas encore produits par le projecteur actuel. Cette tâche ne les implémente pas.
+
 ## Frise 1D
 
 Chaque demi-journée est représentée par une petite case.

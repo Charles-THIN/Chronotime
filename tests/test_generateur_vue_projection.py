@@ -9,6 +9,7 @@ from pathlib import Path
 import unittest
 
 from outils.chronotime.generateur_vue_projection import (
+    agreger_evenements_projetes,
     charger_projection,
     formater_date_francaise,
     formater_periode_francaise,
@@ -52,8 +53,11 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("Frise", html)
         self.assertIn("Soldes", html)
         self.assertIn("Alertes", html)
-        self.assertIn("Détails", html)
+        self.assertIn("Événements projetés", html)
         self.assertIn("Technique", html)
+        self.assertNotIn('data-cible="vue-details"', html)
+        self.assertNotIn('id="vue-details"', html)
+        self.assertNotIn(">Détails<", html)
 
     def test_generation_html_contient_navigation(self) -> None:
         html = generer_html(self._charger_exemple())
@@ -72,6 +76,7 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("Soldes aux dates cibles", html)
         self.assertIn("Alertes globales", html)
         self.assertIn("Frise 1D des demi-journées", html)
+        self.assertIn("Événements projetés", html)
         self.assertIn("Détails des demi-journées utiles", html)
 
     def test_generation_html_libelles_lisibles(self) -> None:
@@ -85,6 +90,7 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("Alertes globales", html)
         self.assertIn("Soldes initiaux", html)
         self.assertIn("Soldes aux dates cibles", html)
+        self.assertIn("Événements projetés", html)
 
     def test_generation_html_dates_cibles_non_brutes(self) -> None:
         html = generer_html(self._charger_exemple())
@@ -97,10 +103,37 @@ class TestGenerateurVueProjection(unittest.TestCase):
         html = generer_html(self._charger_exemple())
         self.assertIn("mai 2026", html)
         self.assertIn("juin 2026", html)
+        self.assertIn("bloc-jour", html)
+        self.assertIn("numero-jour", html)
+        self.assertIn("cases-jour", html)
 
     def test_generation_html_details_repliables(self) -> None:
         html = generer_html(self._charger_exemple())
         self.assertIn("<details>", html)
+
+    def test_agregation_evenement_multi_demi_journees(self) -> None:
+        projection = self._charger_exemple()
+        agregats = agreger_evenements_projetes(
+            projection["demi_journees"],
+            projection["alertes"],
+        )
+        agregat_ete = next(
+            evenement
+            for evenement in agregats
+            if evenement["identifiant_evenement"] == "bloc_exemple_ete"
+        )
+        self.assertEqual(agregat_ete["date_debut"], "2026-05-20")
+        self.assertEqual(agregat_ete["date_fin"], "2026-05-20")
+        self.assertAlmostEqual(agregat_ete["quantite_appliquee_totale"], 1.0)
+        self.assertAlmostEqual(agregat_ete["compteurs"]["GCP"]["quantite_appliquee"], 1.0)
+
+    def test_generation_html_cartes_evenements_compactes(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn("carte-evenement-projete", html)
+        self.assertIn("GCP : 1 j", html)
+        self.assertNotIn("Alertes : aucune", html)
+        self.assertNotIn("Non couvert : 0 j", html)
+        self.assertNotIn("non couverte 0 j", html)
 
     def test_generation_html_sans_ressource_externe(self) -> None:
         html = generer_html(self._charger_exemple())
