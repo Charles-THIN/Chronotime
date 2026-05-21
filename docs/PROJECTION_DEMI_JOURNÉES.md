@@ -21,7 +21,7 @@ La projection sert à alimenter plus tard :
 - la vue des soldes ;
 - la lecture rapide des soldes à une date cible.
 
-Chaque demi-journée contient les événements projetés, les consommations de compteurs, les soldes avant et après, ainsi que les alertes éventuelles.
+Chaque demi-journée contient les événements projetés, les consommations de compteurs, les consommations détaillées, les soldes avant et après, ainsi que les alertes éventuelles.
 
 ## Règles V0
 
@@ -43,6 +43,8 @@ Les unités sont projetées ainsi :
 - `heures` : non projeté en V0, avec une alerte.
 
 Pour les événements en jours, la consommation de base est de `0.5` par demi-journée. Si une plage contient plus de demi-journées que la quantité déclarée, le projecteur s’arrête quand la quantité est atteinte.
+
+Si une plage ne permet pas de projeter toute la quantité demandée, le projecteur ajoute une alerte `quantite_evenement_non_projectee`.
 
 ## Périodes Et Minimums Par Compteur
 
@@ -75,6 +77,44 @@ Exemple provisoire à vérifier :
 Si une consommation rend un solde négatif tout en restant au-dessus du minimum, la projection ajoute une alerte de confirmation.
 
 Si une consommation dépasse le minimum, la projection limite la consommation et ajoute une alerte bloquante.
+
+Si une période explicitement demandée pour un compteur n’existe pas, la projection ajoute une alerte bloquante `periode_compteur_absente`. Le compteur n’est pas ignoré silencieusement.
+
+## Consommations
+
+Chaque demi-journée conserve deux niveaux de consommation.
+
+`consommations` est un résumé agrégé par compteur, conservé pour compatibilité et pour les lectures simples :
+
+```json
+{
+  "GCP": 0.5
+}
+```
+
+`consommations_detaillees` est la structure destinée aux futures vues et aux diagnostics :
+
+```json
+[
+  {
+    "identifiant_evenement": "fermeture_ete",
+    "source": "obligation",
+    "compteur": "GCP",
+    "quantite_demandee": 0.5,
+    "quantite_appliquee": 0.5,
+    "quantite_non_couverte": 0.0,
+    "priorite": 100
+  }
+]
+```
+
+Les champs ont le sens suivant :
+
+- `quantite_demandee` : part demandée par l’événement sur cette demi-journée ;
+- `quantite_appliquee` : part réellement consommée après contrôle du minimum du compteur ;
+- `quantite_non_couverte` : part refusée car elle dépasserait le minimum autorisé.
+
+Les consommations détaillées sont traitées par priorité décroissante quand plusieurs événements consomment le même compteur sur la même demi-journée.
 
 ## Jours Non Décomptés
 

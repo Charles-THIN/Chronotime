@@ -64,10 +64,12 @@ def extraire_soldes_initiaux(
     donnees: dict[str, Any],
     periode: str = "courant",
     periodes_par_compteur: dict[str, str] | None = None,
+    alertes: list[dict[str, Any]] | None = None,
 ) -> dict[str, float]:
     soldes = donnees.get("soldes", {})
     compteurs = soldes.get("compteurs", []) if isinstance(soldes, dict) else []
     soldes_initiaux: dict[str, float] = {}
+    periodes_specifiques = periodes_par_compteur or {}
 
     for compteur in compteurs:
         if not isinstance(compteur, dict):
@@ -76,16 +78,28 @@ def extraire_soldes_initiaux(
         periodes = compteur.get("periodes")
         if not code or not isinstance(periodes, dict):
             continue
-        periode_a_utiliser = (periodes_par_compteur or {}).get(str(code), periode)
+        code_compteur = str(code)
+        periode_specifique = code_compteur in periodes_specifiques
+        periode_a_utiliser = periodes_specifiques.get(code_compteur, periode)
         periode_compteur = periodes.get(periode_a_utiliser)
         if not isinstance(periode_compteur, dict):
+            if alertes is not None:
+                alertes.append(
+                    {
+                        "type": "periode_compteur_absente",
+                        "severite": "bloquant" if periode_specifique else "information",
+                        "compteur": code_compteur,
+                        "periode_demandee": str(periode_a_utiliser),
+                        "periodes_disponibles": sorted(str(cle) for cle in periodes.keys()),
+                    }
+                )
             continue
         solde = periode_compteur.get("solde")
         if not isinstance(solde, dict):
             continue
         valeur = solde.get("valeur")
         if isinstance(valeur, (int, float)):
-            soldes_initiaux[str(code)] = float(valeur)
+            soldes_initiaux[code_compteur] = float(valeur)
 
     return soldes_initiaux
 
@@ -108,6 +122,7 @@ def creer_vecteur_demi_journees(date_depart: str, date_fin: str) -> list[dict[st
                     "index_demi_journee": index,
                     "evenements": [],
                     "consommations": {},
+                    "consommations_detaillees": [],
                     "soldes_avant": {},
                     "soldes_apres": {},
                     "alertes": [],
@@ -239,6 +254,37 @@ def ajouter_consommation(demi_journee: dict[str, Any], evenement: dict[str, Any]
     demi_journee["evenements"].append(resumer_evenement(evenement, quantite))
     consommations = demi_journee["consommations"]
     consommations[compteur] = arrondir_quantite(consommations.get(compteur, 0.0) + quantite)
+    demi_journee["consommations_detaillees"].append(
+        {
+            "identifiant_evenement": evenement["identifiant"],
+            "source": evenement["source"],
+            "compteur": compteur,
+            "quantite_demandee": arrondir_quantite(quantite),
+            "quantite_appliquee": None,
+            "quantite_non_couverte": None,
+            "priorite": evenement["priorite"],
+        }
+    )
+
+
+def ajouter_alerte_quantite_non_projectee(
+    alertes: list[dict[str, Any]],
+    evenement: dict[str, Any],
+    quantite_restante: float,
+) -> None:
+    if quantite_restante <= 0:
+        return
+    alertes.append(
+        {
+            "type": "quantite_evenement_non_projectee",
+            "severite": "bloquant",
+            "identifiant_evenement": evenement["identifiant"],
+            "quantite_restante": arrondir_quantite(quantite_restante),
+            "unite": evenement["unite"],
+            "date_debut": evenement["date_debut"],
+            "date_fin": evenement["date_fin"],
+        }
+    )
 
 
 def projeter_evenement(
@@ -259,6 +305,7 @@ def projeter_evenement(
                 "unite": unite,
             }
         )
+        ajouter_alerte_quantite_non_projectee(alertes, evenement, quantite_restante)
         return
 
     debut = convertir_date_iso(evenement["date_debut"], "evenement.date_debut")
@@ -276,6 +323,7 @@ def projeter_evenement(
             if jour == debut and demi_journee["portion"] == "matin":
                 quantite = min(0.5, quantite_restante)
                 ajouter_consommation(demi_journee, evenement, quantite)
+                quantite_restante = arrondir_quantite(quantite_restante - quantite)
             break
 
         if not jour_est_projectable(jour, unite, jours_non_decomptes):
@@ -284,6 +332,8 @@ def projeter_evenement(
         quantite = min(0.5, quantite_restante)
         ajouter_consommation(demi_journee, evenement, quantite)
         quantite_restante = arrondir_quantite(quantite_restante - quantite)
+
+    ajouter_alerte_quantite_non_projectee(alertes, evenement, quantite_restante)
 
 
 def projeter_evenements(
@@ -326,20 +376,48 @@ def propager_soldes(
     for demi_journee in demi_journees:
         demi_journee["soldes_avant"] = dict(soldes_courants)
 
-        for compteur, quantite_demandee in demi_journee["consommations"].items():
-            disponible = float(soldes_courants.get(compteur, 0.0))
-            quantite_demandee = float(quantite_demandee)
-            minimum_autorise = float((soldes_minimums_par_code or {}).get(compteur, 0.0))
-            identifiants = [
-                evenement["identifiant"]
-                for evenement in demi_journee["evenements"]
-                if evenement.get("compteur") == compteur
-            ]
+        consommations_par_compteur: dict[str, list[dict[str, Any]]] = {}
+        for detail in demi_journee.get("consommations_detaillees", []):
+            compteur_detail = str(detail.get("compteur"))
+            consommations_par_compteur.setdefault(compteur_detail, []).append(detail)
 
-            solde_apres = arrondir_quantite(disponible - quantite_demandee)
-            if solde_apres >= minimum_autorise:
-                soldes_courants[compteur] = solde_apres
-                if solde_apres < 0:
+        for compteur, details in consommations_par_compteur.items():
+            disponible = float(soldes_courants.get(compteur, 0.0))
+            minimum_autorise = float((soldes_minimums_par_code or {}).get(compteur, 0.0))
+            details_tries = sorted(
+                details,
+                key=lambda detail: (int(detail.get("priorite", 0)), str(detail.get("identifiant_evenement", ""))),
+                reverse=True,
+            )
+
+            for detail in details_tries:
+                quantite_demandee = float(detail.get("quantite_demandee", 0.0))
+                quantite_possible = max(arrondir_quantite(disponible - minimum_autorise), 0.0)
+                quantite_appliquee = min(quantite_demandee, quantite_possible)
+                quantite_non_couverte = arrondir_quantite(quantite_demandee - quantite_appliquee)
+                solde_apres = arrondir_quantite(disponible - quantite_appliquee)
+
+                detail["quantite_appliquee"] = arrondir_quantite(quantite_appliquee)
+                detail["quantite_non_couverte"] = quantite_non_couverte
+
+                if quantite_non_couverte > 0:
+                    alerte = {
+                        "type": "solde_minimum_depasse",
+                        "severite": "bloquant",
+                        "date": demi_journee["date"],
+                        "portion": demi_journee["portion"],
+                        "compteur": compteur,
+                        "quantite_demandee": arrondir_quantite(quantite_demandee),
+                        "quantite_appliquee": arrondir_quantite(quantite_appliquee),
+                        "quantite_disponible_jusqu_au_minimum": arrondir_quantite(quantite_possible),
+                        "quantite_non_couverte": quantite_non_couverte,
+                        "minimum_autorise": arrondir_quantite(minimum_autorise),
+                        "identifiants_evenements": [detail.get("identifiant_evenement")],
+                    }
+                    demi_journee["alertes"].append(alerte)
+                    alertes.append(alerte)
+
+                if quantite_appliquee > 0 and solde_apres < 0 and quantite_non_couverte == 0:
                     alerte = {
                         "type": "solde_negatif_confirmation_possible",
                         "severite": "confirmation",
@@ -348,29 +426,13 @@ def propager_soldes(
                         "compteur": compteur,
                         "solde_apres": solde_apres,
                         "minimum_autorise": arrondir_quantite(minimum_autorise),
-                        "identifiants_evenements": identifiants,
+                        "identifiants_evenements": [detail.get("identifiant_evenement")],
                     }
                     demi_journee["alertes"].append(alerte)
                     alertes.append(alerte)
-                continue
 
-            quantite_disponible = max(arrondir_quantite(disponible - minimum_autorise), 0.0)
-            quantite_non_couverte = arrondir_quantite(quantite_demandee - quantite_disponible)
-            alerte = {
-                "type": "solde_minimum_depasse",
-                "severite": "bloquant",
-                "date": demi_journee["date"],
-                "portion": demi_journee["portion"],
-                "compteur": compteur,
-                "quantite_demandee": arrondir_quantite(quantite_demandee),
-                "quantite_disponible_jusqu_au_minimum": arrondir_quantite(quantite_disponible),
-                "quantite_non_couverte": quantite_non_couverte,
-                "minimum_autorise": arrondir_quantite(minimum_autorise),
-                "identifiants_evenements": identifiants,
-            }
-            demi_journee["alertes"].append(alerte)
-            alertes.append(alerte)
-            soldes_courants[compteur] = arrondir_quantite(minimum_autorise)
+                disponible = solde_apres
+                soldes_courants[compteur] = solde_apres
 
         demi_journee["soldes_apres"] = dict(soldes_courants)
 
@@ -454,9 +516,9 @@ def projeter_demi_journees(donnees: dict[str, Any]) -> dict[str, Any]:
     ]
     jours_non_decomptes = [jour for jour in jours_non_decomptes if jour is not None]
 
-    soldes_initiaux = extraire_soldes_initiaux(donnees, periode_compteurs, periodes_compteurs_par_code)
-    demi_journees = creer_vecteur_demi_journees(date_depart, date_fin)
     alertes: list[dict[str, Any]] = []
+    soldes_initiaux = extraire_soldes_initiaux(donnees, periode_compteurs, periodes_compteurs_par_code, alertes)
+    demi_journees = creer_vecteur_demi_journees(date_depart, date_fin)
     evenements_sources = construire_evenements_sources(donnees, parametres)
 
     projeter_evenements(evenements_sources, demi_journees, alertes, date_depart, date_fin, set(jours_non_decomptes))

@@ -35,6 +35,18 @@ class TestProjecteurDemiJournees(unittest.TestCase):
         soldes = extraire_soldes_initiaux(donnees, "suivant", {"JRTT": "courant"})
         self.assertEqual(soldes["JRTT"], 1.9)
 
+    def test_periode_par_compteur_inexistante(self) -> None:
+        donnees = self._donnees_projection_minimum("GCP", 1.0, 0.5)
+        donnees["soldes"]["compteurs"][0]["periodes"]["suivant"] = {"solde": {"valeur": 2.0}}
+        donnees["parametres_projection"]["periodes_compteurs_par_code"] = {"GCP": "suivnat"}
+        projection = projeter_demi_journees(donnees)
+        alerte = projection["alertes"][0]
+        self.assertEqual(alerte["type"], "periode_compteur_absente")
+        self.assertEqual(alerte["severite"], "bloquant")
+        self.assertEqual(alerte["compteur"], "GCP")
+        self.assertEqual(alerte["periode_demandee"], "suivnat")
+        self.assertEqual(alerte["periodes_disponibles"], ["courant", "suivant"])
+
     def test_creation_deux_demi_journees_par_date(self) -> None:
         demi_journees = creer_vecteur_demi_journees("2026-05-20", "2026-05-21")
         self.assertEqual(len(demi_journees), 4)
@@ -48,6 +60,55 @@ class TestProjecteurDemiJournees(unittest.TestCase):
         demi_journees = self._demi_journees_pour_evenement(projection, "rtt_2026_05_25")
         self.assertEqual(len(demi_journees), 2)
         self.assertEqual(sum(demi_journee["consommations"]["JRTT"] for demi_journee in demi_journees), 1.0)
+
+    def test_consommations_detaillees_presentes(self) -> None:
+        projection = projeter_demi_journees(self._donnees_projection_minimum("GCP", 1.0, 0.5))
+        detail = projection["demi_journees"][0]["consommations_detaillees"][0]
+        self.assertEqual(detail["identifiant_evenement"], "obligation_test")
+        self.assertEqual(detail["compteur"], "GCP")
+        self.assertEqual(detail["quantite_demandee"], 0.5)
+
+    def test_consommation_entierement_appliquee(self) -> None:
+        projection = projeter_demi_journees(self._donnees_projection_minimum("GCP", 1.0, 0.5))
+        detail = projection["demi_journees"][0]["consommations_detaillees"][0]
+        self.assertEqual(detail["quantite_appliquee"], 0.5)
+        self.assertEqual(detail["quantite_non_couverte"], 0.0)
+
+    def test_consommation_partiellement_appliquee_au_minimum(self) -> None:
+        projection = projeter_demi_journees(self._donnees_projection_minimum("CANC", 0.25, 0.5))
+        detail = projection["demi_journees"][0]["consommations_detaillees"][0]
+        self.assertEqual(detail["quantite_appliquee"], 0.25)
+        self.assertEqual(detail["quantite_non_couverte"], 0.25)
+        self.assertEqual(projection["alertes"][0]["quantite_appliquee"], 0.25)
+
+    def test_consommation_non_couverte(self) -> None:
+        projection = projeter_demi_journees(self._donnees_projection_minimum("CANC", 0.0, 0.5))
+        detail = projection["demi_journees"][0]["consommations_detaillees"][0]
+        self.assertEqual(detail["quantite_appliquee"], 0.0)
+        self.assertEqual(detail["quantite_non_couverte"], 0.5)
+
+    def test_priorite_decroissante_entre_evenements_meme_demi_journee(self) -> None:
+        donnees = self._donnees_projection_minimum("GCP", 0.5, 0.5)
+        obligation_basse = copy.deepcopy(donnees["verification_obligations"]["obligations"][0])
+        obligation_basse["identifiant"] = "obligation_basse"
+        obligation_basse["priorite"] = 10
+        obligation_haute = copy.deepcopy(donnees["verification_obligations"]["obligations"][0])
+        obligation_haute["identifiant"] = "obligation_haute"
+        obligation_haute["priorite"] = 100
+        donnees["verification_obligations"]["obligations"] = [obligation_basse, obligation_haute]
+
+        projection = projeter_demi_journees(donnees)
+        details = {
+            detail["identifiant_evenement"]: detail
+            for detail in projection["demi_journees"][0]["consommations_detaillees"]
+        }
+        self.assertEqual(details["obligation_haute"]["quantite_appliquee"], 0.5)
+        self.assertEqual(details["obligation_basse"]["quantite_appliquee"], 0.0)
+        self.assertEqual(details["obligation_basse"]["quantite_non_couverte"], 0.5)
+
+    def test_compatibilite_resume_consommations(self) -> None:
+        projection = projeter_demi_journees(self._donnees_projection_minimum("GCP", 1.0, 0.5))
+        self.assertEqual(projection["demi_journees"][0]["consommations"]["GCP"], 0.5)
 
     def test_projection_fermeture_ete_gcp_cinq_jours(self) -> None:
         projection = self._projeter_exemple()
@@ -116,6 +177,7 @@ class TestProjecteurDemiJournees(unittest.TestCase):
         projection = projeter_demi_journees(donnees)
         self.assertEqual(projection["alertes"][0]["type"], "solde_minimum_depasse")
         self.assertEqual(projection["alertes"][0]["severite"], "bloquant")
+        self.assertEqual(projection["alertes"][0]["quantite_appliquee"], 0.25)
         self.assertEqual(projection["alertes"][0]["quantite_non_couverte"], 0.25)
 
     def test_canc_bloque_a_zero(self) -> None:
@@ -132,6 +194,27 @@ class TestProjecteurDemiJournees(unittest.TestCase):
         projection = projeter_demi_journees(self._donnees_noel_jour_non_decompte())
         dates = [demi_journee["date"] for demi_journee in self._demi_journees_pour_evenement(projection, "fermeture_noel")]
         self.assertEqual(sorted(set(dates)), ["2026-12-28", "2026-12-29", "2026-12-30", "2026-12-31"])
+
+    def test_quantite_evenement_non_projectee_plage_trop_courte(self) -> None:
+        donnees = self._donnees_projection_minimum("GCP", 10.0, 2.0)
+        projection = projeter_demi_journees(donnees)
+        alertes = [alerte for alerte in projection["alertes"] if alerte["type"] == "quantite_evenement_non_projectee"]
+        self.assertEqual(len(alertes), 1)
+        self.assertEqual(alertes[0]["quantite_restante"], 1.0)
+        self.assertEqual(alertes[0]["severite"], "bloquant")
+
+    def test_quantite_evenement_non_projectee_jours_non_decomptes(self) -> None:
+        donnees = self._donnees_projection_minimum("GCP", 10.0, 1.0)
+        donnees["parametres_projection"]["date_depart"] = "2026-12-25"
+        donnees["parametres_projection"]["date_fin"] = "2026-12-25"
+        donnees["parametres_projection"]["jours_non_decomptes"] = ["2026-12-25"]
+        obligation = donnees["verification_obligations"]["obligations"][0]
+        obligation["date_debut"] = "2026-12-25"
+        obligation["date_fin"] = "2026-12-25"
+        projection = projeter_demi_journees(donnees)
+        alertes = [alerte for alerte in projection["alertes"] if alerte["type"] == "quantite_evenement_non_projectee"]
+        self.assertEqual(len(alertes), 1)
+        self.assertEqual(alertes[0]["quantite_restante"], 1.0)
 
     def test_evenement_avant_periode_signale(self) -> None:
         donnees = self._donnees_projection_minimum("JRTT", 1.0, 1.0)

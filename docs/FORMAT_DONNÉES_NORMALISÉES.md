@@ -333,6 +333,7 @@ Forme générale :
       "index_demi_journee": 0,
       "evenements": [],
       "consommations": {},
+      "consommations_detaillees": [],
       "soldes_avant": {},
       "soldes_apres": {},
       "alertes": []
@@ -357,11 +358,53 @@ Règles principales :
 - `parametres_projection.periodes_compteurs_par_code` permet de choisir une période différente selon le compteur ;
 - `parametres_projection.soldes_minimums_par_code` permet de définir un minimum autorisé par compteur ;
 - `parametres_projection.jours_non_decomptes` exclut des dates manuelles pour les unités `jours_ouvres` et `jours_ouvrables` ;
+- `consommations` est un résumé agrégé par compteur ;
+- `consommations_detaillees` conserve la consommation par événement source avec `quantite_demandee`, `quantite_appliquee` et `quantite_non_couverte` ;
 - chaque alerte contient une `severite` valant `information`, `confirmation` ou `bloquant` ;
+- `periode_compteur_absente` indique qu’une période explicitement demandée pour un compteur n’existe pas dans les soldes normalisés ;
+- `quantite_evenement_non_projectee` indique qu’un événement source n’a pas pu être entièrement réparti sur sa plage ;
 - `solde_negatif_confirmation_possible` indique un solde négatif autorisé sous réserve de confirmation ;
 - `solde_minimum_depasse` indique une consommation bloquée au minimum autorisé ;
 - `evenement_hors_periode_projection` indique un événement source ignoré car hors période de projection ;
 - les soldes aux dates cibles sont lus après la dernière demi-journée de la date.
+
+Exemple de consommation détaillée :
+
+```json
+{
+  "identifiant_evenement": "fermeture_noel_2026",
+  "source": "obligation",
+  "compteur": "GCP",
+  "quantite_demandee": 0.5,
+  "quantite_appliquee": 0.5,
+  "quantite_non_couverte": 0.0,
+  "priorite": 100
+}
+```
+
+Exemples d’alertes :
+
+```json
+{
+  "type": "periode_compteur_absente",
+  "severite": "bloquant",
+  "compteur": "GCP",
+  "periode_demandee": "suivnat",
+  "periodes_disponibles": ["courant", "suivant"]
+}
+```
+
+```json
+{
+  "type": "quantite_evenement_non_projectee",
+  "severite": "bloquant",
+  "identifiant_evenement": "fermeture_noel_2026",
+  "quantite_restante": 1.0,
+  "unite": "jours_ouvres",
+  "date_debut": "2026-12-25",
+  "date_fin": "2026-12-31"
+}
+```
 
 ## Orchestrateur Local De Projection
 
