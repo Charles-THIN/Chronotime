@@ -306,6 +306,20 @@ Forme générale :
       "CANC": 5.0
     }
   },
+  "parametres_projection": {
+    "periode_compteurs": "courant",
+    "periodes_compteurs_par_code": {
+      "GCP": "suivant",
+      "JRTT": "courant",
+      "CANC": "courant"
+    },
+    "soldes_minimums_par_code": {
+      "GCP": 0.0,
+      "JRTT": -10.0,
+      "CANC": 0.0
+    },
+    "jours_non_decomptes": ["2026-12-25"]
+  },
   "soldes_initiaux": {
     "GCP": 20.0,
     "JRTT": 4.0,
@@ -340,7 +354,13 @@ Règles principales :
 - chaque date contient deux portions, `matin` et `apres_midi` ;
 - les événements sources viennent des obligations restantes et des blocs actifs du scénario ;
 - les soldes sont propagés demi-journée par demi-journée ;
-- une alerte est produite si une consommation dépasse le solde disponible ;
+- `parametres_projection.periodes_compteurs_par_code` permet de choisir une période différente selon le compteur ;
+- `parametres_projection.soldes_minimums_par_code` permet de définir un minimum autorisé par compteur ;
+- `parametres_projection.jours_non_decomptes` exclut des dates manuelles pour les unités `jours_ouvres` et `jours_ouvrables` ;
+- chaque alerte contient une `severite` valant `information`, `confirmation` ou `bloquant` ;
+- `solde_negatif_confirmation_possible` indique un solde négatif autorisé sous réserve de confirmation ;
+- `solde_minimum_depasse` indique une consommation bloquée au minimum autorisé ;
+- `evenement_hors_periode_projection` indique un événement source ignoré car hors période de projection ;
 - les soldes aux dates cibles sont lus après la dernière demi-journée de la date.
 
 ## Orchestrateur Local De Projection

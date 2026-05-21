@@ -7,7 +7,14 @@ import tempfile
 from pathlib import Path
 import unittest
 
-from outils.chronotime.orchestrateur_projection import analyser_arguments, orchestrer_projection
+from outils.chronotime.orchestrateur_projection import (
+    analyser_arguments,
+    analyser_jours_non_decomptes,
+    analyser_periodes_compteurs_par_code,
+    analyser_soldes_minimums_par_code,
+    lire_json,
+    orchestrer_projection,
+)
 
 
 class TestOrchestrateurProjection(unittest.TestCase):
@@ -33,6 +40,49 @@ class TestOrchestrateurProjection(unittest.TestCase):
         projection = self._orchestrer_sans_date_cible()
         self.assertEqual(projection["soldes_aux_dates_cibles"][0]["identifiant"], "noel")
         self.assertEqual(projection["soldes_aux_dates_cibles"][0]["date"], "2026-12-25")
+
+    def test_parsing_periodes_compteurs_par_code(self) -> None:
+        self.assertEqual(
+            analyser_periodes_compteurs_par_code("GCP=suivant,JRTT=courant,CANC=courant"),
+            {"GCP": "suivant", "JRTT": "courant", "CANC": "courant"},
+        )
+
+    def test_parsing_soldes_minimums_par_code(self) -> None:
+        self.assertEqual(
+            analyser_soldes_minimums_par_code("JRTT=-10,GCP=0,CANC=0"),
+            {"JRTT": -10.0, "GCP": 0.0, "CANC": 0.0},
+        )
+
+    def test_parsing_jours_non_decomptes(self) -> None:
+        self.assertEqual(
+            analyser_jours_non_decomptes("2026-12-25,2026-07-14"),
+            ["2026-12-25", "2026-07-14"],
+        )
+
+    def test_projection_periodes_par_compteur(self) -> None:
+        projection = orchestrer_projection(analyser_arguments(self._arguments_communs(options_projection=True)))
+        self.assertEqual(projection["parametres_projection"]["periodes_compteurs_par_code"]["GCP"], "suivant")
+        self.assertGreater(projection["soldes_initiaux"]["GCP"], 20.0)
+
+    def test_projection_jrtt_autorise_sous_zero(self) -> None:
+        projection = orchestrer_projection(
+            analyser_arguments(
+                [
+                    *self._arguments_communs(options_projection=True),
+                    "--date-depart",
+                    "2026-08-17",
+                    "--date-fin",
+                    "2026-08-21",
+                ]
+            )
+        )
+        self.assertEqual(projection["parametres_projection"]["soldes_minimums_par_code"]["JRTT"], -10.0)
+
+    def test_lecture_json_avec_bom_utf8(self) -> None:
+        with tempfile.TemporaryDirectory() as repertoire_temporaire:
+            chemin = Path(repertoire_temporaire) / "bom.json"
+            chemin.write_text('{"source": "test"}', encoding="utf-8-sig")
+            self.assertEqual(lire_json(chemin), {"source": "test"})
 
     def test_script_sans_sortie(self) -> None:
         resultat = subprocess.run(
@@ -68,7 +118,7 @@ class TestOrchestrateurProjection(unittest.TestCase):
     def _orchestrer_sans_date_cible(self) -> dict[str, object]:
         return orchestrer_projection(analyser_arguments(self._arguments_communs(sans_date_cible=True)))
 
-    def _arguments_communs(self, sans_date_cible: bool = False) -> list[str]:
+    def _arguments_communs(self, sans_date_cible: bool = False, options_projection: bool = False) -> list[str]:
         arguments = [
             "--soldes",
             "donnees/exemples/soldes_absences_chronotime.exemple.json",
@@ -85,6 +135,17 @@ class TestOrchestrateurProjection(unittest.TestCase):
         ]
         if not sans_date_cible:
             arguments.extend(["--date-cible", "noel=Noël=2026-12-25"])
+        if options_projection:
+            arguments.extend(
+                [
+                    "--periodes-compteurs-par-code",
+                    "GCP=suivant,JRTT=courant,CANC=courant",
+                    "--soldes-minimums-par-code",
+                    "JRTT=-10,GCP=0,CANC=0",
+                    "--jours-non-decomptes",
+                    "2026-12-25,2026-07-14",
+                ]
+            )
         return arguments
 
 

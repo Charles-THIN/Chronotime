@@ -7,11 +7,19 @@ Ce document liste les points encore ouverts avant de figer un moteur de calcul p
 - Valeo autorise-t-il la pose de congés non encore totalement provisionnés ?
 - Faut-il un mode `chronotime_previsionnel` par défaut ?
 - Comment Chronotime traite-t-il `precedent`, `courant` et `suivant` pour chaque compteur ?
+- Confirmer que `GCP` futur consomme bien le compteur `suivant`.
 - Quelles sont les dates exactes d’ouverture, d’expiration et de bascule de chaque compteur ?
+- Confirmer que `JRTT` peut être négatif jusqu’à environ `-10j00`.
+- Confirmer si `-10j00` est une limite fixe, annuelle ou dépendante du profil.
+- Confirmer que `CANC` ne peut jamais devenir négatif.
 - Les jours fériés doivent-ils être intégrés au projecteur V1 ?
+- Confirmer la liste exacte des jours fériés / jours non décomptés à utiliser pour 2026.
+- Confirmer si le 25 décembre 2026 doit bien être exclu de la fermeture Noël.
+- Confirmer si le 15 août 2026, férié mais samedi, a un impact nul pour le site.
 - Comment traiter les compteurs horaires dans la projection ?
 - Comment traiter les cas mixtes matin / après-midi avec compteurs différents ?
 - Quelle est la stratégie par défaut pour Noël sans compteur préféré ?
+- Confirmer si les chevauchements d’absences sont toujours bloquants ou selon motif.
 
 ## Obligations locales
 

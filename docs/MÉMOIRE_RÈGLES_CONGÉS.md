@@ -111,6 +111,18 @@ La V0 ne gère pas encore :
 - l’optimisation ;
 - la parentalité détaillée.
 
+### Observations Chronotime empiriques
+
+Les observations suivantes viennent de tests locaux et restent à vérifier :
+
+- `GCP` : une demande future semble possible malgré `GCP courant = 0j00`, ce qui suggère un fonctionnement prévisionnel probable ;
+- `GCP` : l’hypothèse opérationnelle actuelle est d’utiliser la période `suivant` pour les projections futures ;
+- `JRTT` : un solde négatif semble possible avec confirmation ;
+- `JRTT` : une limite empirique proche de `-10j00` a été observée, sans certitude sur son périmètre exact ;
+- `CANC` : un solde négatif a été observé comme bloquant ;
+- chevauchement d’absence `TELV` : observé comme bloquant dans Chronotime ;
+- jours fériés ou non décomptés : ils ne sont pas encore intégrés automatiquement et doivent être fournis manuellement au projecteur.
+
 ## Parentalité
 
 La parentalité est un domaine séparé.

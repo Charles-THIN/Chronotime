@@ -19,7 +19,7 @@ from outils.chronotime.verificateur_obligations import verifier_obligations
 
 def lire_json(chemin_entree: Path) -> Any:
     try:
-        texte = chemin_entree.read_text(encoding="utf-8")
+        texte = chemin_entree.read_text(encoding="utf-8-sig")
     except OSError as erreur:
         raise SystemExit(f"Impossible de lire le fichier d'entrée : {chemin_entree}") from erreur
 
@@ -69,6 +69,47 @@ def analyser_ordre_compteurs(valeur: str) -> list[str]:
     return [compteur.strip() for compteur in valeur.split(",") if compteur.strip()]
 
 
+def analyser_dictionnaire_texte(valeur: str | None, nom_option: str) -> dict[str, str]:
+    if not valeur:
+        return {}
+
+    resultat = {}
+    for morceau in valeur.split(","):
+        element = morceau.strip()
+        if element == "":
+            continue
+        if "=" not in element:
+            raise ValueError(f"Format invalide pour {nom_option} : {element!r}.")
+        cle, valeur_element = element.split("=", 1)
+        cle = cle.strip()
+        valeur_element = valeur_element.strip()
+        if cle == "" or valeur_element == "":
+            raise ValueError(f"Format invalide pour {nom_option} : {element!r}.")
+        resultat[cle] = valeur_element
+    return resultat
+
+
+def analyser_periodes_compteurs_par_code(valeur: str | None) -> dict[str, str]:
+    return analyser_dictionnaire_texte(valeur, "--periodes-compteurs-par-code")
+
+
+def analyser_soldes_minimums_par_code(valeur: str | None) -> dict[str, float]:
+    valeurs_texte = analyser_dictionnaire_texte(valeur, "--soldes-minimums-par-code")
+    resultat = {}
+    for code, minimum in valeurs_texte.items():
+        try:
+            resultat[code] = float(minimum)
+        except ValueError as erreur:
+            raise ValueError(f"Solde minimum invalide pour {code} : {minimum!r}.") from erreur
+    return resultat
+
+
+def analyser_jours_non_decomptes(valeur: str | None) -> list[str]:
+    if not valeur:
+        return []
+    return [jour.strip() for jour in valeur.split(",") if jour.strip()]
+
+
 def enrichir_verification_obligations(
     verification_obligations: dict[str, Any],
     obligations_normalisees: dict[str, Any],
@@ -102,6 +143,9 @@ def construire_entrees_projection(
     date_depart: str,
     date_fin: str,
     periode_compteurs: str,
+    periodes_compteurs_par_code: dict[str, str],
+    soldes_minimums_par_code: dict[str, float],
+    jours_non_decomptes: list[str],
     dates_cibles: list[dict[str, Any]],
     ordre_compteurs_sans_preference: list[str],
 ) -> dict[str, Any]:
@@ -112,6 +156,9 @@ def construire_entrees_projection(
         "verification_obligations": verification_obligations,
         "parametres_projection": {
             "periode_compteurs": periode_compteurs,
+            "periodes_compteurs_par_code": periodes_compteurs_par_code,
+            "soldes_minimums_par_code": soldes_minimums_par_code,
+            "jours_non_decomptes": jours_non_decomptes,
             "date_depart": date_depart,
             "date_fin": date_fin,
             "dates_cibles": dates_cibles,
@@ -137,6 +184,9 @@ def orchestrer_projection(arguments: argparse.Namespace) -> dict[str, Any]:
         date_depart=arguments.date_depart,
         date_fin=arguments.date_fin,
         periode_compteurs=arguments.periode_compteurs,
+        periodes_compteurs_par_code=analyser_periodes_compteurs_par_code(arguments.periodes_compteurs_par_code),
+        soldes_minimums_par_code=analyser_soldes_minimums_par_code(arguments.soldes_minimums_par_code),
+        jours_non_decomptes=analyser_jours_non_decomptes(arguments.jours_non_decomptes),
         dates_cibles=dates_cibles,
         ordre_compteurs_sans_preference=analyser_ordre_compteurs(arguments.ordre_compteurs_sans_preference),
     )
@@ -156,6 +206,18 @@ def analyser_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     analyseur.add_argument("--date-cible", action="append", help="Date cible au format identifiant=libelle=YYYY-MM-DD.")
     analyseur.add_argument("--periode-compteurs", default="courant", help="Période de compteurs à utiliser.")
     analyseur.add_argument(
+        "--periodes-compteurs-par-code",
+        help="Périodes par compteur au format GCP=suivant,JRTT=courant.",
+    )
+    analyseur.add_argument(
+        "--soldes-minimums-par-code",
+        help="Soldes minimums par compteur au format JRTT=-10,GCP=0.",
+    )
+    analyseur.add_argument(
+        "--jours-non-decomptes",
+        help="Dates non décomptées au format YYYY-MM-DD,YYYY-MM-DD.",
+    )
+    analyseur.add_argument(
         "--ordre-compteurs-sans-preference",
         default="CANC,JRTT,GCP",
         help="Ordre des compteurs pour les obligations sans compteur préféré.",
@@ -166,7 +228,10 @@ def analyser_arguments(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     arguments = analyser_arguments(argv)
-    projection = orchestrer_projection(arguments)
+    try:
+        projection = orchestrer_projection(arguments)
+    except ValueError as erreur:
+        raise SystemExit(str(erreur)) from erreur
     ecrire_sortie(serialiser_json(projection), arguments.sortie)
     return 0
 

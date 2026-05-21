@@ -103,7 +103,7 @@ def normaliser_donnees(donnees_brutes: Any) -> dict[str, Any]:
 
 def lire_json(chemin_entree: Path) -> Any:
     try:
-        texte = chemin_entree.read_text(encoding="utf-8")
+        texte = chemin_entree.read_text(encoding="utf-8-sig")
     except OSError as erreur:
         raise SystemExit(f"Impossible de lire le fichier d'entrée : {chemin_entree}") from erreur
 
