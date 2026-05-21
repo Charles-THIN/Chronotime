@@ -92,6 +92,17 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("Soldes aux dates cibles", html)
         self.assertIn("Événements projetés", html)
 
+    def test_generation_html_tableaux_defilables(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn("tableau-defilable", html)
+        self.assertIn("Soldes aux dates cibles", html)
+        self.assertIn("overflow-x: auto", html)
+
+    def test_generation_html_titre_compact(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn("font-size: clamp(1.4rem, 2.4vw, 2.2rem);", html)
+        self.assertIn("line-height: 1.05;", html)
+
     def test_generation_html_dates_cibles_non_brutes(self) -> None:
         html = generer_html(self._charger_exemple())
         self.assertIn("Contrôle exemple", html)

@@ -132,10 +132,12 @@ def tableau_soldes(titre: str, soldes: dict[str, Any], libelle_colonne: str = "S
     return f"""
     <section class="carte">
       <h3>{escape(titre)}</h3>
+      <div class="tableau-defilable">
       <table>
         <thead><tr><th>Compteur</th><th>{escape(libelle_colonne)}</th></tr></thead>
         <tbody>{corps}</tbody>
       </table>
+      </div>
     </section>
     """
 
@@ -174,12 +176,14 @@ def tableau_dates_cibles(dates_cibles: list[Any]) -> str:
     return f"""
     <section class="carte">
       <h3>Soldes aux dates cibles</h3>
+      <div class="tableau-defilable">
       <table>
         <thead>
           <tr><th>Date cible</th><th>Date</th>{entetes_compteurs}</tr>
         </thead>
         <tbody>{corps}</tbody>
       </table>
+      </div>
     </section>
     """
 
@@ -364,8 +368,10 @@ def tableau_soldes_concernes(soldes_avant: dict[str, Any], soldes_apres: dict[st
             "</tr>"
         )
     return (
+        "<div class=\"tableau-defilable\">"
         "<table><thead><tr><th>Compteur</th><th>Avant</th><th>Après</th></tr></thead>"
         f"<tbody>{''.join(lignes)}</tbody></table>"
+        "</div>"
     )
 
 
@@ -837,7 +843,7 @@ def feuille_style() -> str:
       padding: 24px 18px 56px;
     }
     .hero {
-      padding: 30px 32px 24px;
+      padding: 20px 22px 16px;
       border: 1px solid var(--trait);
       border-radius: 28px 28px 18px 18px;
       background: rgba(255, 250, 240, 0.82);
@@ -848,10 +854,10 @@ def feuille_style() -> str:
       backdrop-filter: blur(10px);
     }
     h1 {
-      margin: 0 0 10px;
-      font-size: clamp(2rem, 5vw, 4.8rem);
-      line-height: 0.95;
-      letter-spacing: -0.05em;
+      margin: 0 0 6px;
+      font-size: clamp(1.4rem, 2.4vw, 2.2rem);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
     }
     h2 {
       margin: 0 0 16px;
@@ -866,6 +872,7 @@ def feuille_style() -> str:
     .note {
       color: var(--muted);
       max-width: 820px;
+      font-size: 0.95rem;
     }
     .barre-vues {
       display: flex;
@@ -943,8 +950,8 @@ def feuille_style() -> str:
       color: var(--accent-fort);
     }
     .carte {
-      margin-top: 18px;
-      padding: 22px;
+      margin-top: 14px;
+      padding: 18px;
       border: 1px solid var(--trait);
       border-radius: 22px;
       background: rgba(255, 250, 240, 0.9);
@@ -964,8 +971,12 @@ def feuille_style() -> str:
       overflow: hidden;
       border-radius: 14px;
     }
+    .tableau-defilable {
+      overflow-x: auto;
+      max-width: 100%;
+    }
     th, td {
-      padding: 10px 12px;
+      padding: 8px 10px;
       border-bottom: 1px solid var(--trait);
       text-align: left;
       vertical-align: top;

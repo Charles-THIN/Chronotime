@@ -109,6 +109,17 @@ Cette vue reste strictement en lecture seule.
 
 L’agrégation `Événements projetés` est une aide de consultation dérivée de `projection.demi_journees`. Elle ne devient pas un modèle éditable.
 
+## V0.3.1 Finition visuelle
+
+La version `V0.3.1` compacte le bandeau supérieur et contient les tableaux larges dans des zones de défilement horizontal locales.
+
+Les objectifs sont limités à la lisibilité :
+
+- titre principal plus compact ;
+- tableaux larges contenus dans la carte ;
+- aucune nouvelle logique métier ;
+- vue toujours strictement en lecture seule.
+
 ## Vue future des soldes dans le temps
 
 Une future vue `Soldes dans le temps` devra représenter :
