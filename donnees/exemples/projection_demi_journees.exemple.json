@@ -1,0 +1,217 @@
+{
+  "source": "projection.demi_journees",
+  "periode": {
+    "debut": "2026-05-20",
+    "fin": "2026-05-21"
+  },
+  "etat_initial": {
+    "date": "2026-05-20",
+    "soldes": {
+      "GCP": 10.0,
+      "JRTT": 2.0
+    }
+  },
+  "parametres_projection": {
+    "periode_compteurs": "courant",
+    "periodes_compteurs_par_code": {},
+    "soldes_minimums_par_code": {
+      "GCP": 0.0,
+      "JRTT": -1.0
+    },
+    "jours_non_decomptes": []
+  },
+  "soldes_initiaux": {
+    "GCP": 10.0,
+    "JRTT": 2.0
+  },
+  "evenements_sources": [
+    {
+      "source": "scenario",
+      "identifiant": "bloc_exemple_ete",
+      "libelle": "Bloc exemple",
+      "date_debut": "2026-05-20",
+      "date_fin": "2026-05-20",
+      "unite": "jours_ouvres",
+      "quantite": 1.0,
+      "compteur": "GCP",
+      "priorite": 50
+    }
+  ],
+  "demi_journees": [
+    {
+      "date": "2026-05-20",
+      "portion": "matin",
+      "index_demi_journee": 0,
+      "evenements": [
+        {
+          "source": "scenario",
+          "identifiant": "bloc_exemple_ete",
+          "libelle": "Bloc exemple",
+          "compteur": "GCP",
+          "quantite_projectee": 0.5
+        }
+      ],
+      "consommations": {
+        "GCP": 0.5
+      },
+      "consommations_detaillees": [
+        {
+          "identifiant_evenement": "bloc_exemple_ete",
+          "source": "scenario",
+          "compteur": "GCP",
+          "quantite_demandee": 0.5,
+          "quantite_appliquee": 0.5,
+          "quantite_non_couverte": 0.0,
+          "priorite": 50
+        }
+      ],
+      "soldes_avant": {
+        "GCP": 10.0,
+        "JRTT": 2.0
+      },
+      "soldes_apres": {
+        "GCP": 9.5,
+        "JRTT": 2.0
+      },
+      "alertes": []
+    },
+    {
+      "date": "2026-05-20",
+      "portion": "apres_midi",
+      "index_demi_journee": 1,
+      "evenements": [
+        {
+          "source": "scenario",
+          "identifiant": "bloc_exemple_ete",
+          "libelle": "Bloc exemple",
+          "compteur": "GCP",
+          "quantite_projectee": 0.5
+        }
+      ],
+      "consommations": {
+        "GCP": 0.5
+      },
+      "consommations_detaillees": [
+        {
+          "identifiant_evenement": "bloc_exemple_ete",
+          "source": "scenario",
+          "compteur": "GCP",
+          "quantite_demandee": 0.5,
+          "quantite_appliquee": 0.5,
+          "quantite_non_couverte": 0.0,
+          "priorite": 50
+        }
+      ],
+      "soldes_avant": {
+        "GCP": 9.5,
+        "JRTT": 2.0
+      },
+      "soldes_apres": {
+        "GCP": 9.0,
+        "JRTT": 2.0
+      },
+      "alertes": []
+    },
+    {
+      "date": "2026-05-21",
+      "portion": "matin",
+      "index_demi_journee": 2,
+      "evenements": [
+        {
+          "source": "obligation",
+          "identifiant": "obligation_exemple_jrtt",
+          "libelle": "Obligation exemple",
+          "compteur": "JRTT",
+          "quantite_projectee": 0.5
+        }
+      ],
+      "consommations": {
+        "JRTT": 0.5
+      },
+      "consommations_detaillees": [
+        {
+          "identifiant_evenement": "obligation_exemple_jrtt",
+          "source": "obligation",
+          "compteur": "JRTT",
+          "quantite_demandee": 0.5,
+          "quantite_appliquee": 0.25,
+          "quantite_non_couverte": 0.25,
+          "priorite": 100
+        }
+      ],
+      "soldes_avant": {
+        "GCP": 9.0,
+        "JRTT": -0.75
+      },
+      "soldes_apres": {
+        "GCP": 9.0,
+        "JRTT": -1.0
+      },
+      "alertes": [
+        {
+          "type": "solde_minimum_depasse",
+          "severite": "bloquant",
+          "date": "2026-05-21",
+          "portion": "matin",
+          "compteur": "JRTT",
+          "quantite_demandee": 0.5,
+          "quantite_appliquee": 0.25,
+          "quantite_non_couverte": 0.25,
+          "minimum_autorise": -1.0,
+          "identifiants_evenements": [
+            "obligation_exemple_jrtt"
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-05-21",
+      "portion": "apres_midi",
+      "index_demi_journee": 3,
+      "evenements": [],
+      "consommations": {},
+      "consommations_detaillees": [],
+      "soldes_avant": {
+        "GCP": 9.0,
+        "JRTT": -1.0
+      },
+      "soldes_apres": {
+        "GCP": 9.0,
+        "JRTT": -1.0
+      },
+      "alertes": []
+    }
+  ],
+  "soldes_aux_dates_cibles": [
+    {
+      "identifiant": "controle",
+      "libelle": "Contrôle exemple",
+      "date": "2026-05-21",
+      "soldes": {
+        "GCP": 9.0,
+        "JRTT": -1.0
+      }
+    }
+  ],
+  "alertes": [
+    {
+      "type": "solde_minimum_depasse",
+      "severite": "bloquant",
+      "date": "2026-05-21",
+      "portion": "matin",
+      "compteur": "JRTT",
+      "quantite_demandee": 0.5,
+      "quantite_appliquee": 0.25,
+      "quantite_non_couverte": 0.25,
+      "minimum_autorise": -1.0,
+      "identifiants_evenements": [
+        "obligation_exemple_jrtt"
+      ]
+    }
+  ],
+  "resume": {
+    "nombre_demi_journees": 4,
+    "nombre_evenements_sources": 1,
+    "nombre_alertes": 1
+  }
+}
