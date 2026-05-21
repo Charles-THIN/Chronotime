@@ -54,6 +54,20 @@ La page HTML affiche :
 - une frise 1D simple des demi-journées ;
 - les détails des demi-journées consommées ou alertées.
 
+## V0.1 Lisibilité
+
+La version `V0.1` améliore la lisibilité sans changer le rôle de la vue :
+
+- dates françaises lisibles ;
+- tableaux de soldes lisibles ;
+- alertes humanisées ;
+- frise avec repères temporels ;
+- détails techniques repliables.
+
+Cette vue reste strictement en lecture seule.
+
+La projection reste une sortie dérivée et non la source de vérité éditable.
+
 ## Frise 1D
 
 Chaque demi-journée est représentée par une petite case.
@@ -88,6 +102,8 @@ Les sévérités affichées sont :
 - `bloquant`.
 
 La première vue doit montrer les alertes sans décider automatiquement si la situation est acceptable.
+
+Les détails techniques complets peuvent rester visibles, mais seulement dans des zones repliables pour ne pas écraser le résumé humain.
 
 ## Limites assumées
 

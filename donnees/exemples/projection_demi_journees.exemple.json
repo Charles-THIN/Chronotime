@@ -2,13 +2,14 @@
   "source": "projection.demi_journees",
   "periode": {
     "debut": "2026-05-20",
-    "fin": "2026-05-21"
+    "fin": "2026-06-02"
   },
   "etat_initial": {
     "date": "2026-05-20",
     "soldes": {
       "GCP": 10.0,
-      "JRTT": 2.0
+      "JRTT": 2.0,
+      "CANC": 1.5
     }
   },
   "parametres_projection": {
@@ -22,7 +23,8 @@
   },
   "soldes_initiaux": {
     "GCP": 10.0,
-    "JRTT": 2.0
+    "JRTT": 2.0,
+    "CANC": 1.5
   },
   "evenements_sources": [
     {
@@ -35,6 +37,17 @@
       "quantite": 1.0,
       "compteur": "GCP",
       "priorite": 50
+    },
+    {
+      "source": "obligation",
+      "identifiant": "obligation_exemple_jrtt",
+      "libelle": "Obligation exemple",
+      "date_debut": "2026-05-21",
+      "date_fin": "2026-05-21",
+      "unite": "jours_ouvres",
+      "quantite": 0.5,
+      "compteur": "JRTT",
+      "priorite": 100
     }
   ],
   "demi_journees": [
@@ -67,11 +80,13 @@
       ],
       "soldes_avant": {
         "GCP": 10.0,
-        "JRTT": 2.0
+        "JRTT": 2.0,
+        "CANC": 1.5
       },
       "soldes_apres": {
         "GCP": 9.5,
-        "JRTT": 2.0
+        "JRTT": 2.0,
+        "CANC": 1.5
       },
       "alertes": []
     },
@@ -104,11 +119,13 @@
       ],
       "soldes_avant": {
         "GCP": 9.5,
-        "JRTT": 2.0
+        "JRTT": 2.0,
+        "CANC": 1.5
       },
       "soldes_apres": {
         "GCP": 9.0,
-        "JRTT": 2.0
+        "JRTT": 2.0,
+        "CANC": 1.5
       },
       "alertes": []
     },
@@ -141,11 +158,13 @@
       ],
       "soldes_avant": {
         "GCP": 9.0,
-        "JRTT": -0.75
+        "JRTT": -0.75,
+        "CANC": 1.5
       },
       "soldes_apres": {
         "GCP": 9.0,
-        "JRTT": -1.0
+        "JRTT": -1.0,
+        "CANC": 1.5
       },
       "alertes": [
         {
@@ -173,11 +192,89 @@
       "consommations_detaillees": [],
       "soldes_avant": {
         "GCP": 9.0,
-        "JRTT": -1.0
+        "JRTT": -1.0,
+        "CANC": 1.5
       },
       "soldes_apres": {
         "GCP": 9.0,
-        "JRTT": -1.0
+        "JRTT": -1.0,
+        "CANC": 1.5
+      },
+      "alertes": []
+    },
+    {
+      "date": "2026-06-01",
+      "portion": "matin",
+      "index_demi_journee": 24,
+      "evenements": [],
+      "consommations": {},
+      "consommations_detaillees": [],
+      "soldes_avant": {
+        "GCP": 9.0,
+        "JRTT": -1.0,
+        "CANC": 1.5
+      },
+      "soldes_apres": {
+        "GCP": 9.0,
+        "JRTT": -1.0,
+        "CANC": 1.5
+      },
+      "alertes": []
+    },
+    {
+      "date": "2026-06-01",
+      "portion": "apres_midi",
+      "index_demi_journee": 25,
+      "evenements": [],
+      "consommations": {},
+      "consommations_detaillees": [],
+      "soldes_avant": {
+        "GCP": 9.0,
+        "JRTT": -1.0,
+        "CANC": 1.5
+      },
+      "soldes_apres": {
+        "GCP": 9.0,
+        "JRTT": -1.0,
+        "CANC": 1.5
+      },
+      "alertes": []
+    },
+    {
+      "date": "2026-06-02",
+      "portion": "matin",
+      "index_demi_journee": 26,
+      "evenements": [],
+      "consommations": {},
+      "consommations_detaillees": [],
+      "soldes_avant": {
+        "GCP": 9.0,
+        "JRTT": -1.0,
+        "CANC": 1.5
+      },
+      "soldes_apres": {
+        "GCP": 9.0,
+        "JRTT": -1.0,
+        "CANC": 1.5
+      },
+      "alertes": []
+    },
+    {
+      "date": "2026-06-02",
+      "portion": "apres_midi",
+      "index_demi_journee": 27,
+      "evenements": [],
+      "consommations": {},
+      "consommations_detaillees": [],
+      "soldes_avant": {
+        "GCP": 9.0,
+        "JRTT": -1.0,
+        "CANC": 1.5
+      },
+      "soldes_apres": {
+        "GCP": 9.0,
+        "JRTT": -1.0,
+        "CANC": 1.5
       },
       "alertes": []
     }
@@ -186,10 +283,11 @@
     {
       "identifiant": "controle",
       "libelle": "Contrôle exemple",
-      "date": "2026-05-21",
+      "date": "2026-06-02",
       "soldes": {
         "GCP": 9.0,
-        "JRTT": -1.0
+        "JRTT": -1.0,
+        "CANC": 1.5
       }
     }
   ],
@@ -207,11 +305,18 @@
       "identifiants_evenements": [
         "obligation_exemple_jrtt"
       ]
+    },
+    {
+      "type": "evenement_hors_periode_projection",
+      "severite": "information",
+      "identifiant_evenement": "bloc_hors_periode",
+      "date_debut": "2026-05-01",
+      "date_fin": "2026-05-02"
     }
   ],
   "resume": {
-    "nombre_demi_journees": 4,
-    "nombre_evenements_sources": 1,
-    "nombre_alertes": 1
+    "nombre_demi_journees": 8,
+    "nombre_evenements_sources": 2,
+    "nombre_alertes": 2
   }
 }

@@ -8,7 +8,12 @@ import tempfile
 from pathlib import Path
 import unittest
 
-from outils.chronotime.generateur_vue_projection import charger_projection, generer_html
+from outils.chronotime.generateur_vue_projection import (
+    charger_projection,
+    formater_date_francaise,
+    formater_periode_francaise,
+    generer_html,
+)
 
 
 class TestGenerateurVueProjection(unittest.TestCase):
@@ -26,17 +31,44 @@ class TestGenerateurVueProjection(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Source de projection invalide"):
                 charger_projection(chemin)
 
-    def test_generation_html(self) -> None:
+    def test_formatage_date_francaise(self) -> None:
+        self.assertEqual(formater_date_francaise("2026-05-20"), "20 mai 2026")
+
+    def test_formatage_periode_meme_annee(self) -> None:
+        self.assertEqual(
+            formater_periode_francaise("2026-05-20", "2026-12-31"),
+            "du 20 mai au 31 décembre 2026",
+        )
+
+    def test_formatage_periode_deux_annees(self) -> None:
+        self.assertEqual(
+            formater_periode_francaise("2026-05-20", "2027-04-30"),
+            "du 20 mai 2026 au 30 avril 2027",
+        )
+
+    def test_generation_html_libelles_lisibles(self) -> None:
         html = generer_html(self._charger_exemple())
         self.assertIn("Vue locale de projection Chronotime", html)
+        self.assertIn("Solde minimum dépassé", html)
+        self.assertIn("Événement hors période de projection", html)
+        self.assertIn("Détails techniques", html)
+        self.assertIn("Demi-journées projetées", html)
+        self.assertIn("Événements sources", html)
+        self.assertIn("Alertes globales", html)
         self.assertIn("Soldes initiaux", html)
-        self.assertIn("GCP", html)
+        self.assertIn("Soldes aux dates cibles", html)
+
+    def test_generation_html_dates_cibles_non_brutes(self) -> None:
+        html = generer_html(self._charger_exemple())
         self.assertIn("Contrôle exemple", html)
-        self.assertIn("solde_minimum_depasse", html)
-        self.assertIn("obligation_exemple_jrtt", html)
-        self.assertIn("quantite_demandee", html)
-        self.assertIn("quantite_appliquee", html)
-        self.assertIn("quantite_non_couverte", html)
+        self.assertIn("2 juin 2026", html)
+        self.assertIn("<th>CANC</th><th>GCP</th><th>JRTT</th>", html)
+        self.assertIn("<td>1,5 j</td><td>9 j</td><td>-1 j</td>", html)
+
+    def test_generation_html_repere_mois_frise(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn("mai 2026", html)
+        self.assertIn("juin 2026", html)
 
     def test_generation_fichier_html(self) -> None:
         with tempfile.TemporaryDirectory() as repertoire:
