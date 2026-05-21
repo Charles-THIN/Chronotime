@@ -342,3 +342,11 @@ Règles principales :
 - les soldes sont propagés demi-journée par demi-journée ;
 - une alerte est produite si une consommation dépasse le solde disponible ;
 - les soldes aux dates cibles sont lus après la dernière demi-journée de la date.
+
+## Orchestrateur Local De Projection
+
+L’orchestrateur local enchaîne les formats normalisés existants.
+
+Il lit des fichiers locaux séparés pour les soldes, l’agenda, les obligations et le scénario, puis produit directement une sortie `projection.demi_journees`.
+
+Il n’écrit pas de fichier intermédiaire et reste limité à des données locales.
