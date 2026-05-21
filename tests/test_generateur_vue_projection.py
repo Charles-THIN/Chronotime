@@ -46,6 +46,34 @@ class TestGenerateurVueProjection(unittest.TestCase):
             "du 20 mai 2026 au 30 avril 2027",
         )
 
+    def test_generation_html_contient_vues(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn("Vue d’ensemble", html)
+        self.assertIn("Frise", html)
+        self.assertIn("Soldes", html)
+        self.assertIn("Alertes", html)
+        self.assertIn("Détails", html)
+        self.assertIn("Technique", html)
+
+    def test_generation_html_contient_navigation(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn('class="barre-vues"', html)
+        self.assertIn('class="onglet onglet-actif"', html)
+        self.assertIn('data-cible="vue-ensemble"', html)
+
+    def test_premiere_vue_par_defaut_vue_ensemble(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn('id="vue-ensemble" class="vue-tableau-de-bord vue-active"', html)
+        self.assertIn("activerVue('vue-ensemble')", html)
+
+    def test_generation_html_informations_historiques(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn("Soldes initiaux", html)
+        self.assertIn("Soldes aux dates cibles", html)
+        self.assertIn("Alertes globales", html)
+        self.assertIn("Frise 1D des demi-journées", html)
+        self.assertIn("Détails des demi-journées utiles", html)
+
     def test_generation_html_libelles_lisibles(self) -> None:
         html = generer_html(self._charger_exemple())
         self.assertIn("Vue locale de projection Chronotime", html)
@@ -69,6 +97,17 @@ class TestGenerateurVueProjection(unittest.TestCase):
         html = generer_html(self._charger_exemple())
         self.assertIn("mai 2026", html)
         self.assertIn("juin 2026", html)
+
+    def test_generation_html_details_repliables(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn("<details>", html)
+
+    def test_generation_html_sans_ressource_externe(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertNotIn("http://", html)
+        self.assertNotIn("https://", html)
+        self.assertNotIn("<script src=", html)
+        self.assertNotIn("<link rel=", html)
 
     def test_generation_fichier_html(self) -> None:
         with tempfile.TemporaryDirectory() as repertoire:

@@ -38,6 +38,14 @@ LABELS_SEVERITE = {
     "bloquant": "bloquant",
 }
 TIRET = "—"
+VUES = (
+    ("vue-ensemble", "Vue d’ensemble"),
+    ("vue-frise", "Frise"),
+    ("vue-soldes", "Soldes"),
+    ("vue-alertes", "Alertes"),
+    ("vue-details", "Détails"),
+    ("vue-technique", "Technique"),
+)
 
 
 def lire_json(chemin: Path) -> Any:
@@ -103,7 +111,15 @@ def serialiser_objet(valeur: Any) -> str:
     return escape(json.dumps(valeur, ensure_ascii=False, indent=2))
 
 
-def tableau_soldes(titre: str, soldes: dict[str, Any]) -> str:
+def type_alerte_lisible(type_alerte: Any) -> str:
+    return TYPES_ALERTES.get(str(type_alerte), str(type_alerte))
+
+
+def severite_lisible(severite: Any) -> str:
+    return LABELS_SEVERITE.get(str(severite), str(severite))
+
+
+def tableau_soldes(titre: str, soldes: dict[str, Any], libelle_colonne: str = "Solde initial") -> str:
     lignes = []
     for compteur, valeur in sorted(soldes.items()):
         lignes.append(
@@ -115,9 +131,9 @@ def tableau_soldes(titre: str, soldes: dict[str, Any]) -> str:
     corps = "\n".join(lignes) if lignes else "<tr><td colspan=\"2\">Aucun solde.</td></tr>"
     return f"""
     <section class="carte">
-      <h2>{escape(titre)}</h2>
+      <h3>{escape(titre)}</h3>
       <table>
-        <thead><tr><th>Compteur</th><th>Solde initial</th></tr></thead>
+        <thead><tr><th>Compteur</th><th>{escape(libelle_colonne)}</th></tr></thead>
         <tbody>{corps}</tbody>
       </table>
     </section>
@@ -157,7 +173,7 @@ def tableau_dates_cibles(dates_cibles: list[Any]) -> str:
     corps = "\n".join(lignes) if lignes else f"<tr><td colspan=\"{2 + len(compteurs)}\">Aucune date cible.</td></tr>"
     return f"""
     <section class="carte">
-      <h2>Soldes aux dates cibles</h2>
+      <h3>Soldes aux dates cibles</h3>
       <table>
         <thead>
           <tr><th>Date cible</th><th>Date</th>{entetes_compteurs}</tr>
@@ -168,21 +184,13 @@ def tableau_dates_cibles(dates_cibles: list[Any]) -> str:
     """
 
 
-def type_alerte_lisible(type_alerte: Any) -> str:
-    return TYPES_ALERTES.get(str(type_alerte), str(type_alerte))
-
-
-def severite_lisible(severite: Any) -> str:
-    return LABELS_SEVERITE.get(str(severite), str(severite))
-
-
 def resume_alerte(alerte: dict[str, Any]) -> str:
     morceaux = []
     if alerte.get("date"):
         morceaux.append(f"date {formater_date_francaise(str(alerte['date']))}")
     if alerte.get("date_debut") and alerte.get("date_fin"):
         morceaux.append(
-            f"periode {formater_periode_francaise(str(alerte['date_debut']), str(alerte['date_fin']))}"
+            f"période {formater_periode_francaise(str(alerte['date_debut']), str(alerte['date_fin']))}"
         )
     if alerte.get("compteur"):
         morceaux.append(f"compteur {alerte['compteur']}")
@@ -192,16 +200,12 @@ def resume_alerte(alerte: dict[str, Any]) -> str:
     elif isinstance(alerte.get("identifiants_evenements"), list) and alerte["identifiants_evenements"]:
         identifiant = str(alerte["identifiants_evenements"][0])
     if identifiant:
-        morceaux.append(f"evenement {identifiant}")
+        morceaux.append(f"événement {identifiant}")
     if alerte.get("quantite_non_couverte") is not None:
         morceaux.append(f"non couvert {formater_quantite_jour(alerte['quantite_non_couverte'])}")
     if not morceaux:
         return "Aucun contexte supplémentaire."
     return " ; ".join(morceaux)
-
-
-def details_alerte(alerte: dict[str, Any]) -> str:
-    return serialiser_objet(alerte)
 
 
 def carte_alerte(alerte: dict[str, Any]) -> str:
@@ -211,15 +215,18 @@ def carte_alerte(alerte: dict[str, Any]) -> str:
         date_texte = formater_date_francaise(str(alerte["date"]))
     elif alerte.get("date_debut") and alerte.get("date_fin"):
         date_texte = formater_periode_francaise(str(alerte["date_debut"]), str(alerte["date_fin"]))
+    identifiant = alerte.get("identifiant_evenement")
+    if not identifiant and isinstance(alerte.get("identifiants_evenements"), list) and alerte["identifiants_evenements"]:
+        identifiant = alerte["identifiants_evenements"][0]
     return (
         f"<li class=\"alerte alerte-{escape(severite)}\">"
         f"<h3>{escape(type_alerte_lisible(alerte.get('type')))}</h3>"
         f"<p><strong>Sévérité</strong> : {escape(severite)}</p>"
         f"<p><strong>Date ou période</strong> : {escape(date_texte or TIRET)}</p>"
         f"<p><strong>Compteur</strong> : {escape(str(alerte.get('compteur', TIRET)))}</p>"
-        f"<p><strong>Événement</strong> : {escape(str(alerte.get('identifiant_evenement') or (alerte.get('identifiants_evenements') or [TIRET])[0]))}</p>"
+        f"<p><strong>Événement</strong> : {escape(str(identifiant or TIRET))}</p>"
         f"<p><strong>Résumé humain</strong> : {escape(resume_alerte(alerte))}</p>"
-        f"<details><summary>Détails techniques</summary><pre>{details_alerte(alerte)}</pre></details>"
+        f"<details><summary>Détails techniques</summary><pre>{serialiser_objet(alerte)}</pre></details>"
         "</li>"
     )
 
@@ -328,11 +335,7 @@ def resume_consommations_detaillees(details: list[Any]) -> str:
     return "<br>".join(escape(ligne) for ligne in lignes) if lignes else "Aucune consommation détaillée."
 
 
-def tableau_soldes_concernes(
-    soldes_avant: dict[str, Any],
-    soldes_apres: dict[str, Any],
-    compteurs: list[str],
-) -> str:
+def tableau_soldes_concernes(soldes_avant: dict[str, Any], soldes_apres: dict[str, Any], compteurs: list[str]) -> str:
     lignes = []
     for compteur in compteurs:
         lignes.append(
@@ -405,6 +408,165 @@ def cartes_resume(periode: dict[str, Any], resume: dict[str, Any], projection: d
     )
 
 
+def navigation_vues() -> str:
+    boutons = []
+    for index, (identifiant, titre) in enumerate(VUES):
+        est_active = index == 0
+        boutons.append(
+            f"<button type=\"button\" class=\"onglet{' onglet-actif' if est_active else ''}\" "
+            f"data-cible=\"{escape(identifiant)}\" aria-selected=\"{'true' if est_active else 'false'}\">"
+            f"{escape(titre)}</button>"
+        )
+    return f"""
+    <nav class="barre-vues" aria-label="Navigation des vues">
+      {''.join(boutons)}
+    </nav>
+    """
+
+
+def envelopper_vue(identifiant: str, titre: str, contenu: str, active: bool = False) -> str:
+    return (
+        f"<section id=\"{escape(identifiant)}\" class=\"vue-tableau-de-bord{' vue-active' if active else ''}\" "
+        f"data-vue=\"{escape(identifiant)}\" data-titre=\"{escape(titre)}\">"
+        f"{contenu}"
+        "</section>"
+    )
+
+
+def script_onglets() -> str:
+    return """
+    <script>
+    (function () {
+      const boutons = Array.from(document.querySelectorAll('.onglet'));
+      const vues = Array.from(document.querySelectorAll('.vue-tableau-de-bord'));
+      function activerVue(id) {
+        vues.forEach((vue) => {
+          const active = vue.dataset.vue === id;
+          vue.classList.toggle('vue-active', active);
+        });
+        boutons.forEach((bouton) => {
+          const active = bouton.dataset.cible === id;
+          bouton.classList.toggle('onglet-actif', active);
+          bouton.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+      }
+      boutons.forEach((bouton) => {
+        bouton.addEventListener('click', function () {
+          activerVue(bouton.dataset.cible);
+        });
+      });
+      activerVue('vue-ensemble');
+    }());
+    </script>
+    """
+
+
+def vue_ensemble(periode: dict[str, Any], resume: dict[str, Any], projection: dict[str, Any]) -> str:
+    soldes_initiaux = projection.get("soldes_initiaux", {})
+    if not isinstance(soldes_initiaux, dict):
+        soldes_initiaux = {}
+    dates_cibles = projection.get("soldes_aux_dates_cibles", [])
+    if not isinstance(dates_cibles, list):
+        dates_cibles = []
+    debut = str(periode.get("debut", ""))
+    fin = str(periode.get("fin", ""))
+    periode_lisible = formater_periode_francaise(debut, fin) if debut and fin else TIRET
+    return f"""
+    <div class="grille-hero">
+      <section class="carte carte-majeure">
+        <h2>Vue d’ensemble</h2>
+        <p class="periode-lisible">{escape(periode_lisible)}</p>
+        <p class="note">Cette page reste strictement en lecture seule. Elle présente une projection dérivée et n’édite ni le scénario ni Chronotime.</p>
+      </section>
+      <section class="resume-cards">
+        {cartes_resume(periode, resume, projection)}
+      </section>
+    </div>
+    <div class="grille">
+      {tableau_soldes("Soldes initiaux", soldes_initiaux)}
+      {tableau_dates_cibles(dates_cibles)}
+    </div>
+    """
+
+
+def vue_frise(demi_journees: list[Any]) -> str:
+    return (
+        generer_frise(demi_journees)
+        + "<section class=\"carte\"><p class=\"note\">Seules les demi-journées projetées dans la période courante sont représentées ici.</p></section>"
+    )
+
+
+def vue_soldes(projection: dict[str, Any]) -> str:
+    soldes_initiaux = projection.get("soldes_initiaux", {})
+    if not isinstance(soldes_initiaux, dict):
+        soldes_initiaux = {}
+    dates_cibles = projection.get("soldes_aux_dates_cibles", [])
+    if not isinstance(dates_cibles, list):
+        dates_cibles = []
+    return f"""
+    <div class="grille">
+      {tableau_soldes("Soldes initiaux", soldes_initiaux)}
+      {tableau_dates_cibles(dates_cibles)}
+    </div>
+    """
+
+
+def vue_alertes(alertes: list[Any]) -> str:
+    return liste_alertes(alertes)
+
+
+def vue_details(demi_journees: list[Any]) -> str:
+    return bloc_details_demi_journees(demi_journees)
+
+
+def vue_technique(projection: dict[str, Any], periode: dict[str, Any], resume: dict[str, Any]) -> str:
+    parametres = projection.get("parametres_projection", {})
+    if not isinstance(parametres, dict):
+        parametres = {}
+    resume_technique = {
+        "source": projection.get("source", TIRET),
+        "periode.debut": periode.get("debut", TIRET),
+        "periode.fin": periode.get("fin", TIRET),
+        "nombre_demi_journees": resume.get("nombre_demi_journees", TIRET),
+        "nombre_evenements_sources": resume.get("nombre_evenements_sources", TIRET),
+        "nombre_alertes": resume.get("nombre_alertes", TIRET),
+    }
+    lignes = []
+    for cle, valeur in resume_technique.items():
+        lignes.append(f"<tr><th>{escape(str(cle))}</th><td>{escape(str(valeur))}</td></tr>")
+    return f"""
+    <section class="carte">
+      <h2>Technique</h2>
+      <p class="note">Cette vue rassemble les paramètres et limites connus sans afficher tout le JSON complet au chargement.</p>
+      <table>
+        <tbody>{''.join(lignes)}</tbody>
+      </table>
+    </section>
+    <section class="carte">
+      <h3>Paramètres de projection</h3>
+      <details>
+        <summary>Détails techniques</summary>
+        <pre>{serialiser_objet(parametres)}</pre>
+      </details>
+    </section>
+    <section class="carte">
+      <h3>Limites connues</h3>
+      <ul class="liste-limites">
+        <li>La vue reste en lecture seule et n’édite pas la projection.</li>
+        <li>Aucune écriture Chronotime, aucun appel HTTP et aucune automatisation navigateur ne sont ajoutés.</li>
+        <li>Les règles complètes sur les jours fériés, la parentalité, les chevauchements d’agenda et l’optimisation ne sont pas couvertes ici.</li>
+      </ul>
+    </section>
+    <section class="carte">
+      <h3>Projection complète</h3>
+      <details>
+        <summary>Détails techniques</summary>
+        <pre>{serialiser_objet(projection)}</pre>
+      </details>
+    </section>
+    """
+
+
 def feuille_style() -> str:
     return """
     :root {
@@ -431,16 +593,20 @@ def feuille_style() -> str:
       line-height: 1.45;
     }
     main {
-      max-width: 1180px;
+      max-width: 1220px;
       margin: 0 auto;
-      padding: 32px 18px 56px;
+      padding: 24px 18px 56px;
     }
     .hero {
-      padding: 32px;
+      padding: 30px 32px 24px;
       border: 1px solid var(--trait);
-      border-radius: 28px;
+      border-radius: 28px 28px 18px 18px;
       background: rgba(255, 250, 240, 0.82);
       box-shadow: var(--ombre);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(10px);
     }
     h1 {
       margin: 0 0 10px;
@@ -450,21 +616,73 @@ def feuille_style() -> str:
     }
     h2 {
       margin: 0 0 16px;
-      font-size: 1.3rem;
+      font-size: 1.35rem;
       color: var(--accent-fort);
     }
-    h3 { margin: 0 0 10px; }
-    .grille {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 18px;
+    h3 {
+      margin: 0 0 10px;
+      font-size: 1.05rem;
+      color: var(--accent-fort);
+    }
+    .note {
+      color: var(--muted);
+      max-width: 820px;
+    }
+    .barre-vues {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
       margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(31, 42, 36, 0.12);
+    }
+    .onglet {
+      border: 1px solid var(--trait);
+      border-radius: 999px;
+      padding: 10px 16px;
+      background: rgba(255, 250, 240, 0.65);
+      color: var(--accent-fort);
+      font: inherit;
+      cursor: pointer;
+      transition: transform 120ms ease, background 120ms ease, color 120ms ease;
+    }
+    .onglet:hover {
+      transform: translateY(-1px);
+      background: rgba(20, 107, 95, 0.12);
+    }
+    .onglet-actif {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent-fort);
+      box-shadow: 0 10px 20px rgba(20, 107, 95, 0.22);
+    }
+    .vue-tableau-de-bord {
+      display: none;
+      margin-top: 22px;
+      animation: apparition 180ms ease;
+    }
+    .vue-active {
+      display: block;
+    }
+    @keyframes apparition {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .grille, .grille-hero {
+      display: grid;
+      gap: 18px;
+    }
+    .grille {
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
+    .grille-hero {
+      grid-template-columns: minmax(280px, 1.2fr) minmax(320px, 1.8fr);
+      align-items: start;
     }
     .resume-cards {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 14px;
-      margin-top: 18px;
     }
     .tuile-resume {
       padding: 18px;
@@ -482,7 +700,7 @@ def feuille_style() -> str:
     }
     .tuile-valeur {
       margin: 0;
-      font-size: 1.35rem;
+      font-size: 1.3rem;
       color: var(--accent-fort);
     }
     .carte {
@@ -492,6 +710,14 @@ def feuille_style() -> str:
       border-radius: 22px;
       background: rgba(255, 250, 240, 0.9);
       box-shadow: 0 10px 26px rgba(41, 31, 19, 0.08);
+    }
+    .carte-majeure {
+      min-height: 100%;
+    }
+    .periode-lisible {
+      margin: 0 0 12px;
+      font-size: clamp(1.4rem, 2vw, 2rem);
+      color: var(--accent-fort);
     }
     table {
       width: 100%;
@@ -515,9 +741,21 @@ def feuille_style() -> str:
       font-family: "Cascadia Mono", Consolas, monospace;
       font-size: 0.86rem;
     }
-    .liste-alertes {
-      padding: 0;
+    .liste-alertes, .liste-limites {
+      padding-left: 0;
       list-style: none;
+      margin: 0;
+    }
+    .liste-limites li {
+      margin: 8px 0;
+      padding-left: 16px;
+      position: relative;
+    }
+    .liste-limites li::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: var(--accent);
     }
     .alerte {
       margin: 10px 0;
@@ -526,8 +764,14 @@ def feuille_style() -> str:
       background: rgba(53, 100, 143, 0.08);
       border-radius: 14px;
     }
-    .alerte-confirmation { border-left-color: var(--confirmation); background: rgba(155, 107, 0, 0.1); }
-    .alerte-bloquant { border-left-color: var(--alerte); background: rgba(177, 59, 46, 0.1); }
+    .alerte-confirmation {
+      border-left-color: var(--confirmation);
+      background: rgba(155, 107, 0, 0.1);
+    }
+    .alerte-bloquant {
+      border-left-color: var(--alerte);
+      background: rgba(177, 59, 46, 0.1);
+    }
     .legende {
       display: flex;
       flex-wrap: wrap;
@@ -614,10 +858,6 @@ def feuille_style() -> str:
       font-weight: 700;
     }
     dd { margin: 0; min-width: 0; }
-    .note {
-      color: var(--muted);
-      max-width: 760px;
-    }
     details {
       margin-top: 12px;
       border-top: 1px dashed var(--trait);
@@ -628,9 +868,23 @@ def feuille_style() -> str:
       color: var(--accent-fort);
       font-weight: 700;
     }
+    @media (max-width: 860px) {
+      .hero {
+        position: static;
+      }
+      .grille-hero {
+        grid-template-columns: 1fr;
+      }
+    }
     @media (max-width: 720px) {
       .hero { padding: 22px; }
       dl { grid-template-columns: 1fr; }
+      .barre-vues {
+        gap: 8px;
+      }
+      .onglet {
+        width: 100%;
+      }
     }
     """
 
@@ -644,12 +898,15 @@ def generer_html(projection: dict[str, Any]) -> str:
     alertes = projection.get("alertes", [])
     if not isinstance(alertes, list):
         alertes = []
-    soldes_initiaux = projection.get("soldes_initiaux", {})
-    if not isinstance(soldes_initiaux, dict):
-        soldes_initiaux = {}
-    dates_cibles = projection.get("soldes_aux_dates_cibles", [])
-    if not isinstance(dates_cibles, list):
-        dates_cibles = []
+
+    contenu_vues = [
+        envelopper_vue("vue-ensemble", "Vue d’ensemble", vue_ensemble(periode, resume, projection), active=True),
+        envelopper_vue("vue-frise", "Frise", vue_frise(demi_journees)),
+        envelopper_vue("vue-soldes", "Soldes", vue_soldes(projection)),
+        envelopper_vue("vue-alertes", "Alertes", vue_alertes(alertes)),
+        envelopper_vue("vue-details", "Détails", vue_details(demi_journees)),
+        envelopper_vue("vue-technique", "Technique", vue_technique(projection, periode, resume)),
+    ]
 
     return f"""<!doctype html>
 <html lang="fr">
@@ -667,25 +924,11 @@ def generer_html(projection: dict[str, Any]) -> str:
         Visualisation statique en lecture seule d'une projection <code>projection.demi_journees</code>.
         La projection reste une donnée dérivée : elle ne remplace pas le modèle événementiel source et ne modifie pas Chronotime.
       </p>
+      {navigation_vues()}
     </header>
-    <section class="resume-cards">
-      {cartes_resume(periode, resume, projection)}
-    </section>
-    <div class="grille">
-      {tableau_soldes("Soldes initiaux", soldes_initiaux)}
-    </div>
-    {tableau_dates_cibles(dates_cibles)}
-    {liste_alertes(alertes)}
-    {generer_frise(demi_journees)}
-    {bloc_details_demi_journees(demi_journees)}
-    <section class="carte">
-      <h2>Limites de cette vue</h2>
-      <p>
-        Cette page ne valide pas entièrement les jours fériés, la parentalité, les chevauchements d'agenda,
-        les expirations fines ou l'optimisation. Elle sert seulement à vérifier la lisibilité de la projection.
-      </p>
-    </section>
+    {''.join(contenu_vues)}
   </main>
+  {script_onglets()}
 </body>
 </html>
 """

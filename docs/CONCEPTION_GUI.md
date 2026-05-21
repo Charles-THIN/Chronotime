@@ -68,6 +68,25 @@ Cette vue reste strictement en lecture seule.
 
 La projection reste une sortie dérivée et non la source de vérité éditable.
 
+## V0.2 Tableau de bord local
+
+La version `V0.2` réorganise la page en vues séparées :
+
+- `Vue d’ensemble`
+- `Frise`
+- `Soldes`
+- `Alertes`
+- `Détails`
+- `Technique`
+
+La navigation reste entièrement locale.
+
+Le JavaScript éventuel ne sert qu’à afficher ou masquer les vues. Il ne charge aucune ressource externe et n’écrit aucun fichier.
+
+La page reste strictement en lecture seule.
+
+Aucune édition du scénario ou de la projection n’est réalisée.
+
 ## Frise 1D
 
 Chaque demi-journée est représentée par une petite case.
