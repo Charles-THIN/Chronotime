@@ -183,6 +183,10 @@ La clé `evenements_compteurs` prépare la future vue `Soldes dans le temps`.
 
 En l’état, ces événements sont seulement transportés. Ils ne modifient pas `soldes_initiaux`, `soldes_avant` ou `soldes_apres`.
 
+La projection peut maintenant servir d’entrée au générateur `mouvements.soldes`.
+
+Ce générateur lit `consommations_detaillees`, utilise `quantite_appliquee` et ignore `quantite_demandee` pour les variations de solde. Il lit aussi `evenements_compteurs`. Il ne modifie pas la projection.
+
 ## Limite
 
 Cette projection ne modifie pas Chronotime. Elle ne remplace pas les règles réelles de Chronotime et ne prétend pas être juridiquement complète.

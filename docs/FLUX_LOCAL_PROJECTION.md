@@ -7,6 +7,7 @@ fichiers JSON locaux
 -> normalisation
 -> vérification des obligations
 -> projection demi-journalière
+-> mouvements de solde optionnels
 ```
 
 ## Entrées
@@ -44,6 +45,18 @@ La sortie est directement le format `projection.demi_journees`.
 Les événements de compteur sont transportés dans la projection sous `evenements_compteurs`, mais ils ne sont pas encore appliqués aux soldes.
 
 Aucun fichier intermédiaire n’est écrit sauf si l’option `--sortie` est fournie pour la projection finale.
+
+## Étape Aval Optionnelle : Mouvements De Solde
+
+Une projection `projection.demi_journees` peut ensuite être transformée en mouvements signés :
+
+```powershell
+python outils/chronotime/generateur_mouvements_soldes.py donnees_locales/projection_avec_evenements_compteurs.json --sortie donnees_locales/mouvements_soldes.json
+```
+
+La sortie `mouvements.soldes` est dérivée. Elle ne calcule pas encore une chronologie cumulée des soldes.
+
+Le fichier `donnees_locales/mouvements_soldes.json` ne doit pas être suivi par Git.
 
 ## Exemple De Commande Locale
 

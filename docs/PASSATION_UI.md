@@ -41,7 +41,8 @@ Briques principales déjà codées :
 - chargeur local d’obligations ;
 - vérificateur obligations locales ↔ agenda ;
 - projecteur demi-journalier ;
-- orchestrateur local de projection.
+- orchestrateur local de projection ;
+- générateur de mouvements de solde.
 
 Le flux local complet est :
 
@@ -50,9 +51,11 @@ soldes Chronotime locaux
 + agenda Chronotime local
 + obligations locales
 + scénario local
++ événements de compteur optionnels
 -> normalisation
 -> vérification des obligations
 -> projection demi-journalière
+-> mouvements.soldes optionnels
 ```
 
 Commande locale réaliste actuellement utilisée :
@@ -164,6 +167,8 @@ Elle doit permettre :
 - répondre aux questions de planification.
 
 Elle ne doit pas inventer les crédits futurs, ouvertures de validité, expirations ou reports. Ces informations devront venir de `projection.demi_journees` si elle est enrichie, ou d’un modèle explicite d’événements de compteur.
+
+Pour une première vue `Soldes dans le temps`, lire d’abord les données déjà dérivées par le moteur, notamment `mouvements.soldes` puis la future chronologie cumulée. La GUI ne doit pas recalculer elle-même les mouvements de solde ni inventer des crédits, expirations, reports ou acquisitions.
 
 ### Vue 3 : calendrier annuel compact
 
@@ -458,7 +463,11 @@ Elle ne doit pas gérer elle-même :
 - reports ;
 - acquisitions.
 
-La future vue `Soldes dans le temps` devra lire ces informations depuis `projection.demi_journees` si elle est enrichie, ou depuis un modèle explicite d’événements de compteur.
+`mouvements.soldes` prépare la future vue `Soldes dans le temps`.
+
+La future vue devra lire ces informations depuis `projection.demi_journees`, `mouvements.soldes` ou une projection enrichie produite par le moteur.
+
+La GUI peut afficher `mouvements.soldes` plus tard, mais ne doit pas le traiter comme une source éditable.
 
 Le modèle attendu est documenté dans [docs/MODÈLE_ÉVÉNEMENTS_COMPTEURS.md](./MODÈLE_ÉVÉNEMENTS_COMPTEURS.md).
 

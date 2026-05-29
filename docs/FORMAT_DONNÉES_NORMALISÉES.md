@@ -528,6 +528,7 @@ Règles principales :
 - les ouvertures de validité et reports informatifs restent dans `evenements_informatifs` ;
 - les reports opérationnels complets produisent deux mouvements, source négative et destination positive ;
 - les mouvements préparent la future chronologie des soldes.
+- le résumé contient `nombre_mouvements`, `nombre_evenements_informatifs` et `nombre_alertes`.
 
 ## Orchestrateur Local De Projection
 

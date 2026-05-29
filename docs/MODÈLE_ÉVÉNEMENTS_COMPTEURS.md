@@ -240,4 +240,6 @@ Le chargeur ne projette rien.
 
 Il ne génère pas de crédits automatiques, d’expirations automatiques ou de reports automatiques.
 
-Les événements de compteur ne sont pas encore intégrés au projecteur demi-journalier.
+Les événements de compteur peuvent être transportés dans `projection.demi_journees`, puis traduits en `mouvements.soldes`.
+
+Ils ne sont pas encore appliqués aux soldes cumulés.

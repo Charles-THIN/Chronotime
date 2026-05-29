@@ -42,6 +42,7 @@ Ce document liste les points encore ouverts avant de figer un moteur de calcul p
 - Les expirations futures doivent-elles être projetées au jour près ou seulement par période ?
 - Les alertes doivent-elles distinguer manque de solde, incompatibilité de compteur et unité non projetée ?
 - Le projecteur V1 doit-il gérer les jours fériés publics ?
+- Définir la future chronologie cumulée des soldes à partir de `mouvements.soldes`.
 
 ## Événements de compteur
 
@@ -50,5 +51,6 @@ Ce document liste les points encore ouverts avant de figer un moteur de calcul p
 - Quelles sont les dates de début de validité de `GCP`, `CANC` et `JRTT` ?
 - Quelles sont les règles d’expiration exactes par compteur ?
 - Quelles sont les règles de report exactes par compteur ?
+- Confirmer la sémantique opérationnelle complète des reports avant de les appliquer aux soldes cumulés.
 - Quelle est la signification exacte de `precedent`, `courant` et `suivant` selon chaque compteur ?
 - Quels événements doivent être considérés comme `credit_compteur`, `ouverture_validite_compteur`, `expiration_compteur`, `report_compteur` ou `ajustement_compteur` ?

@@ -35,6 +35,14 @@ Elle sert à :
 
 Cette vue compare plusieurs états successifs du même scénario, sans mélanger données importées, règles de scénario et résultat calculé.
 
+La future vue des soldes pourra s’appuyer sur :
+
+- `projection.demi_journees` ;
+- `mouvements.soldes` ;
+- la future chronologie cumulée des soldes.
+
+La chronologie cumulée n’existe pas encore. La vue ne doit donc pas reconstruire seule les règles métier manquantes.
+
 ## Vue 3 : Calendrier Annuel Compact
 
 Le calendrier annuel compact sert à vérifier rapidement l’année entière.

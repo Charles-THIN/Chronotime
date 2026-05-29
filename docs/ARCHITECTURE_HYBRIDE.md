@@ -17,16 +17,18 @@ La source de vérité éditable contient :
 
 Ces objets représentent les intentions, les contraintes et les faits locaux ou importés. Ils sont modifiables directement.
 
-## Projection Dérivée
+## Sorties Dérivées
 
-La projection dérivée contient :
+Les sorties dérivées contiennent :
 
-- le vecteur de demi-journées ;
-- les soldes propagés ;
-- les alertes ;
+- `projection.demi_journees`, vecteur de demi-journées avec consommations, soldes propagés et alertes ;
+- `mouvements.soldes`, liste de mouvements de solde signés ;
+- la future chronologie cumulée des soldes ;
 - les données prêtes pour les vues.
 
-Cette projection est recalculée à chaque modification du modèle événementiel. Elle n’est pas éditée directement comme source de vérité.
+Ces sorties sont recalculées à partir du modèle événementiel. Elles ne sont pas éditées directement comme source de vérité.
+
+`mouvements.soldes` ne calcule pas encore les soldes cumulés. Il prépare seulement une liste stable de variations élémentaires.
 
 ## Pourquoi Garder Le Modèle Événementiel
 
@@ -76,13 +78,15 @@ Le vecteur de demi-journées sert à :
 ## Flux De Calcul Cible
 
 ```text
-données Chronotime normalisées
+soldes Chronotime normalisés
++ agenda Chronotime normalisé
 + obligations locales
 + scénario local
-+ crédits/expirations futurs
--> événements sources unifiés
--> projection demi-journalière
--> vues synchronisées
++ événements de compteur
+-> projection.demi_journees
+-> mouvements.soldes
+-> chronologie cumulée des soldes future
+-> vues
 ```
 
 ## Forme Cible D’Une Demi-Journée
@@ -129,4 +133,10 @@ données Chronotime normalisées
 
 ## Règle D’Architecture
 
-Les événements sources sont la vérité éditable. La projection demi-journalière est dérivée, recalculée, et destinée à l’affichage et aux lectures rapides.
+Les événements sources sont la vérité éditable.
+
+`projection.demi_journees` est dérivée, recalculée, et destinée à l’affichage et aux lectures rapides.
+
+`mouvements.soldes` est dérivé de `projection.demi_journees` et des événements de compteur transportés. Il n’est pas éditable et ne calcule pas encore les soldes cumulés.
+
+Les actions utilisateur futures modifieront les sources événementielles, jamais directement les sorties dérivées.
