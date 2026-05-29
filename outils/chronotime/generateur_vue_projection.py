@@ -856,6 +856,12 @@ def carte_indicateur_planification(label: str, valeur: Any) -> str:
     )
 
 
+def libelle_reste_fin_projection(date_fin: Any) -> str:
+    if date_fin:
+        return f"Reste au {formater_date_francaise(str(date_fin))}"
+    return "Reste en fin de projection"
+
+
 def tableau_dates_cibles_synthese(dates_cibles: list[Any]) -> str:
     lignes = []
     for cible in dates_cibles:
@@ -877,6 +883,33 @@ def tableau_dates_cibles_synthese(dates_cibles: list[Any]) -> str:
         "<table><thead><tr><th>Date cible</th><th>Date</th><th>Reste agrégé</th></tr></thead>"
         f"<tbody>{corps}</tbody></table>"
         "</div>"
+        "</section>"
+    )
+
+
+def liste_echeances_planification(echeances: list[Any]) -> str:
+    elements = []
+    for echeance in echeances:
+        if not isinstance(echeance, dict):
+            continue
+        date_lisible = formater_date_francaise(str(echeance["date"])) if echeance.get("date") else "Date non renseignée"
+        quantite = formater_quantite_jour(echeance.get("quantite"))
+        compteur = str(echeance.get("compteur_technique") or TIRET)
+        action = str(echeance.get("action_suggeree") or TIRET)
+        elements.append(
+            "<article class=\"alerte alerte-attention\">"
+            f"<h3>{escape(date_lisible)}</h3>"
+            f"<p><strong>⚠ {escape(quantite)} expire</strong></p>"
+            f"<p>Compteur technique : {escape(compteur)}</p>"
+            f"<p>Action : {escape(action)}</p>"
+            f"<p class=\"note\">{escape(str(echeance.get('message') or ''))}</p>"
+            "</article>"
+        )
+    contenu = "\n".join(elements) if elements else "<p>Aucune échéance importante détectée.</p>"
+    return (
+        "<section class=\"carte\">"
+        "<h3>Échéances importantes</h3>"
+        f"{contenu}"
         "</section>"
     )
 
@@ -919,7 +952,7 @@ def liste_signaux_planification(signaux: list[Any]) -> str:
             f"<h3>{escape(str(signal.get('type') or 'signal'))}</h3>"
             f"<p><strong>Sévérité</strong> : {escape(severite)}</p>"
             f"<p>{escape(str(signal.get('message') or 'Signal de planification.'))}</p>"
-            f"<details><summary>Détails techniques</summary><pre>{serialiser_objet(signal.get('details', {}))}</pre></details>"
+            f"<details><summary>Détails techniques du signal</summary><pre>{serialiser_objet(signal.get('details', {}))}</pre></details>"
             "</li>"
         )
     contenu = "\n".join(elements) if elements else "<li>Aucun signal.</li>"
@@ -944,6 +977,16 @@ def details_techniques_planification(synthese: dict[str, Any]) -> str:
     )
 
 
+def section_secondaire_planification(resume: dict[str, Any]) -> str:
+    return (
+        "<section class=\"carte\">"
+        "<h3>Informations secondaires</h3>"
+        f"<p><strong>Jours ajoutés dans la période</strong> : {escape(formater_quantite_jour(resume.get('jours_credites')))}</p>"
+        f"<p><strong>Variation totale agrégée</strong> : {escape(formater_quantite_jour(resume.get('variation_totale')))}</p>"
+        "</section>"
+    )
+
+
 def vue_planification(synthese: dict[str, Any] | None = None) -> str:
     if synthese is None:
         return """
@@ -962,6 +1005,9 @@ def vue_planification(synthese: dict[str, Any] | None = None) -> str:
     evenements = synthese.get("consommations_par_evenement", [])
     if not isinstance(evenements, list):
         evenements = []
+    echeances = synthese.get("echeances", [])
+    if not isinstance(echeances, list):
+        echeances = []
     signaux = synthese.get("signaux", [])
     if not isinstance(signaux, list):
         signaux = []
@@ -969,8 +1015,7 @@ def vue_planification(synthese: dict[str, Any] | None = None) -> str:
         ("Statut global", resume.get("statut", TIRET)),
         ("Jours posés", formater_quantite_jour(resume.get("jours_consommes"))),
         ("Jours expirés", formater_quantite_jour(resume.get("jours_expires"))),
-        ("Jours crédités", formater_quantite_jour(resume.get("jours_credites"))),
-        ("Reste agrégé final", formater_quantite_jour(resume.get("jours_finaux_agreges"))),
+        (libelle_reste_fin_projection(resume.get("date_fin_projection")), formater_quantite_jour(resume.get("jours_finaux_agreges"))),
     ]
     cartes = "".join(carte_indicateur_planification(label, valeur) for label, valeur in indicateurs)
     return f"""
@@ -983,9 +1028,11 @@ def vue_planification(synthese: dict[str, Any] | None = None) -> str:
       <div class="resume-cards">{cartes}</div>
     </section>
     <div class="grille">
+      {liste_echeances_planification(echeances)}
       {tableau_dates_cibles_synthese(dates_cibles)}
       {tableau_evenements_consommateurs(evenements)}
     </div>
+    {section_secondaire_planification(resume)}
     {liste_signaux_planification(signaux)}
     {details_techniques_planification(synthese)}
     """

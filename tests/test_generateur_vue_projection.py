@@ -173,10 +173,23 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("4,5 j", html)
         self.assertIn("Jours expirés", html)
         self.assertIn("2 j", html)
+        self.assertIn("Reste au 31 décembre 2026", html)
         self.assertIn("bloc_noel", html)
         self.assertIn("Signaux", html)
         self.assertIn("jours_expires", html)
         self.assertIn("Détails techniques par compteur", html)
+
+    def test_generation_html_planification_actionnable(self) -> None:
+        html = generer_html(self._charger_exemple(), synthese=self._synthese_factice())
+
+        self.assertIn("Échéances importantes", html)
+        self.assertIn("31 décembre 2026", html)
+        self.assertIn("1 j expire", html)
+        self.assertIn("Compteur technique : CANC", html)
+        self.assertIn("Action : À utiliser avant cette date si possible.", html)
+        self.assertNotIn("Jours crédités", html)
+        self.assertIn("Jours ajoutés dans la période", html)
+        self.assertIn("Détails techniques du signal", html)
 
     def test_generation_html_titre_compact(self) -> None:
         html = generer_html(self._charger_exemple())
@@ -357,7 +370,19 @@ class TestGenerateurVueProjection(unittest.TestCase):
                 "jours_debites_techniques": 0.0,
                 "nombre_signaux": 1,
                 "statut": "attention",
+                "date_fin_projection": "2026-12-31",
             },
+            "echeances": [
+                {
+                    "type": "expiration",
+                    "date": "2026-12-31",
+                    "quantite": 1.0,
+                    "compteur_technique": "CANC",
+                    "identifiant": "expiration_canc_2026",
+                    "message": "1 j expire le 2026-12-31.",
+                    "action_suggeree": "À utiliser avant cette date si possible.",
+                }
+            ],
             "consommations_par_evenement": [
                 {
                     "identifiant": "bloc_noel",
@@ -382,7 +407,17 @@ class TestGenerateurVueProjection(unittest.TestCase):
                     "type": "jours_expires",
                     "severite": "attention",
                     "message": "Des jours expirent dans ce scénario.",
-                    "details": {"jours_expires": 2.0},
+                    "details": {
+                        "jours_expires": 2.0,
+                        "echeances": [
+                            {
+                                "type": "expiration",
+                                "date": "2026-12-31",
+                                "quantite": 1.0,
+                                "compteur_technique": "CANC",
+                            }
+                        ],
+                    },
                 }
             ],
             "details_techniques": {

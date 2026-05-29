@@ -53,11 +53,12 @@ Elle doit afficher d’abord :
 
 - les jours posés ;
 - les jours expirés ;
-- le reste agrégé final ;
+- le reste agrégé final daté ;
+- les échéances importantes, notamment les expirations ;
 - les principaux blocs consommateurs ;
 - les signaux utilisateur.
 
-Les compteurs techniques Chronotime restent disponibles ensuite, dans des détails repliables. Cette vue ne fait pas d’optimisation, ne modifie pas le scénario et ne recalcule pas les règles métier.
+Les échéances datées préfigurent les futurs repères graphiques de la vue en écluses. Les compteurs techniques Chronotime restent disponibles ensuite, dans des détails repliables. Cette vue ne fait pas d’optimisation, ne modifie pas le scénario et ne recalcule pas les règles métier.
 
 ## Vue 3 : Calendrier Annuel Compact
 

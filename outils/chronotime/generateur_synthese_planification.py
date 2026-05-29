@@ -110,6 +110,37 @@ def signal_unite_non_agregee(mouvement: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def message_expiration(date_expiration: Any, quantite: float) -> str:
+    quantite_texte = f"{arrondir(quantite):g} j"
+    if date_expiration:
+        return f"{quantite_texte} expire le {date_expiration}."
+    return f"{quantite_texte} expire, mais la date d'expiration manque."
+
+
+def echeance_expiration(mouvement: dict[str, Any], quantite: float) -> dict[str, Any]:
+    date_expiration = mouvement.get("date") or None
+    return {
+        "type": "expiration",
+        "date": date_expiration,
+        "quantite": arrondir(quantite),
+        "compteur_technique": mouvement.get("compteur"),
+        "identifiant": mouvement.get("identifiant"),
+        "message": message_expiration(date_expiration, quantite),
+        "action_suggeree": "À utiliser avant cette date si possible.",
+    }
+
+
+def trier_echeances(echeances: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        echeances,
+        key=lambda echeance: (
+            str(echeance.get("date") or "9999-99-99"),
+            str(echeance.get("type") or ""),
+            str(echeance.get("compteur_technique") or ""),
+        ),
+    )
+
+
 def signal_alerte_source(alerte: dict[str, Any], origine: str) -> dict[str, Any]:
     severite = str(alerte.get("severite") or "information")
     return {
@@ -297,6 +328,7 @@ def generer_synthese_planification(projection_brute: Any, mouvements_bruts: Any,
     jours_expires = 0.0
     jours_credites = 0.0
     jours_debites_techniques = 0.0
+    echeances: list[dict[str, Any]] = []
 
     mouvements = mouvements_source.get("mouvements", [])
     if not isinstance(mouvements, list):
@@ -316,19 +348,25 @@ def generer_synthese_planification(projection_brute: Any, mouvements_bruts: Any,
             jours_consommes += abs(variation)
             agreger_consommation_evenement(consommations_agregees, mouvement, variation)
         elif classe == "expiration" and variation < 0:
-            jours_expires += abs(variation)
+            quantite_expiree = abs(variation)
+            jours_expires += quantite_expiree
+            echeances.append(echeance_expiration(mouvement, quantite_expiree))
         elif classe == "credit" and variation > 0:
             jours_credites += variation
         elif classe in {"ajustement", "report", "autre"} and variation < 0:
             jours_debites_techniques += abs(variation)
 
     if jours_expires > 0:
+        echeances_expiration = [echeance for echeance in trier_echeances(echeances) if echeance.get("type") == "expiration"]
         signaux.append(
             {
                 "type": "jours_expires",
                 "severite": "attention",
                 "message": "Des jours expirent dans ce scénario.",
-                "details": {"jours_expires": arrondir(jours_expires)},
+                "details": {
+                    "jours_expires": arrondir(jours_expires),
+                    "echeances": echeances_expiration,
+                },
             }
         )
 
@@ -336,6 +374,7 @@ def generer_synthese_planification(projection_brute: Any, mouvements_bruts: Any,
     ajouter_signaux_soldes(signaux, par_compteur)
 
     resume_global = {
+        "date_fin_projection": projection.get("periode", {}).get("fin") if isinstance(projection.get("periode"), dict) else None,
         "jours_initiaux_agreges": somme_soldes(chronologie.get("soldes_initiaux")),
         "jours_finaux_agreges": somme_soldes(chronologie.get("soldes_finaux")),
         "variation_totale": arrondir(variation_totale),
@@ -353,6 +392,7 @@ def generer_synthese_planification(projection_brute: Any, mouvements_bruts: Any,
         "resume_global": resume_global,
         "consommations_par_evenement": finaliser_consommations(consommations_agregees),
         "soldes_agreges_aux_dates_cibles": dates_cibles_agregees(projection),
+        "echeances": trier_echeances(echeances),
         "signaux": signaux,
         "details_techniques": {
             "par_compteur": par_compteur,

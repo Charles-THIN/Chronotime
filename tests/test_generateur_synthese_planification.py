@@ -38,6 +38,7 @@ class TestGenerateurSynthesePlanification(unittest.TestCase):
         synthese = generer_synthese_planification(self._projection(), self._mouvements(), self._chronologie())
         self.assertEqual(synthese["resume_global"]["jours_initiaux_agreges"], 25.0)
         self.assertEqual(synthese["resume_global"]["jours_finaux_agreges"], 16.5)
+        self.assertEqual(synthese["resume_global"]["date_fin_projection"], "2026-12-31")
 
     def test_consommation_absence_classee_jours_consommes(self) -> None:
         synthese = generer_synthese_planification(self._projection(), self._mouvements(), self._chronologie())
@@ -95,6 +96,39 @@ class TestGenerateurSynthesePlanification(unittest.TestCase):
         synthese = generer_synthese_planification(self._projection(), self._mouvements(), self._chronologie())
         types = [signal["type"] for signal in synthese["signaux"]]
         self.assertIn("jours_expires", types)
+        signal = next(signal for signal in synthese["signaux"] if signal["type"] == "jours_expires")
+        self.assertEqual(signal["details"]["echeances"][0]["identifiant"], "expiration_gcp")
+
+    def test_expiration_cree_echeance(self) -> None:
+        synthese = generer_synthese_planification(self._projection(), self._mouvements(), self._chronologie())
+        echeance = synthese["echeances"][0]
+        self.assertEqual(echeance["type"], "expiration")
+        self.assertEqual(echeance["date"], "2026-10-01")
+        self.assertEqual(echeance["quantite"], 2.0)
+        self.assertEqual(echeance["compteur_technique"], "GCP")
+        self.assertIn("2 j expire", echeance["message"])
+
+    def test_echeances_triees_par_date(self) -> None:
+        mouvements = self._mouvements()
+        mouvements["mouvements"].append(
+            self._mouvement("2026-09-01", "expiration_compteur", "expiration_canc", "CANC", -1.0)
+        )
+        synthese = generer_synthese_planification(self._projection(), mouvements, self._chronologie())
+        self.assertEqual([echeance["date"] for echeance in synthese["echeances"]], ["2026-09-01", "2026-10-01"])
+
+    def test_expiration_sans_date_ne_casse_pas_generation(self) -> None:
+        mouvements = self._mouvements()
+        mouvements["mouvements"].append(
+            self._mouvement(None, "expiration_compteur", "expiration_sans_date", "CANC", -1.0)
+        )
+        synthese = generer_synthese_planification(self._projection(), mouvements, self._chronologie())
+        echeance = next(echeance for echeance in synthese["echeances"] if echeance["identifiant"] == "expiration_sans_date")
+        self.assertIsNone(echeance["date"])
+        self.assertIn("date d'expiration manque", echeance["message"])
+
+    def test_jours_credites_reste_present(self) -> None:
+        synthese = generer_synthese_planification(self._projection(), self._mouvements(), self._chronologie())
+        self.assertEqual(synthese["resume_global"]["jours_credites"], 1.0)
 
     def test_statut_ok_sans_signal_bloquant_ni_attention(self) -> None:
         synthese = generer_synthese_planification(self._projection(), self._mouvements_ok(), self._chronologie_ok())
@@ -175,7 +209,7 @@ class TestGenerateurSynthesePlanification(unittest.TestCase):
 
     def _mouvement(
         self,
-        date: str,
+        date: str | None,
         type_mouvement: str,
         identifiant: str,
         compteur: str,

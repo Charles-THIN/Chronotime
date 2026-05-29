@@ -608,6 +608,7 @@ Forme générale :
   "source": "synthese.planification",
   "periode": {},
   "resume_global": {
+    "date_fin_projection": "2026-12-31",
     "jours_initiaux_agreges": 0.0,
     "jours_finaux_agreges": 0.0,
     "variation_totale": 0.0,
@@ -620,6 +621,7 @@ Forme générale :
   },
   "consommations_par_evenement": [],
   "soldes_agreges_aux_dates_cibles": [],
+  "echeances": [],
   "signaux": [],
   "details_techniques": {
     "par_compteur": {},
@@ -634,6 +636,9 @@ Règles principales :
 - les expirations ne sont pas comptées comme congés posés ;
 - les consommations sont regroupées par événement source ;
 - les dates cibles sont agrégées en jours restants globaux ;
+- `resume_global.date_fin_projection` reprend `projection.periode.fin` pour dater le reste final ;
+- `echeances` liste des repères datés utiles à l’utilisateur ;
+- `echeances[*].type: "expiration"` représente une quantité expirant à une date donnée, avec `quantite`, `compteur_technique`, `identifiant`, `message` et `action_suggeree` ;
 - les signaux exposent les points à surveiller ou bloquants ;
 - les détails par compteur restent techniques et repliables dans la vue HTML.
 
