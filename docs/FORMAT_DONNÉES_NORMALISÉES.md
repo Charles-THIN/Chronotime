@@ -388,12 +388,18 @@ Les événements de compteur sont des événements sources qui expliquent une va
 
 Ils ne sont pas inventés par la GUI.
 
+Le chargeur local produit une forme normalisée avec :
+
+- `source: "evenements_compteurs.normalises"` ;
+- `evenements` ;
+- `resume`.
+
 Forme générale :
 
 ```json
 {
-  "source": "simulation.evenements_compteurs",
-  "evenements_compteurs": [
+  "source": "evenements_compteurs.normalises",
+  "evenements": [
     {
       "identifiant": "credit_gcp_exemple",
       "type": "credit_compteur",
@@ -408,6 +414,14 @@ Forme générale :
   ]
 }
 ```
+
+Le `resume` contient :
+
+- `nombre_evenements` ;
+- `nombres_par_type` ;
+- `quantites_par_compteur`.
+
+Les quantités du résumé restent prudentes : une ouverture de validité n’est pas comptée comme un crédit automatique.
 
 Types prévus :
 

@@ -166,3 +166,35 @@ Ce modèle ne confirme pas :
 - les règles de report.
 
 Ces points restent à vérifier avant toute génération automatique.
+
+## Chargeur local
+
+Le chargeur local `outils/chronotime/chargeur_evenements_compteurs.py` lit un fichier JSON d’événements de compteur et produit une forme normalisée.
+
+Source normalisée :
+
+```json
+{
+  "source": "evenements_compteurs.normalises",
+  "evenements": [],
+  "resume": {
+    "nombre_evenements": 0,
+    "nombres_par_type": {},
+    "quantites_par_compteur": {}
+  }
+}
+```
+
+Validations minimales :
+
+- chaque événement doit avoir un `identifiant` non vide ;
+- chaque événement doit avoir un `type` non vide et autorisé ;
+- `date_effet` doit être une date ISO `YYYY-MM-DD` ;
+- les unités acceptées sont `jour`, `heure` et `demi_journee` ;
+- les quantités sont normalisées en nombres flottants.
+
+Le chargeur ne projette rien.
+
+Il ne génère pas de crédits automatiques, d’expirations automatiques ou de reports automatiques.
+
+Les événements de compteur ne sont pas encore intégrés au projecteur demi-journalier.
