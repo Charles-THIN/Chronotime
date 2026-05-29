@@ -39,9 +39,9 @@ La future vue des soldes pourra s’appuyer sur :
 
 - `projection.demi_journees` ;
 - `mouvements.soldes` ;
-- la future chronologie cumulée des soldes.
+- `chronologie.soldes`.
 
-La chronologie cumulée n’existe pas encore. La vue ne doit donc pas reconstruire seule les règles métier manquantes.
+La GUI ne doit pas recalculer elle-même cette chronologie. Elle doit lire la sortie dérivée produite par le moteur.
 
 ## Vue 3 : Calendrier Annuel Compact
 

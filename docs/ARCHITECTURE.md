@@ -16,8 +16,8 @@ données locales Chronotime
 -> scénario local + obligations locales + événements de compteur
 -> projection.demi_journees
 -> mouvements.soldes
--> future chronologie cumulée des soldes
+-> chronologie.soldes
 -> futures vues
 ```
 
-`projection.demi_journees` et `mouvements.soldes` sont des sorties dérivées. Elles ne sont pas des sources éditables.
+`projection.demi_journees`, `mouvements.soldes` et `chronologie.soldes` sont des sorties dérivées. Elles ne sont pas des sources éditables.

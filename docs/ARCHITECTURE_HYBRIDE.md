@@ -23,12 +23,14 @@ Les sorties dérivées contiennent :
 
 - `projection.demi_journees`, vecteur de demi-journées avec consommations, soldes propagés et alertes ;
 - `mouvements.soldes`, liste de mouvements de solde signés ;
-- la future chronologie cumulée des soldes ;
+- `chronologie.soldes`, chronologie cumulée dérivée des mouvements de solde ;
 - les données prêtes pour les vues.
 
 Ces sorties sont recalculées à partir du modèle événementiel. Elles ne sont pas éditées directement comme source de vérité.
 
 `mouvements.soldes` ne calcule pas encore les soldes cumulés. Il prépare seulement une liste stable de variations élémentaires.
+
+`chronologie.soldes` applique ces mouvements aux soldes initiaux. Elle reste dérivée et non éditable.
 
 ## Pourquoi Garder Le Modèle Événementiel
 
@@ -85,7 +87,7 @@ soldes Chronotime normalisés
 + événements de compteur
 -> projection.demi_journees
 -> mouvements.soldes
--> chronologie cumulée des soldes future
+-> chronologie.soldes
 -> vues
 ```
 
@@ -138,5 +140,7 @@ Les événements sources sont la vérité éditable.
 `projection.demi_journees` est dérivée, recalculée, et destinée à l’affichage et aux lectures rapides.
 
 `mouvements.soldes` est dérivé de `projection.demi_journees` et des événements de compteur transportés. Il n’est pas éditable et ne calcule pas encore les soldes cumulés.
+
+`chronologie.soldes` est dérivé de `projection.demi_journees` et de `mouvements.soldes`. Il cumule les mouvements par code de compteur, sans gérer encore la validité fine par période.
 
 Les actions utilisateur futures modifieront les sources événementielles, jamais directement les sorties dérivées.

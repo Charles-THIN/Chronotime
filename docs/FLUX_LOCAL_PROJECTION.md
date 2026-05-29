@@ -8,6 +8,7 @@ fichiers JSON locaux
 -> vérification des obligations
 -> projection demi-journalière
 -> mouvements de solde optionnels
+-> chronologie cumulée optionnelle
 ```
 
 ## Entrées
@@ -57,6 +58,21 @@ python outils/chronotime/generateur_mouvements_soldes.py donnees_locales/project
 La sortie `mouvements.soldes` est dérivée. Elle ne calcule pas encore une chronologie cumulée des soldes.
 
 Le fichier `donnees_locales/mouvements_soldes.json` ne doit pas être suivi par Git.
+
+## Étape Aval Optionnelle : Chronologie Des Soldes
+
+Les mouvements signés peuvent ensuite être cumulés :
+
+```powershell
+python outils/chronotime/generateur_chronologie_soldes.py `
+  --projection donnees_locales/projection_avec_evenements_compteurs.json `
+  --mouvements donnees_locales/mouvements_soldes.json `
+  --sortie donnees_locales/chronologie_soldes.json
+```
+
+La sortie `chronologie.soldes` est dérivée. Elle cumule les mouvements par code de compteur, sans gérer encore la validité fine par période `precedent`, `courant` ou `suivant`.
+
+Le fichier `donnees_locales/chronologie_soldes.json` ne doit pas être suivi par Git.
 
 ## Exemple De Commande Locale
 

@@ -42,7 +42,7 @@ Ce document liste les points encore ouverts avant de figer un moteur de calcul p
 - Les expirations futures doivent-elles être projetées au jour près ou seulement par période ?
 - Les alertes doivent-elles distinguer manque de solde, incompatibilité de compteur et unité non projetée ?
 - Le projecteur V1 doit-il gérer les jours fériés publics ?
-- Définir la future chronologie cumulée des soldes à partir de `mouvements.soldes`.
+- Vérifier si `chronologie.soldes` doit devenir sensible aux périodes `precedent`, `courant` et `suivant` pour les reports et expirations fines.
 
 ## Événements de compteur
 

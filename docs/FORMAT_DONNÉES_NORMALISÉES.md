@@ -527,8 +527,72 @@ Règles principales :
 - les ajustements conservent le signe fourni ;
 - les ouvertures de validité et reports informatifs restent dans `evenements_informatifs` ;
 - les reports opérationnels complets produisent deux mouvements, source négative et destination positive ;
-- les mouvements préparent la future chronologie des soldes.
+- les mouvements alimentent la chronologie des soldes.
 - le résumé contient `nombre_mouvements`, `nombre_evenements_informatifs` et `nombre_alertes`.
+
+## Chronologie Des Soldes
+
+Le générateur de chronologie lit une projection `projection.demi_journees` et une sortie `mouvements.soldes`, puis applique les mouvements signés aux soldes initiaux.
+
+Cette sortie est dérivée. Elle ne remplace pas la projection, ne modifie pas les mouvements et ne devient pas une source éditable.
+
+Forme générale :
+
+```json
+{
+  "source": "chronologie.soldes",
+  "periode": {
+    "debut": "2026-05-20",
+    "fin": "2026-12-31"
+  },
+  "soldes_initiaux": {
+    "GCP": 20.0,
+    "JRTT": 4.0
+  },
+  "points_chronologie": [
+    {
+      "date": "2026-08-10",
+      "portion": "matin",
+      "ordre": 10,
+      "origine": "consommation_projection",
+      "type": "consommation_absence",
+      "identifiant": "fermeture_ete_2026",
+      "compteur": "GCP",
+      "variation": -0.5,
+      "soldes_avant": {
+        "GCP": 20.0,
+        "JRTT": 4.0
+      },
+      "soldes_apres": {
+        "GCP": 19.5,
+        "JRTT": 4.0
+      },
+      "details": {}
+    }
+  ],
+  "soldes_finaux": {
+    "GCP": 19.5,
+    "JRTT": 4.0
+  },
+  "alertes": [],
+  "resume": {
+    "nombre_mouvements": 1,
+    "nombre_points_chronologie": 1,
+    "nombre_alertes": 0
+  }
+}
+```
+
+Règles principales :
+
+- l’état initial vient de `projection.soldes_initiaux` ;
+- les mouvements sont lus depuis `mouvements.soldes.mouvements` ;
+- chaque mouvement valide produit un point de chronologie avec `soldes_avant` et `soldes_apres` ;
+- les alertes de `mouvements.soldes` sont conservées ;
+- les mouvements invalides sont ignorés avec une alerte informative ;
+- un compteur absent des soldes initiaux est initialisé à `0.0` avec une alerte informative ;
+- la chronologie cumule les soldes par code de compteur ;
+- la validité fine par période `precedent`, `courant` ou `suivant` n’est pas encore gérée.
 
 ## Orchestrateur Local De Projection
 
