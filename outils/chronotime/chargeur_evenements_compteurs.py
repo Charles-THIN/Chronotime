@@ -130,6 +130,17 @@ def valider_quantite(quantite: float | None, type_evenement: str) -> None:
         raise ValueError(f"Le type '{type_evenement}' exige une quantité et une unité.")
 
 
+def determiner_mode_report(evenement_brut: dict[str, Any]) -> str | None:
+    if valider_texte_non_vide(evenement_brut, "type") != "report_compteur":
+        return None
+
+    compteur_source = texte_non_vide_ou_none(evenement_brut, "compteur_source")
+    compteur_destination = texte_non_vide_ou_none(evenement_brut, "compteur_destination")
+    if compteur_source is not None and compteur_destination is not None:
+        return "operationnel"
+    return "informatif"
+
+
 def normaliser_evenement(evenement_brut: Any) -> dict[str, Any]:
     if not isinstance(evenement_brut, dict):
         raise ValueError(f"Événement de compteur invalide : {evenement_brut!r}")
@@ -164,6 +175,10 @@ def normaliser_evenement(evenement_brut: Any) -> dict[str, Any]:
         if valeur is not None:
             evenement[champ] = valeur
 
+    mode_report = determiner_mode_report(evenement_brut)
+    if mode_report is not None:
+        evenement["mode_report"] = mode_report
+
     return evenement
 
 
@@ -184,6 +199,8 @@ def variation_resume(evenement: dict[str, Any]) -> dict[str, float]:
     if type_evenement == "consommation_absence" and compteur:
         return {str(compteur): -float(quantite)}
     if type_evenement == "report_compteur":
+        if evenement.get("mode_report") != "operationnel":
+            return {}
         variations: dict[str, float] = {}
         compteur_source = evenement.get("compteur_source")
         compteur_destination = evenement.get("compteur_destination")

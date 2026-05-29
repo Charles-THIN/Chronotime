@@ -445,6 +445,13 @@ Types prévus :
 - `ajustement_compteur` ;
 - `consommation_absence`.
 
+Le champ `mode_report` n’existe que pour `report_compteur` :
+
+- `mode_report: "informatif"` pour un report simple, documentaire, sans effet moteur futur tant qu’aucune source et destination ne sont précisées ;
+- `mode_report: "operationnel"` pour un report détaillé, seul candidat à une future application source -> destination.
+
+Un `report_compteur` informatif ne contribue pas à `resume.quantites_par_compteur`.
+
 Les périodes Chronotime `precedent`, `courant` et `suivant` restent des stocks observés. Elles ne doivent pas être converties automatiquement en événements de compteur sans règle explicite et vérifiable.
 
 Le modèle détaillé est documenté dans [docs/MODÈLE_ÉVÉNEMENTS_COMPTEURS.md](./MODÈLE_ÉVÉNEMENTS_COMPTEURS.md).

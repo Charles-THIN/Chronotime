@@ -102,6 +102,31 @@ class TestChargeurEvenementsCompteurs(unittest.TestCase):
         donnees = self._donnees_minimales({"type": "report_compteur", "compteur": "GCP"})
         evenement = normaliser_evenements_compteurs(donnees)["evenements"][0]
         self.assertEqual(evenement["compteur"], "GCP")
+        self.assertEqual(evenement["mode_report"], "informatif")
+
+    def test_report_compteur_detaille_produit_mode_operationnel(self) -> None:
+        donnees = self._donnees_minimales(
+            {
+                "type": "report_compteur",
+                "compteur": "",
+                "compteur_source": "GCP",
+                "compteur_destination": "GCP",
+            }
+        )
+        evenement = normaliser_evenements_compteurs(donnees)["evenements"][0]
+        self.assertEqual(evenement["mode_report"], "operationnel")
+
+    def test_report_compteur_mixte_fait_primer_forme_detaillee(self) -> None:
+        donnees = self._donnees_minimales(
+            {
+                "type": "report_compteur",
+                "compteur": "GCP",
+                "compteur_source": "GCP",
+                "compteur_destination": "GCP",
+            }
+        )
+        evenement = normaliser_evenements_compteurs(donnees)["evenements"][0]
+        self.assertEqual(evenement["mode_report"], "operationnel")
 
     def test_report_compteur_sans_compteur_ni_source_destination_refuse(self) -> None:
         donnees = self._donnees_minimales({"type": "report_compteur", "compteur": ""})
@@ -141,6 +166,24 @@ class TestChargeurEvenementsCompteurs(unittest.TestCase):
         self.assertEqual(quantites["GCP"], 1.5)
         self.assertEqual(quantites["CANC"], -1.0)
         self.assertNotIn("JRTT", quantites)
+
+    def test_report_compteur_informatif_ne_contribue_pas_au_resume(self) -> None:
+        donnees = self._donnees_minimales({"type": "report_compteur", "compteur": "GCP"})
+        quantites = normaliser_evenements_compteurs(donnees)["resume"]["quantites_par_compteur"]
+        self.assertEqual(quantites, {})
+
+    def test_report_compteur_operationnel_contribue_au_resume(self) -> None:
+        donnees = self._donnees_minimales(
+            {
+                "type": "report_compteur",
+                "compteur": "",
+                "compteur_source": "GCP",
+                "compteur_destination": "CANC",
+            }
+        )
+        quantites = normaliser_evenements_compteurs(donnees)["resume"]["quantites_par_compteur"]
+        self.assertEqual(quantites["GCP"], -1.0)
+        self.assertEqual(quantites["CANC"], 1.0)
 
     def test_lecture_bom_utf8(self) -> None:
         with tempfile.TemporaryDirectory() as repertoire:

@@ -98,6 +98,26 @@ reliquat 2026 reporté vers 2027
 
 Le projet ne doit pas supposer que `precedent`, `courant` et `suivant` correspondent automatiquement à un report. La conversion en `report_compteur` doit être explicite et vérifiable.
 
+Deux formes sont acceptées :
+
+- forme simple, avec `compteur`, `quantite` et `unite` ;
+- forme détaillée, avec `compteur_source`, `periode_source`, `compteur_destination`, `periode_destination`, `quantite` et `unite`.
+
+La forme simple reste informative. Elle sert à noter qu’un report existe ou est supposé, sans préciser encore la source et la destination exactes.
+
+La forme détaillée est la seule forme destinée à devenir opérationnelle plus tard.
+
+Le champ normalisé `mode_report` n’existe que pour `report_compteur` :
+
+- `mode_report: "informatif"` pour la forme simple ;
+- `mode_report: "operationnel"` pour la forme détaillée.
+
+Un report informatif ne modifie pas les soldes et ne contribue pas au résumé des variations par compteur.
+
+Un report opérationnel pourra être interprété plus tard comme un transfert source -> destination.
+
+L’application réelle des reports aux soldes n’est pas encore implémentée. Les champs `periode_source` et `periode_destination` devront être précisés avant cette application effective, même si le chargeur n’en dépend pas encore strictement pour accepter un report détaillé.
+
 ## `ajustement_compteur`
 
 Un `ajustement_compteur` représente une correction ponctuelle, manuelle ou administrative.
@@ -192,6 +212,7 @@ Validations minimales :
 - `date_effet` doit être normalisé strictement en date ISO `YYYY-MM-DD` ;
 - `compteur` est obligatoire pour `credit_compteur`, `ouverture_validite_compteur`, `expiration_compteur`, `ajustement_compteur` et `consommation_absence` ;
 - `report_compteur` exige soit `compteur`, soit `compteur_source` et `compteur_destination` ;
+- `report_compteur` normalise `mode_report` à `informatif` ou `operationnel` selon la forme fournie ;
 - `quantite` et `unite` sont obligatoires pour `credit_compteur`, `expiration_compteur`, `report_compteur`, `ajustement_compteur` et `consommation_absence` ;
 - `ouverture_validite_compteur` peut rester sans quantité, car elle peut qualifier un stock sans créer de crédit ;
 - les unités acceptées sont `jour`, `heure` et `demi_journee` ;
