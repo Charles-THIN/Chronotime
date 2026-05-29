@@ -325,6 +325,15 @@ Forme générale :
     "JRTT": 4.0,
     "CANC": 5.0
   },
+  "evenements_compteurs": {
+    "source": "evenements_compteurs.normalises",
+    "evenements": [],
+    "resume": {
+      "nombre_evenements": 0,
+      "nombres_par_type": {},
+      "quantites_par_compteur": {}
+    }
+  },
   "evenements_sources": [],
   "demi_journees": [
     {
@@ -354,6 +363,7 @@ Règles principales :
 - `projection.demi_journees` est une projection dérivée, non une source éditable ;
 - chaque date contient deux portions, `matin` et `apres_midi` ;
 - les événements sources viennent des obligations restantes et des blocs actifs du scénario ;
+- `evenements_compteurs` transporte les événements de compteur normalisés pour une projection enrichie future ;
 - les soldes sont propagés demi-journée par demi-journée ;
 - `parametres_projection.periodes_compteurs_par_code` permet de choisir une période différente selon le compteur ;
 - `parametres_projection.soldes_minimums_par_code` permet de définir un minimum autorisé par compteur ;
@@ -367,6 +377,7 @@ Règles principales :
 - `solde_minimum_depasse` indique une consommation bloquée au minimum autorisé ;
 - `evenement_hors_periode_projection` indique un événement source ignoré car hors période de projection ;
 - les soldes aux dates cibles sont lus après la dernière demi-journée de la date.
+- les événements de compteur transportés ne sont pas encore appliqués aux soldes.
 
 Exemple de consommation détaillée :
 
@@ -422,6 +433,8 @@ Le `resume` contient :
 - `quantites_par_compteur`.
 
 Les quantités du résumé restent prudentes : une ouverture de validité n’est pas comptée comme un crédit automatique.
+
+Dans l’entrée et la sortie de projection, la clé `evenements_compteurs` contient cette structure normalisée. Elle prépare les futures courbes de solde sans modifier encore les soldes projetés.
 
 Types prévus :
 

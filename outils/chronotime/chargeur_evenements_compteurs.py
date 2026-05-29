@@ -17,6 +17,20 @@ TYPES_AUTORISES = {
     "consommation_absence",
 }
 UNITES_AUTORISEES = {"jour", "heure", "demi_journee"}
+TYPES_A_COMPTEUR_UNIQUE = {
+    "credit_compteur",
+    "ouverture_validite_compteur",
+    "expiration_compteur",
+    "ajustement_compteur",
+    "consommation_absence",
+}
+TYPES_A_QUANTITE_OBLIGATOIRE = {
+    "credit_compteur",
+    "expiration_compteur",
+    "report_compteur",
+    "ajustement_compteur",
+    "consommation_absence",
+}
 
 
 def lire_json(chemin_entree: Path) -> Any:
@@ -53,10 +67,10 @@ def normaliser_date_iso(valeur_brute: Any) -> str:
 
     texte = valeur_brute.strip()
     try:
-        date.fromisoformat(texte)
+        date_objet = date.fromisoformat(texte)
     except ValueError as erreur:
         raise ValueError(f"Date ISO invalide : {valeur_brute!r}") from erreur
-    return texte
+    return date_objet.isoformat()
 
 
 def normaliser_quantite(valeur_brute: Any, unite_brute: Any) -> tuple[float | None, str | None]:
@@ -88,6 +102,34 @@ def valider_texte_non_vide(evenement: dict[str, Any], champ: str) -> str:
     return valeur.strip()
 
 
+def texte_non_vide_ou_none(evenement: dict[str, Any], champ: str) -> str | None:
+    valeur = evenement.get(champ)
+    if valeur is None:
+        return None
+    texte = str(valeur).strip()
+    return texte or None
+
+
+def valider_compteur(evenement: dict[str, Any], type_evenement: str) -> None:
+    compteur = texte_non_vide_ou_none(evenement, "compteur")
+    if type_evenement in TYPES_A_COMPTEUR_UNIQUE and compteur is None:
+        raise ValueError(f"Le type '{type_evenement}' exige un champ 'compteur' non vide.")
+
+    if type_evenement == "report_compteur":
+        compteur_source = texte_non_vide_ou_none(evenement, "compteur_source")
+        compteur_destination = texte_non_vide_ou_none(evenement, "compteur_destination")
+        if compteur is None and (compteur_source is None or compteur_destination is None):
+            raise ValueError(
+                "Le type 'report_compteur' exige soit un champ 'compteur' non vide, "
+                "soit 'compteur_source' et 'compteur_destination' non vides."
+            )
+
+
+def valider_quantite(quantite: float | None, type_evenement: str) -> None:
+    if type_evenement in TYPES_A_QUANTITE_OBLIGATOIRE and quantite is None:
+        raise ValueError(f"Le type '{type_evenement}' exige une quantité et une unité.")
+
+
 def normaliser_evenement(evenement_brut: Any) -> dict[str, Any]:
     if not isinstance(evenement_brut, dict):
         raise ValueError(f"Événement de compteur invalide : {evenement_brut!r}")
@@ -98,6 +140,8 @@ def normaliser_evenement(evenement_brut: Any) -> dict[str, Any]:
         raise ValueError(f"Type d'événement de compteur inconnu : {type_evenement!r}")
 
     quantite, unite = normaliser_quantite(evenement_brut.get("quantite"), evenement_brut.get("unite"))
+    valider_compteur(evenement_brut, type_evenement)
+    valider_quantite(quantite, type_evenement)
 
     evenement = {
         "identifiant": identifiant,
@@ -108,15 +152,17 @@ def normaliser_evenement(evenement_brut: Any) -> dict[str, Any]:
         "notes": str(evenement_brut.get("notes") or ""),
     }
 
-    if evenement_brut.get("compteur") not in (None, ""):
-        evenement["compteur"] = str(evenement_brut["compteur"]).strip()
+    compteur = texte_non_vide_ou_none(evenement_brut, "compteur")
+    if compteur is not None:
+        evenement["compteur"] = compteur
     if quantite is not None:
         evenement["quantite"] = quantite
         evenement["unite"] = unite
 
     for champ in ("compteur_source", "periode_source", "compteur_destination", "periode_destination"):
-        if evenement_brut.get(champ) not in (None, ""):
-            evenement[champ] = str(evenement_brut[champ]).strip()
+        valeur = texte_non_vide_ou_none(evenement_brut, champ)
+        if valeur is not None:
+            evenement[champ] = valeur
 
     return evenement
 

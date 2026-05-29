@@ -10,6 +10,10 @@ if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 from outils.chronotime.chargeur_obligations import normaliser_obligations
+from outils.chronotime.chargeur_evenements_compteurs import (
+    SOURCE_NORMALISEE as SOURCE_EVENEMENTS_COMPTEURS,
+    normaliser_evenements_compteurs,
+)
 from outils.chronotime.chargeur_scenarios import normaliser_scenario
 from outils.chronotime.parseur_agenda import normaliser_donnees as normaliser_agenda
 from outils.chronotime.parseur_soldes_absences import normaliser_donnees as normaliser_soldes
@@ -110,6 +114,18 @@ def analyser_jours_non_decomptes(valeur: str | None) -> list[str]:
     return [jour.strip() for jour in valeur.split(",") if jour.strip()]
 
 
+def evenements_compteurs_vides() -> dict[str, Any]:
+    return {
+        "source": SOURCE_EVENEMENTS_COMPTEURS,
+        "evenements": [],
+        "resume": {
+            "nombre_evenements": 0,
+            "nombres_par_type": {},
+            "quantites_par_compteur": {},
+        },
+    }
+
+
 def enrichir_verification_obligations(
     verification_obligations: dict[str, Any],
     obligations_normalisees: dict[str, Any],
@@ -148,12 +164,14 @@ def construire_entrees_projection(
     jours_non_decomptes: list[str],
     dates_cibles: list[dict[str, Any]],
     ordre_compteurs_sans_preference: list[str],
+    evenements_compteurs: dict[str, Any],
 ) -> dict[str, Any]:
     return {
         "source": "projection.demi_journees.entrees",
         "soldes": soldes_normalises,
         "scenario": scenario_normalise,
         "verification_obligations": verification_obligations,
+        "evenements_compteurs": evenements_compteurs,
         "parametres_projection": {
             "periode_compteurs": periode_compteurs,
             "periodes_compteurs_par_code": periodes_compteurs_par_code,
@@ -172,23 +190,33 @@ def orchestrer_projection(arguments: argparse.Namespace) -> dict[str, Any]:
     agenda_normalise = normaliser_agenda(lire_json(arguments.agenda))
     scenario_normalise = normaliser_scenario(lire_json(arguments.scenario))
     obligations_normalisees = normaliser_obligations(lire_json(arguments.obligations))
+    if arguments.evenements_compteurs:
+        evenements_compteurs = normaliser_evenements_compteurs(lire_json(arguments.evenements_compteurs))
+    else:
+        evenements_compteurs = evenements_compteurs_vides()
 
     verification = verifier_obligations(obligations_normalisees, agenda_normalise)
     verification = enrichir_verification_obligations(verification, obligations_normalisees)
     dates_cibles = analyser_dates_cibles(arguments.date_cible, scenario_normalise)
+    periode_scenario = scenario_normalise.get("scenario", {}).get("periode", {})
+    date_depart = arguments.date_depart or periode_scenario.get("debut")
+    date_fin = arguments.date_fin or periode_scenario.get("fin")
+    if not date_depart or not date_fin:
+        raise ValueError("L'orchestrateur exige --date-depart et --date-fin, ou une période dans le scénario.")
 
     entrees_projection = construire_entrees_projection(
         soldes_normalises=soldes_normalises,
         scenario_normalise=scenario_normalise,
         verification_obligations=verification,
-        date_depart=arguments.date_depart,
-        date_fin=arguments.date_fin,
+        date_depart=date_depart,
+        date_fin=date_fin,
         periode_compteurs=arguments.periode_compteurs,
         periodes_compteurs_par_code=analyser_periodes_compteurs_par_code(arguments.periodes_compteurs_par_code),
         soldes_minimums_par_code=analyser_soldes_minimums_par_code(arguments.soldes_minimums_par_code),
         jours_non_decomptes=analyser_jours_non_decomptes(arguments.jours_non_decomptes),
         dates_cibles=dates_cibles,
         ordre_compteurs_sans_preference=analyser_ordre_compteurs(arguments.ordre_compteurs_sans_preference),
+        evenements_compteurs=evenements_compteurs,
     )
     return projeter_demi_journees(entrees_projection)
 
@@ -201,8 +229,9 @@ def analyser_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     analyseur.add_argument("--agenda", required=True, type=Path, help="Fichier JSON local de l'agenda Chronotime.")
     analyseur.add_argument("--obligations", required=True, type=Path, help="Fichier JSON local des obligations.")
     analyseur.add_argument("--scenario", required=True, type=Path, help="Fichier JSON local du scénario.")
-    analyseur.add_argument("--date-depart", required=True, help="Date de départ de projection au format YYYY-MM-DD.")
-    analyseur.add_argument("--date-fin", required=True, help="Date de fin de projection au format YYYY-MM-DD.")
+    analyseur.add_argument("--evenements-compteurs", type=Path, help="Fichier JSON local des événements de compteur.")
+    analyseur.add_argument("--date-depart", help="Date de départ de projection au format YYYY-MM-DD.")
+    analyseur.add_argument("--date-fin", help="Date de fin de projection au format YYYY-MM-DD.")
     analyseur.add_argument("--date-cible", action="append", help="Date cible au format identifiant=libelle=YYYY-MM-DD.")
     analyseur.add_argument("--periode-compteurs", default="courant", help="Période de compteurs à utiliser.")
     analyseur.add_argument(

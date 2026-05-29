@@ -76,10 +76,59 @@ class TestChargeurEvenementsCompteurs(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Date ISO invalide"):
             normaliser_evenements_compteurs(donnees)
 
+    def test_date_normalisee_stricte(self) -> None:
+        evenement = self._charger_exemple_normalise()["evenements"][0]
+        self.assertEqual(evenement["date_effet"], "2026-06-01")
+
     def test_quantite_numerique_normalisee_en_float(self) -> None:
         evenement = self._charger_exemple_normalise()["evenements"][0]
         self.assertIsInstance(evenement["quantite"], float)
         self.assertEqual(evenement["quantite"], 2.0)
+
+    def test_compteur_obligatoire_pour_types_a_compteur_unique(self) -> None:
+        for type_evenement in (
+            "credit_compteur",
+            "ouverture_validite_compteur",
+            "expiration_compteur",
+            "ajustement_compteur",
+            "consommation_absence",
+        ):
+            with self.subTest(type_evenement=type_evenement):
+                donnees = self._donnees_minimales({"type": type_evenement, "compteur": "   "})
+                with self.assertRaisesRegex(ValueError, f"Le type '{type_evenement}' exige"):
+                    normaliser_evenements_compteurs(donnees)
+
+    def test_report_compteur_avec_compteur_simple_accepte(self) -> None:
+        donnees = self._donnees_minimales({"type": "report_compteur", "compteur": "GCP"})
+        evenement = normaliser_evenements_compteurs(donnees)["evenements"][0]
+        self.assertEqual(evenement["compteur"], "GCP")
+
+    def test_report_compteur_sans_compteur_ni_source_destination_refuse(self) -> None:
+        donnees = self._donnees_minimales({"type": "report_compteur", "compteur": ""})
+        with self.assertRaisesRegex(ValueError, "report_compteur"):
+            normaliser_evenements_compteurs(donnees)
+
+    def test_quantite_obligatoire_pour_types_quantifies(self) -> None:
+        for type_evenement in (
+            "credit_compteur",
+            "expiration_compteur",
+            "report_compteur",
+            "ajustement_compteur",
+            "consommation_absence",
+        ):
+            with self.subTest(type_evenement=type_evenement):
+                surcharge = {"type": type_evenement, "quantite": None}
+                if type_evenement == "report_compteur":
+                    surcharge["compteur"] = "GCP"
+                donnees = self._donnees_minimales(surcharge)
+                with self.assertRaisesRegex(ValueError, f"Le type '{type_evenement}' exige une quantité"):
+                    normaliser_evenements_compteurs(donnees)
+
+    def test_ouverture_validite_sans_quantite_acceptee(self) -> None:
+        donnees = self._donnees_minimales({"type": "ouverture_validite_compteur", "quantite": None, "unite": None})
+        evenement = normaliser_evenements_compteurs(donnees)["evenements"][0]
+        self.assertEqual(evenement["type"], "ouverture_validite_compteur")
+        self.assertNotIn("quantite", evenement)
 
     def test_resume_compte_evenements_par_type(self) -> None:
         resume = self._charger_exemple_normalise()["resume"]

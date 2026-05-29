@@ -11,12 +11,16 @@ fichiers JSON locaux
 
 ## Entrées
 
-Le flux prend quatre fichiers :
+Le flux prend quatre fichiers obligatoires :
 
 - soldes Chronotime `soldeabs` ;
 - agenda Chronotime `agenda` ;
 - obligations locales ;
 - scénario local.
+
+Il accepte aussi une cinquième entrée facultative :
+
+- événements de compteur.
 
 Les vrais fichiers utilisateur doivent rester dans `donnees_locales/`. Les fichiers sous `donnees/exemples/` sont artificiels ou anonymisés.
 
@@ -28,6 +32,7 @@ L’orchestrateur :
 - normalise l’agenda avec le parseur `agenda` ;
 - normalise le scénario local ;
 - normalise les obligations locales ;
+- normalise les événements de compteur si un fichier est fourni ;
 - vérifie les obligations avec l’agenda normalisé ;
 - assemble l’entrée attendue par le projecteur ;
 - lance la projection demi-journalière.
@@ -35,6 +40,8 @@ L’orchestrateur :
 ## Sortie
 
 La sortie est directement le format `projection.demi_journees`.
+
+Les événements de compteur sont transportés dans la projection sous `evenements_compteurs`, mais ils ne sont pas encore appliqués aux soldes.
 
 Aucun fichier intermédiaire n’est écrit sauf si l’option `--sortie` est fournie pour la projection finale.
 
@@ -46,6 +53,7 @@ python outils/chronotime/orchestrateur_projection.py `
   --agenda donnees_locales/agenda_chronotime.json `
   --obligations donnees_locales/obligations_conges_2026.json `
   --scenario donnees_locales/scenario_vide.json `
+  --evenements-compteurs donnees_locales/evenements_compteurs.json `
   --date-depart 2026-05-20 `
   --date-fin 2026-12-31 `
   --periode-compteurs courant `
@@ -55,6 +63,8 @@ python outils/chronotime/orchestrateur_projection.py `
   --date-cible noel=Noël=2026-12-25 `
   --sortie donnees_locales/projection_obligations_seules.json
 ```
+
+Si `--date-depart` et `--date-fin` ne sont pas fournis, l’orchestrateur utilise la période du scénario local.
 
 Les valeurs `GCP=suivant`, `JRTT=-10` et les jours non décomptés sont des hypothèses opérationnelles à vérifier.
 

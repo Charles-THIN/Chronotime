@@ -21,6 +21,7 @@ class TestOrchestrateurProjection(unittest.TestCase):
     def test_execution_avec_quatre_fichiers_exemple(self) -> None:
         projection = self._orchestrer_avec_date_cible()
         self.assertEqual(projection["source"], "projection.demi_journees")
+        self.assertEqual(projection["evenements_compteurs"]["resume"]["nombre_evenements"], 0)
 
     def test_presence_demi_journees(self) -> None:
         projection = self._orchestrer_avec_date_cible()
@@ -40,6 +41,16 @@ class TestOrchestrateurProjection(unittest.TestCase):
         projection = self._orchestrer_sans_date_cible()
         self.assertEqual(projection["soldes_aux_dates_cibles"][0]["identifiant"], "noel")
         self.assertEqual(projection["soldes_aux_dates_cibles"][0]["date"], "2026-12-25")
+
+    def test_dates_projection_depuis_scenario_si_options_absentes(self) -> None:
+        arguments = [
+            argument
+            for index, argument in enumerate(self._arguments_communs())
+            if argument not in {"--date-depart", "--date-fin"}
+            and (index == 0 or self._arguments_communs()[index - 1] not in {"--date-depart", "--date-fin"})
+        ]
+        projection = orchestrer_projection(analyser_arguments(arguments))
+        self.assertEqual(projection["periode"], {"debut": "2026-05-01", "fin": "2027-04-30"})
 
     def test_parsing_periodes_compteurs_par_code(self) -> None:
         self.assertEqual(
@@ -111,6 +122,37 @@ class TestOrchestrateurProjection(unittest.TestCase):
             )
             projection = json.loads(chemin_sortie.read_text(encoding="utf-8"))
             self.assertGreater(projection["resume"]["nombre_demi_journees"], 0)
+
+    def test_orchestrateur_avec_evenements_compteurs(self) -> None:
+        projection = orchestrer_projection(
+            analyser_arguments(
+                [
+                    *self._arguments_communs(),
+                    "--evenements-compteurs",
+                    "donnees/exemples/evenements_compteurs.exemple.json",
+                ]
+            )
+        )
+        self.assertEqual(projection["evenements_compteurs"]["source"], "evenements_compteurs.normalises")
+        self.assertEqual(projection["evenements_compteurs"]["resume"]["nombre_evenements"], 5)
+
+    def test_soldes_inchanges_avec_evenements_compteurs_non_appliques(self) -> None:
+        projection_sans = orchestrer_projection(analyser_arguments(self._arguments_communs(options_projection=True)))
+        projection_avec = orchestrer_projection(
+            analyser_arguments(
+                [
+                    *self._arguments_communs(options_projection=True),
+                    "--evenements-compteurs",
+                    "donnees/exemples/evenements_compteurs.exemple.json",
+                ]
+            )
+        )
+        self.assertEqual(projection_avec["soldes_initiaux"], projection_sans["soldes_initiaux"])
+        self.assertEqual(projection_avec["soldes_aux_dates_cibles"], projection_sans["soldes_aux_dates_cibles"])
+        self.assertEqual(
+            [demi_journee["soldes_apres"] for demi_journee in projection_avec["demi_journees"]],
+            [demi_journee["soldes_apres"] for demi_journee in projection_sans["demi_journees"]],
+        )
 
     def _orchestrer_avec_date_cible(self) -> dict[str, object]:
         return orchestrer_projection(analyser_arguments(self._arguments_communs()))

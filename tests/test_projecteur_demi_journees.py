@@ -51,6 +51,35 @@ class TestProjecteurDemiJournees(unittest.TestCase):
         demi_journees = creer_vecteur_demi_journees("2026-05-20", "2026-05-21")
         self.assertEqual(len(demi_journees), 4)
 
+    def test_recopie_evenements_compteurs(self) -> None:
+        donnees = self._donnees_projection_minimum("GCP", 1.0, 0.5)
+        donnees["evenements_compteurs"] = self._evenements_compteurs_transportes("credit_compteur", "GCP", 2.0)
+        projection = projeter_demi_journees(donnees)
+        self.assertEqual(projection["evenements_compteurs"]["resume"]["nombre_evenements"], 1)
+        self.assertEqual(projection["evenements_compteurs"]["evenements"][0]["type"], "credit_compteur")
+
+    def test_evenements_compteurs_vides_si_absents(self) -> None:
+        projection = projeter_demi_journees(self._donnees_projection_minimum("GCP", 1.0, 0.5))
+        self.assertEqual(projection["evenements_compteurs"]["source"], "evenements_compteurs.normalises")
+        self.assertEqual(projection["evenements_compteurs"]["resume"]["nombre_evenements"], 0)
+
+    def test_credit_compteur_transporte_ne_modifie_pas_soldes_initiaux(self) -> None:
+        donnees = self._donnees_projection_minimum("GCP", 1.0, 0.5)
+        donnees["evenements_compteurs"] = self._evenements_compteurs_transportes("credit_compteur", "GCP", 10.0)
+        projection = projeter_demi_journees(donnees)
+        self.assertEqual(projection["soldes_initiaux"]["GCP"], 1.0)
+
+    def test_expiration_compteur_transportee_ne_modifie_pas_soldes_propages(self) -> None:
+        donnees_sans = self._donnees_projection_minimum("GCP", 1.0, 0.5)
+        donnees_avec = copy.deepcopy(donnees_sans)
+        donnees_avec["evenements_compteurs"] = self._evenements_compteurs_transportes("expiration_compteur", "GCP", 10.0)
+        projection_sans = projeter_demi_journees(donnees_sans)
+        projection_avec = projeter_demi_journees(donnees_avec)
+        self.assertEqual(
+            [demi_journee["soldes_apres"] for demi_journee in projection_avec["demi_journees"]],
+            [demi_journee["soldes_apres"] for demi_journee in projection_sans["demi_journees"]],
+        )
+
     def test_presence_matin_et_apres_midi(self) -> None:
         demi_journees = creer_vecteur_demi_journees("2026-05-20", "2026-05-20")
         self.assertEqual([demi_journee["portion"] for demi_journee in demi_journees], ["matin", "apres_midi"])
@@ -362,6 +391,29 @@ class TestProjecteurDemiJournees(unittest.TestCase):
         donnees["parametres_projection"]["date_fin"] = "2026-12-31"
         donnees["parametres_projection"]["jours_non_decomptes"] = ["2026-12-25"]
         return donnees
+
+    def _evenements_compteurs_transportes(self, type_evenement: str, compteur: str, quantite: float) -> dict[str, object]:
+        return {
+            "source": "evenements_compteurs.normalises",
+            "evenements": [
+                {
+                    "identifiant": f"{type_evenement}_test",
+                    "type": type_evenement,
+                    "date_effet": "2026-05-20",
+                    "compteur": compteur,
+                    "quantite": quantite,
+                    "unite": "jour",
+                    "source": "test",
+                    "statut_certitude": "a_verifier",
+                    "notes": "",
+                }
+            ],
+            "resume": {
+                "nombre_evenements": 1,
+                "nombres_par_type": {type_evenement: 1},
+                "quantites_par_compteur": {compteur: quantite},
+            },
+        }
 
     def _projeter_exemple(self) -> dict[str, object]:
         return projeter_demi_journees(copy.deepcopy(self._charger_entrees()))

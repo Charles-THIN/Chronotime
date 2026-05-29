@@ -189,7 +189,11 @@ Validations minimales :
 
 - chaque événement doit avoir un `identifiant` non vide ;
 - chaque événement doit avoir un `type` non vide et autorisé ;
-- `date_effet` doit être une date ISO `YYYY-MM-DD` ;
+- `date_effet` doit être normalisé strictement en date ISO `YYYY-MM-DD` ;
+- `compteur` est obligatoire pour `credit_compteur`, `ouverture_validite_compteur`, `expiration_compteur`, `ajustement_compteur` et `consommation_absence` ;
+- `report_compteur` exige soit `compteur`, soit `compteur_source` et `compteur_destination` ;
+- `quantite` et `unite` sont obligatoires pour `credit_compteur`, `expiration_compteur`, `report_compteur`, `ajustement_compteur` et `consommation_absence` ;
+- `ouverture_validite_compteur` peut rester sans quantité, car elle peut qualifier un stock sans créer de crédit ;
 - les unités acceptées sont `jour`, `heure` et `demi_journee` ;
 - les quantités sont normalisées en nombres flottants.
 

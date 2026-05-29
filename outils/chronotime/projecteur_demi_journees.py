@@ -9,6 +9,7 @@ from typing import Any
 
 PORTIONS = ("matin", "apres_midi")
 SOURCE_SORTIE = "projection.demi_journees"
+SOURCE_EVENEMENTS_COMPTEURS = "evenements_compteurs.normalises"
 
 
 def lire_json(chemin_entree: Path) -> Any:
@@ -36,6 +37,25 @@ def ecrire_sortie(texte_json: str, chemin_sortie: Path | None) -> None:
         chemin_sortie.write_text(f"{texte_json}\n", encoding="utf-8")
     except OSError as erreur:
         raise SystemExit(f"Impossible d'écrire le fichier de sortie : {chemin_sortie}") from erreur
+
+
+def evenements_compteurs_vides() -> dict[str, Any]:
+    return {
+        "source": SOURCE_EVENEMENTS_COMPTEURS,
+        "evenements": [],
+        "resume": {
+            "nombre_evenements": 0,
+            "nombres_par_type": {},
+            "quantites_par_compteur": {},
+        },
+    }
+
+
+def extraire_evenements_compteurs(donnees: dict[str, Any]) -> dict[str, Any]:
+    evenements_compteurs = donnees.get("evenements_compteurs")
+    if isinstance(evenements_compteurs, dict):
+        return evenements_compteurs
+    return evenements_compteurs_vides()
 
 
 def normaliser_date_iso(valeur: Any, nom_champ: str = "date") -> str | None:
@@ -517,6 +537,7 @@ def projeter_demi_journees(donnees: dict[str, Any]) -> dict[str, Any]:
     jours_non_decomptes = [jour for jour in jours_non_decomptes if jour is not None]
 
     alertes: list[dict[str, Any]] = []
+    evenements_compteurs = extraire_evenements_compteurs(donnees)
     soldes_initiaux = extraire_soldes_initiaux(donnees, periode_compteurs, periodes_compteurs_par_code, alertes)
     demi_journees = creer_vecteur_demi_journees(date_depart, date_fin)
     evenements_sources = construire_evenements_sources(donnees, parametres)
@@ -549,6 +570,7 @@ def projeter_demi_journees(donnees: dict[str, Any]) -> dict[str, Any]:
             "jours_non_decomptes": jours_non_decomptes,
         },
         "soldes_initiaux": soldes_initiaux,
+        "evenements_compteurs": evenements_compteurs,
         "evenements_sources": evenements_sources,
         "demi_journees": demi_journees,
         "soldes_aux_dates_cibles": soldes_aux_dates_cibles,

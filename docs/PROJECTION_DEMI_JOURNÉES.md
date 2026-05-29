@@ -162,6 +162,11 @@ La sortie suit la source :
     "soldes": {}
   },
   "soldes_initiaux": {},
+  "evenements_compteurs": {
+    "source": "evenements_compteurs.normalises",
+    "evenements": [],
+    "resume": {}
+  },
   "evenements_sources": [],
   "demi_journees": [],
   "soldes_aux_dates_cibles": [],
@@ -173,6 +178,10 @@ La sortie suit la source :
   }
 }
 ```
+
+La clé `evenements_compteurs` prépare la future vue `Soldes dans le temps`.
+
+En l’état, ces événements sont seulement transportés. Ils ne modifient pas `soldes_initiaux`, `soldes_avant` ou `soldes_apres`.
 
 ## Limite
 
