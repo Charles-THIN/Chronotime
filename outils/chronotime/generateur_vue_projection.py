@@ -9,6 +9,7 @@ from typing import Any
 
 
 SOURCE_ATTENDUE = "projection.demi_journees"
+SOURCE_CHRONOLOGIE = "chronologie.soldes"
 MOIS_FRANCAIS = {
     1: "janvier",
     2: "février",
@@ -52,12 +53,12 @@ def lire_json(chemin: Path) -> Any:
     try:
         texte = chemin.read_text(encoding="utf-8-sig")
     except OSError as erreur:
-        raise SystemExit(f"Impossible de lire le fichier de projection : {chemin}") from erreur
+        raise SystemExit(f"Impossible de lire le fichier JSON : {chemin}") from erreur
 
     try:
         return json.loads(texte)
     except json.JSONDecodeError as erreur:
-        raise SystemExit(f"JSON invalide dans le fichier de projection : {chemin}") from erreur
+        raise SystemExit(f"JSON invalide dans le fichier JSON : {chemin}") from erreur
 
 
 def charger_projection(chemin: Path) -> dict[str, Any]:
@@ -66,6 +67,15 @@ def charger_projection(chemin: Path) -> dict[str, Any]:
         raise ValueError("La projection doit être un objet JSON.")
     if donnees.get("source") != SOURCE_ATTENDUE:
         raise ValueError(f"Source de projection invalide : {donnees.get('source')!r}.")
+    return donnees
+
+
+def charger_chronologie(chemin: Path) -> dict[str, Any]:
+    donnees = lire_json(chemin)
+    if not isinstance(donnees, dict):
+        raise ValueError("La chronologie doit être un objet JSON.")
+    if donnees.get("source") != SOURCE_CHRONOLOGIE:
+        raise ValueError(f"Source de chronologie invalide : {donnees.get('source')!r}.")
     return donnees
 
 
@@ -185,6 +195,105 @@ def tableau_dates_cibles(dates_cibles: list[Any]) -> str:
       </table>
       </div>
     </section>
+    """
+
+
+def valeur_solde_compteur(soldes: Any, compteur: str) -> Any:
+    if isinstance(soldes, dict):
+        return soldes.get(compteur)
+    return None
+
+
+def types_alertes_resume(alertes: list[Any]) -> str:
+    compteurs: dict[str, int] = {}
+    for alerte in alertes:
+        if not isinstance(alerte, dict):
+            continue
+        type_alerte = str(alerte.get("type", "alerte_sans_type"))
+        compteurs[type_alerte] = compteurs.get(type_alerte, 0) + 1
+    if not compteurs:
+        return "Aucune alerte de chronologie."
+    return ", ".join(
+        f"{escape(type_alerte_lisible(type_alerte))} : {nombre}"
+        for type_alerte, nombre in sorted(compteurs.items())
+    )
+
+
+def tableau_points_chronologie(points: list[Any]) -> str:
+    lignes = []
+    for point in points:
+        if not isinstance(point, dict):
+            continue
+        compteur = str(point.get("compteur", ""))
+        date_point = str(point.get("date", ""))
+        date_lisible = formater_date_francaise(date_point) if date_point else TIRET
+        solde_avant = valeur_solde_compteur(point.get("soldes_avant"), compteur)
+        solde_apres = valeur_solde_compteur(point.get("soldes_apres"), compteur)
+        lignes.append(
+            "<tr>"
+            f"<td>{escape(date_lisible)}</td>"
+            f"<td>{escape(str(point.get('portion') or TIRET))}</td>"
+            f"<td>{escape(compteur or TIRET)}</td>"
+            f"<td>{escape(formater_quantite_jour(point.get('variation')))}</td>"
+            f"<td>{escape(formater_quantite_jour(solde_avant))}</td>"
+            f"<td>{escape(formater_quantite_jour(solde_apres))}</td>"
+            f"<td>{escape(str(point.get('origine') or TIRET))}</td>"
+            f"<td>{escape(str(point.get('type') or TIRET))}</td>"
+            f"<td>{escape(str(point.get('identifiant') or TIRET))}</td>"
+            f"<td><details><summary>Détails techniques</summary><pre>{serialiser_objet(point)}</pre></details></td>"
+            "</tr>"
+        )
+    corps = "\n".join(lignes) if lignes else "<tr><td colspan=\"10\">Aucun point de chronologie.</td></tr>"
+    return f"""
+    <section class="carte">
+      <h3>Points de chronologie</h3>
+      <div class="tableau-defilable">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th><th>Portion</th><th>Compteur</th><th>Variation</th>
+            <th>Solde avant</th><th>Solde après</th><th>Origine</th><th>Type</th><th>Identifiant</th><th>Technique</th>
+          </tr>
+        </thead>
+        <tbody>{corps}</tbody>
+      </table>
+      </div>
+    </section>
+    """
+
+
+def section_chronologie_soldes(chronologie: dict[str, Any] | None) -> str:
+    if chronologie is None:
+        return """
+        <section class="carte">
+          <h2>Soldes dans le temps</h2>
+          <p class="note">Aucune chronologie.soldes fournie. La vue affiche seulement les soldes initiaux et les dates cibles.</p>
+        </section>
+        """
+
+    soldes_finaux = chronologie.get("soldes_finaux", {})
+    if not isinstance(soldes_finaux, dict):
+        soldes_finaux = {}
+    points = chronologie.get("points_chronologie", [])
+    if not isinstance(points, list):
+        points = []
+    alertes = chronologie.get("alertes", [])
+    if not isinstance(alertes, list):
+        alertes = []
+    return f"""
+    <section class="carte">
+      <h2>Soldes dans le temps</h2>
+      <p class="note">
+        Cette section affiche une sortie dérivée <code>chronologie.soldes</code> fournie au générateur.
+        Elle est en lecture seule, ne recalcule pas la chronologie et ne gère pas encore la validité fine par période
+        <code>precedent</code>, <code>courant</code> ou <code>suivant</code>.
+      </p>
+      <p><strong>Alertes de chronologie</strong> : {types_alertes_resume(alertes)}</p>
+    </section>
+    <div class="grille">
+      {tableau_soldes("Soldes finaux", soldes_finaux, "Solde final")}
+    </div>
+    {tableau_points_chronologie(points)}
     """
 
 
@@ -734,7 +843,7 @@ def vue_frise(demi_journees: list[Any]) -> str:
     )
 
 
-def vue_soldes(projection: dict[str, Any]) -> str:
+def vue_soldes(projection: dict[str, Any], chronologie: dict[str, Any] | None = None) -> str:
     soldes_initiaux = projection.get("soldes_initiaux", {})
     if not isinstance(soldes_initiaux, dict):
         soldes_initiaux = {}
@@ -746,6 +855,7 @@ def vue_soldes(projection: dict[str, Any]) -> str:
       {tableau_soldes("Soldes initiaux", soldes_initiaux)}
       {tableau_dates_cibles(dates_cibles)}
     </div>
+    {section_chronologie_soldes(chronologie)}
     """
 
 
@@ -1180,7 +1290,7 @@ def feuille_style() -> str:
     """
 
 
-def generer_html(projection: dict[str, Any]) -> str:
+def generer_html(projection: dict[str, Any], chronologie: dict[str, Any] | None = None) -> str:
     periode = projection.get("periode", {}) if isinstance(projection.get("periode"), dict) else {}
     resume = projection.get("resume", {}) if isinstance(projection.get("resume"), dict) else {}
     demi_journees = projection.get("demi_journees", [])
@@ -1193,7 +1303,7 @@ def generer_html(projection: dict[str, Any]) -> str:
     contenu_vues = [
         envelopper_vue("vue-ensemble", "Vue d’ensemble", vue_ensemble(periode, resume, projection), active=True),
         envelopper_vue("vue-frise", "Frise", vue_frise(demi_journees)),
-        envelopper_vue("vue-soldes", "Soldes", vue_soldes(projection)),
+        envelopper_vue("vue-soldes", "Soldes", vue_soldes(projection, chronologie)),
         envelopper_vue("vue-alertes", "Alertes", vue_alertes(alertes)),
         envelopper_vue("vue-evenements", "Événements projetés", vue_evenements(demi_journees, alertes)),
         envelopper_vue("vue-technique", "Technique", vue_technique(projection, periode, resume, demi_journees)),
@@ -1238,6 +1348,7 @@ def analyser_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         description="Générer une page HTML locale en lecture seule depuis une projection demi-journalière.",
     )
     analyseur.add_argument("--projection", type=Path, required=True, help="Chemin du fichier projection.demi_journees.")
+    analyseur.add_argument("--chronologie", type=Path, help="Chemin facultatif du fichier chronologie.soldes.")
     analyseur.add_argument("--sortie", type=Path, required=True, help="Chemin du fichier HTML à générer.")
     return analyseur.parse_args(argv)
 
@@ -1246,9 +1357,10 @@ def main(argv: list[str] | None = None) -> int:
     arguments = analyser_arguments(argv)
     try:
         projection = charger_projection(arguments.projection)
+        chronologie = charger_chronologie(arguments.chronologie) if arguments.chronologie else None
     except ValueError as erreur:
         raise SystemExit(str(erreur)) from erreur
-    ecrire_html(generer_html(projection), arguments.sortie)
+    ecrire_html(generer_html(projection, chronologie), arguments.sortie)
     return 0
 
 

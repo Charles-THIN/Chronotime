@@ -43,6 +43,8 @@ La future vue des soldes pourra s’appuyer sur :
 
 La GUI ne doit pas recalculer elle-même cette chronologie. Elle doit lire la sortie dérivée produite par le moteur.
 
+La vue HTML locale peut afficher `chronologie.soldes` dans l’onglet `Soldes` lorsqu’un fichier est fourni au générateur. Cet affichage reste en lecture seule : il présente les soldes finaux, les points de chronologie et les alertes produits par le moteur sans recalculer les mouvements ni inventer de règles métier.
+
 ## Vue 3 : Calendrier Annuel Compact
 
 Le calendrier annuel compact sert à vérifier rapidement l’année entière.

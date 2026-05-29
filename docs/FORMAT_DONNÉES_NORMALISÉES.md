@@ -593,6 +593,7 @@ Règles principales :
 - un compteur absent des soldes initiaux est initialisé à `0.0` avec une alerte informative ;
 - la chronologie cumule les soldes par code de compteur ;
 - la validité fine par période `precedent`, `courant` ou `suivant` n’est pas encore gérée.
+- la vue HTML locale peut lire cette sortie pour affichage, sans la recalculer côté interface.
 
 ## Orchestrateur Local De Projection
 

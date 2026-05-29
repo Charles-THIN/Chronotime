@@ -10,6 +10,7 @@ import unittest
 
 from outils.chronotime.generateur_vue_projection import (
     agreger_evenements_projetes,
+    charger_chronologie,
     charger_projection,
     formater_date_francaise,
     formater_periode_francaise,
@@ -98,6 +99,53 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("Soldes aux dates cibles", html)
         self.assertIn("overflow-x: auto", html)
 
+    def test_generation_html_sans_chronologie_affiche_note(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn(
+            "Aucune chronologie.soldes fournie. La vue affiche seulement les soldes initiaux et les dates cibles.",
+            html,
+        )
+
+    def test_chargement_chronologie_valide(self) -> None:
+        with tempfile.TemporaryDirectory() as repertoire:
+            chemin = Path(repertoire) / "chronologie.json"
+            chemin.write_text(json.dumps(self._chronologie_factice()), encoding="utf-8")
+
+            chronologie = charger_chronologie(chemin)
+
+            self.assertEqual(chronologie["source"], "chronologie.soldes")
+
+    def test_refus_chronologie_source_invalide(self) -> None:
+        with tempfile.TemporaryDirectory() as repertoire:
+            chemin = Path(repertoire) / "chronologie.json"
+            donnees = self._chronologie_factice()
+            donnees["source"] = "mouvements.soldes"
+            chemin.write_text(json.dumps(donnees), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "Source de chronologie invalide"):
+                charger_chronologie(chemin)
+
+    def test_generation_html_avec_chronologie(self) -> None:
+        html = generer_html(self._charger_exemple(), self._chronologie_factice())
+
+        self.assertIn("Soldes dans le temps", html)
+        self.assertIn("Soldes finaux", html)
+        self.assertIn("GCP", html)
+        self.assertIn("38,75 j", html)
+        self.assertIn("10 août 2026", html)
+        self.assertIn("-3,25 j", html)
+        self.assertIn("chrono_factice", html)
+        self.assertIn("alerte_chronologie_test", html)
+        self.assertIn("chronologie_factice", html)
+        self.assertIn("Solde après", html)
+
+    def test_generation_html_utilise_chronologie_fournie_sans_recalcul(self) -> None:
+        html = generer_html(self._charger_exemple(), self._chronologie_factice())
+
+        self.assertIn("42 j", html)
+        self.assertIn("38,75 j", html)
+        self.assertIn("preuve", html)
+
     def test_generation_html_titre_compact(self) -> None:
         html = generer_html(self._charger_exemple())
         self.assertIn("font-size: clamp(1.4rem, 2.4vw, 2.2rem);", html)
@@ -173,6 +221,32 @@ class TestGenerateurVueProjection(unittest.TestCase):
             self.assertIn("<!doctype html>", html)
             self.assertIn("Frise 1D des demi-journées", html)
 
+    def test_generation_fichier_html_avec_chronologie(self) -> None:
+        with tempfile.TemporaryDirectory() as repertoire:
+            chemin_chronologie = Path(repertoire) / "chronologie.json"
+            chemin_sortie = Path(repertoire) / "vue.html"
+            chemin_chronologie.write_text(json.dumps(self._chronologie_factice()), encoding="utf-8")
+
+            subprocess.run(
+                [
+                    sys.executable,
+                    "outils/chronotime/generateur_vue_projection.py",
+                    "--projection",
+                    str(self._chemin_exemple()),
+                    "--chronologie",
+                    str(chemin_chronologie),
+                    "--sortie",
+                    str(chemin_sortie),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            html = chemin_sortie.read_text(encoding="utf-8")
+            self.assertIn("Soldes dans le temps", html)
+            self.assertIn("chrono_factice", html)
+
     def test_tests_sans_donnees_locales(self) -> None:
         self.assertNotIn("donnees_locales", str(self._chemin_exemple()))
 
@@ -181,6 +255,35 @@ class TestGenerateurVueProjection(unittest.TestCase):
 
     def _charger_exemple(self) -> dict[str, object]:
         return json.loads(self._chemin_exemple().read_text(encoding="utf-8"))
+
+    def _chronologie_factice(self) -> dict[str, object]:
+        return {
+            "source": "chronologie.soldes",
+            "periode": {"debut": "2026-05-20", "fin": "2026-12-31"},
+            "soldes_initiaux": {"GCP": 99.0},
+            "points_chronologie": [
+                {
+                    "date": "2026-08-10",
+                    "portion": "matin",
+                    "ordre": 10,
+                    "origine": "consommation_projection",
+                    "type": "consommation_absence",
+                    "identifiant": "chrono_factice",
+                    "compteur": "GCP",
+                    "variation": -3.25,
+                    "soldes_avant": {"GCP": 42.0},
+                    "soldes_apres": {"GCP": 38.75},
+                    "details": {"preuve": "chronologie_factice"},
+                }
+            ],
+            "soldes_finaux": {"GCP": 38.75, "JRTT": 7.0},
+            "alertes": [{"type": "alerte_chronologie_test", "severite": "information"}],
+            "resume": {
+                "nombre_mouvements": 1,
+                "nombre_points_chronologie": 1,
+                "nombre_alertes": 1,
+            },
+        }
 
 
 if __name__ == "__main__":
