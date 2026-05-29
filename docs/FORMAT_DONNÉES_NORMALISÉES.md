@@ -480,6 +480,55 @@ Exemples d’alertes :
 }
 ```
 
+## Mouvements De Solde
+
+Le générateur de mouvements de solde transforme une projection `projection.demi_journees` existante en liste de mouvements signés.
+
+Cette sortie est dérivée. Elle ne remplace pas la projection demi-journalière, ne modifie pas `projection.demi_journees` et ne calcule pas encore les soldes cumulés dans le temps.
+
+Forme générale :
+
+```json
+{
+  "source": "mouvements.soldes",
+  "periode": {
+    "debut": "2026-05-20",
+    "fin": "2026-12-31"
+  },
+  "mouvements": [
+    {
+      "date": "2026-08-10",
+      "portion": "matin",
+      "ordre": 10,
+      "origine": "consommation_projection",
+      "type": "consommation_absence",
+      "identifiant": "fermeture_ete_2026",
+      "compteur": "GCP",
+      "variation": -0.5,
+      "unite": "jour",
+      "details": {}
+    }
+  ],
+  "evenements_informatifs": [],
+  "alertes": [],
+  "resume": {
+    "nombre_mouvements": 1,
+    "nombre_evenements_informatifs": 0,
+    "nombre_alertes": 0
+  }
+}
+```
+
+Règles principales :
+
+- les consommations projetées viennent de `demi_journees[*].consommations_detaillees` et utilisent seulement `quantite_appliquee` ;
+- les crédits de compteur produisent une variation positive ;
+- les expirations et consommations explicites produisent une variation négative ;
+- les ajustements conservent le signe fourni ;
+- les ouvertures de validité et reports informatifs restent dans `evenements_informatifs` ;
+- les reports opérationnels complets produisent deux mouvements, source négative et destination positive ;
+- les mouvements préparent la future chronologie des soldes.
+
 ## Orchestrateur Local De Projection
 
 L’orchestrateur local enchaîne les formats normalisés existants.

@@ -175,6 +175,24 @@ Elle devra produire une courbe en marches :
 
 Cette vue ne doit pas inventer les crédits futurs, les expirations ou les reports. Ces informations doivent venir du moteur ou d’une projection enrichie.
 
+## Traduction En Mouvements Signés
+
+Les événements de compteur peuvent être traduits en mouvements de solde signés par le générateur `mouvements.soldes`.
+
+Cette traduction ne calcule pas encore une courbe cumulée. Elle produit seulement les variations élémentaires qui pourront être accumulées plus tard.
+
+Règles de traduction :
+
+- `credit_compteur` produit une variation positive ;
+- `expiration_compteur` produit une variation négative ;
+- `ajustement_compteur` conserve le signe de `quantite` ;
+- `ouverture_validite_compteur` reste informatif ;
+- `report_compteur` informatif reste informatif ;
+- `report_compteur` opérationnel complet produit deux mouvements, un négatif sur la source et un positif sur la destination ;
+- `consommation_absence` explicite produit une variation négative, avec risque de doublon si la même consommation existe déjà dans la projection demi-journalière.
+
+Les reports opérationnels doivent préciser `compteur_source`, `periode_source`, `compteur_destination` et `periode_destination` avant de produire des mouvements.
+
 ## Limites
 
 Ce modèle ne confirme pas :
