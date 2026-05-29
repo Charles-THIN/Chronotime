@@ -1,0 +1,168 @@
+# Modèle des événements de compteur
+
+## Portée
+
+Ce document définit un modèle source pour les événements qui modifient ou qualifient les compteurs de congés.
+
+Il prépare la future vue `Soldes dans le temps`, sans ajouter de règle métier automatique.
+
+Les événements de compteur font partie du modèle événementiel source. Ils ne sont pas inventés par la GUI.
+
+## Principe
+
+Le projet distingue :
+
+- les stocks observés dans Chronotime ;
+- les événements sources qui expliquent ou modifient ces stocks ;
+- les projections dérivées utilisées pour l’affichage.
+
+La GUI doit lire les événements de compteur fournis par le moteur ou par une projection enrichie. Elle ne doit pas générer elle-même des crédits futurs, des ouvertures de validité, des expirations ou des reports.
+
+## Types d’événements
+
+Les types prévus sont :
+
+- `credit_compteur` ;
+- `ouverture_validite_compteur` ;
+- `expiration_compteur` ;
+- `report_compteur` ;
+- `ajustement_compteur` ;
+- `consommation_absence`.
+
+Ces types décrivent des faits ou hypothèses explicites. Ils ne valident pas une règle RH ou Chronotime tant que celle-ci n’est pas vérifiée.
+
+## `credit_compteur`
+
+Un `credit_compteur` augmente un compteur à une date donnée.
+
+Il peut représenter :
+
+- une acquisition ;
+- une dotation annuelle ;
+- une régularisation ;
+- un crédit manuel.
+
+Champs proposés :
+
+- `identifiant` ;
+- `type` ;
+- `date_effet` ;
+- `compteur` ;
+- `quantite` ;
+- `unite` ;
+- `source` ;
+- `statut_certitude` ;
+- `notes`.
+
+Exemple conceptuel :
+
+```json
+{
+  "identifiant": "credit_gcp_exemple_2026",
+  "type": "credit_compteur",
+  "date_effet": "2026-06-01",
+  "compteur": "GCP",
+  "quantite": 2.0,
+  "unite": "jour",
+  "source": "hypothese_locale",
+  "statut_certitude": "a_verifier",
+  "notes": "Exemple artificiel, non issu d'un vrai solde."
+}
+```
+
+## `ouverture_validite_compteur`
+
+Une `ouverture_validite_compteur` indique qu’un stock existe ou est connu, mais devient utilisable à partir d’une date.
+
+Ce type est utile pour modéliser prudemment un compteur comme `GCP suivant`, sans affirmer encore la règle exacte d’ouverture.
+
+Il ne doit pas être confondu avec un crédit : le stock peut déjà être visible dans Chronotime, mais pas nécessairement disponible selon les règles opérationnelles.
+
+## `expiration_compteur`
+
+Une `expiration_compteur` indique qu’une quantité cesse d’être utilisable à une date donnée.
+
+Dans une future courbe des soldes, elle peut produire une chute de solde.
+
+Ce type doit rester explicite, car les dates d’expiration ne sont pas encore déduites automatiquement du triplet `precedent`, `courant`, `suivant`.
+
+## `report_compteur`
+
+Un `report_compteur` représente le transfert d’une quantité non consommée d’une période vers une autre.
+
+Exemple conceptuel :
+
+```text
+reliquat 2026 reporté vers 2027
+```
+
+Le projet ne doit pas supposer que `precedent`, `courant` et `suivant` correspondent automatiquement à un report. La conversion en `report_compteur` doit être explicite et vérifiable.
+
+## `ajustement_compteur`
+
+Un `ajustement_compteur` représente une correction ponctuelle, manuelle ou administrative.
+
+Il sert à rester compatible avec Chronotime si un compteur est corrigé sans règle connue ou si une régularisation apparaît dans les soldes.
+
+## `consommation_absence`
+
+Une `consommation_absence` représente une consommation issue :
+
+- d’une absence réelle ;
+- d’une obligation locale ;
+- d’un bloc de scénario ;
+- d’un événement assimilé projeté.
+
+Ce type peut être dérivé des `consommations_detaillees` déjà produites par le projecteur demi-journalier.
+
+Il doit conserver le lien vers l’événement source lorsque cet identifiant est disponible.
+
+## Lien avec `precedent`, `courant` et `suivant`
+
+Les périodes `precedent`, `courant` et `suivant` viennent de Chronotime.
+
+Elles doivent être traitées comme des stocks observés.
+
+Elles ne doivent pas être interprétées automatiquement comme :
+
+- reports ;
+- crédits ;
+- ouvertures de validité ;
+- expirations.
+
+La conversion d’un stock observé en événement de compteur doit rester explicite, documentée et vérifiable compteur par compteur.
+
+## Future vue `Soldes dans le temps`
+
+La future vue `Soldes dans le temps` devra lire :
+
+- les soldes initiaux ;
+- les consommations détaillées ;
+- les crédits ;
+- les ouvertures de validité ;
+- les expirations ;
+- les reports ;
+- les ajustements ;
+- les alertes.
+
+Elle devra produire une courbe en marches :
+
+- montée lors d’un crédit ;
+- descente lors d’une consommation ;
+- chute lors d’une expiration ;
+- transfert ou montée différée lors d’un report ;
+- correction ponctuelle lors d’un ajustement.
+
+Cette vue ne doit pas inventer les crédits futurs, les expirations ou les reports. Ces informations doivent venir du moteur ou d’une projection enrichie.
+
+## Limites
+
+Ce modèle ne confirme pas :
+
+- l’existence d’une acquisition mensuelle de `JRTT` ;
+- le mode d’ouverture de `GCP suivant` ;
+- les dates de validité de `GCP`, `CANC` ou `JRTT` ;
+- les règles d’expiration ;
+- les règles de report.
+
+Ces points restent à vérifier avant toute génération automatique.

@@ -163,6 +163,8 @@ Elle doit permettre :
 - distinguer quantité demandée, quantité réellement appliquée et quantité non couverte ;
 - répondre aux questions de planification.
 
+Elle ne doit pas inventer les crédits futurs, ouvertures de validité, expirations ou reports. Ces informations devront venir de `projection.demi_journees` si elle est enrichie, ou d’un modèle explicite d’événements de compteur.
+
 ### Vue 3 : calendrier annuel compact
 
 Elle doit permettre :
@@ -443,6 +445,22 @@ Avant une interface complète, les briques suivantes manquent encore :
 - récupération automatique des JSON Chronotime ;
 - écriture ou soumission dans Chronotime ;
 - sauvegarde éditable de scénario depuis l’interface.
+
+## Note sur les événements de compteur
+
+La GUI V0.3.1 affiche correctement une projection existante en lecture seule.
+
+Elle ne doit pas gérer elle-même :
+
+- crédits futurs ;
+- ouvertures de validité ;
+- expirations ;
+- reports ;
+- acquisitions.
+
+La future vue `Soldes dans le temps` devra lire ces informations depuis `projection.demi_journees` si elle est enrichie, ou depuis un modèle explicite d’événements de compteur.
+
+Le modèle attendu est documenté dans [docs/MODÈLE_ÉVÉNEMENTS_COMPTEURS.md](./MODÈLE_ÉVÉNEMENTS_COMPTEURS.md).
 
 ## Contraintes de confidentialité
 

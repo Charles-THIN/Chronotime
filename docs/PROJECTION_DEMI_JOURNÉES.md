@@ -116,6 +116,23 @@ Les champs ont le sens suivant :
 
 Les consommations détaillées sont traitées par priorité décroissante quand plusieurs événements consomment le même compteur sur la même demi-journée.
 
+## Courbes de soldes futures
+
+Les futures courbes de soldes devront être produites à partir d’une projection enrichie ou d’événements de compteur explicites.
+
+La GUI ne doit pas inventer :
+
+- crédits futurs ;
+- acquisitions ;
+- ouvertures de validité ;
+- expirations ;
+- reports ;
+- ajustements.
+
+Ces éléments appartiennent au modèle événementiel source décrit dans [docs/MODÈLE_ÉVÉNEMENTS_COMPTEURS.md](./MODÈLE_ÉVÉNEMENTS_COMPTEURS.md).
+
+La vue `Soldes dans le temps` devra lire ces événements quand le moteur les produira, puis les afficher comme une courbe en marches.
+
 ## Jours Non Décomptés
 
 Les jours non décomptés sont fournis manuellement dans `jours_non_decomptes`.

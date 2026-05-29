@@ -382,6 +382,46 @@ Exemple de consommation détaillée :
 }
 ```
 
+## Événements De Compteur
+
+Les événements de compteur sont des événements sources qui expliquent une variation, une disponibilité ou une correction de compteur.
+
+Ils ne sont pas inventés par la GUI.
+
+Forme générale :
+
+```json
+{
+  "source": "simulation.evenements_compteurs",
+  "evenements_compteurs": [
+    {
+      "identifiant": "credit_gcp_exemple",
+      "type": "credit_compteur",
+      "date_effet": "2026-06-01",
+      "compteur": "GCP",
+      "quantite": 2.0,
+      "unite": "jour",
+      "source": "exemple_artificiel",
+      "statut_certitude": "a_verifier",
+      "notes": ""
+    }
+  ]
+}
+```
+
+Types prévus :
+
+- `credit_compteur` ;
+- `ouverture_validite_compteur` ;
+- `expiration_compteur` ;
+- `report_compteur` ;
+- `ajustement_compteur` ;
+- `consommation_absence`.
+
+Les périodes Chronotime `precedent`, `courant` et `suivant` restent des stocks observés. Elles ne doivent pas être converties automatiquement en événements de compteur sans règle explicite et vérifiable.
+
+Le modèle détaillé est documenté dans [docs/MODÈLE_ÉVÉNEMENTS_COMPTEURS.md](./MODÈLE_ÉVÉNEMENTS_COMPTEURS.md).
+
 Exemples d’alertes :
 
 ```json

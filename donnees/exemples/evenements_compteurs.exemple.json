@@ -1,0 +1,61 @@
+{
+  "source": "simulation.evenements_compteurs",
+  "description": "Exemple artificiel pour documenter le modèle des événements de compteur.",
+  "evenements_compteurs": [
+    {
+      "identifiant": "credit_gcp_exemple_2026_06_01",
+      "type": "credit_compteur",
+      "date_effet": "2026-06-01",
+      "compteur": "GCP",
+      "quantite": 2.0,
+      "unite": "jour",
+      "source": "exemple_artificiel",
+      "statut_certitude": "a_verifier",
+      "notes": "Crédit fictif, non issu d'un vrai solde."
+    },
+    {
+      "identifiant": "ouverture_gcp_suivant_exemple_2026_06_01",
+      "type": "ouverture_validite_compteur",
+      "date_effet": "2026-06-01",
+      "compteur": "GCP",
+      "quantite": 10.0,
+      "unite": "jour",
+      "source": "exemple_artificiel",
+      "statut_certitude": "a_verifier",
+      "notes": "Ouverture fictive d'un stock déjà connu."
+    },
+    {
+      "identifiant": "expiration_canc_exemple_2026_12_31",
+      "type": "expiration_compteur",
+      "date_effet": "2026-12-31",
+      "compteur": "CANC",
+      "quantite": 1.0,
+      "unite": "jour",
+      "source": "exemple_artificiel",
+      "statut_certitude": "a_verifier",
+      "notes": "Expiration fictive, sans règle Chronotime confirmée."
+    },
+    {
+      "identifiant": "report_jrtt_exemple_2027_01_01",
+      "type": "report_compteur",
+      "date_effet": "2027-01-01",
+      "compteur": "JRTT",
+      "quantite": 0.5,
+      "unite": "jour",
+      "source": "exemple_artificiel",
+      "statut_certitude": "a_verifier",
+      "notes": "Report fictif, non déduit automatiquement de precedent/courant/suivant."
+    },
+    {
+      "identifiant": "ajustement_gcp_exemple_2026_09_15",
+      "type": "ajustement_compteur",
+      "date_effet": "2026-09-15",
+      "compteur": "GCP",
+      "quantite": -0.5,
+      "unite": "jour",
+      "source": "exemple_artificiel",
+      "statut_certitude": "a_verifier",
+      "notes": "Ajustement fictif pour documenter une correction manuelle."
+    }
+  ]
+}
