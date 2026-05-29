@@ -45,6 +45,20 @@ La GUI ne doit pas recalculer elle-même cette chronologie. Elle doit lire la so
 
 La vue HTML locale peut afficher `chronologie.soldes` dans l’onglet `Soldes` lorsqu’un fichier est fourni au générateur. Cet affichage reste en lecture seule : il présente les soldes finaux, les points de chronologie et les alertes produits par le moteur sans recalculer les mouvements ni inventer de règles métier.
 
+## Vue Planification Agrégée
+
+La vue de planification agrégée est une lecture utilisateur de `synthese.planification`.
+
+Elle doit afficher d’abord :
+
+- les jours posés ;
+- les jours expirés ;
+- le reste agrégé final ;
+- les principaux blocs consommateurs ;
+- les signaux utilisateur.
+
+Les compteurs techniques Chronotime restent disponibles ensuite, dans des détails repliables. Cette vue ne fait pas d’optimisation, ne modifie pas le scénario et ne recalcule pas les règles métier.
+
 ## Vue 3 : Calendrier Annuel Compact
 
 Le calendrier annuel compact sert à vérifier rapidement l’année entière.

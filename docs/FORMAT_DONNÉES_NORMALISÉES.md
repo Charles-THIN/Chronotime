@@ -595,6 +595,48 @@ Règles principales :
 - la validité fine par période `precedent`, `courant` ou `suivant` n’est pas encore gérée.
 - la vue HTML locale peut lire cette sortie pour affichage, sans la recalculer côté interface.
 
+## Synthèse De Planification
+
+Le générateur de synthèse de planification lit `projection.demi_journees`, `mouvements.soldes` et `chronologie.soldes`, puis produit une lecture agrégée orientée utilisateur.
+
+Cette sortie est dérivée. Elle ne remplace pas les sources événementielles, ne modifie pas la projection, ne fait pas d’optimisation et ne devient pas une source éditable.
+
+Forme générale :
+
+```json
+{
+  "source": "synthese.planification",
+  "periode": {},
+  "resume_global": {
+    "jours_initiaux_agreges": 0.0,
+    "jours_finaux_agreges": 0.0,
+    "variation_totale": 0.0,
+    "jours_consommes": 0.0,
+    "jours_expires": 0.0,
+    "jours_credites": 0.0,
+    "jours_debites_techniques": 0.0,
+    "nombre_signaux": 0,
+    "statut": "ok"
+  },
+  "consommations_par_evenement": [],
+  "soldes_agreges_aux_dates_cibles": [],
+  "signaux": [],
+  "details_techniques": {
+    "par_compteur": {},
+    "alertes_sources": []
+  }
+}
+```
+
+Règles principales :
+
+- seuls les mouvements en jours sont agrégés dans les totaux utilisateur ;
+- les expirations ne sont pas comptées comme congés posés ;
+- les consommations sont regroupées par événement source ;
+- les dates cibles sont agrégées en jours restants globaux ;
+- les signaux exposent les points à surveiller ou bloquants ;
+- les détails par compteur restent techniques et repliables dans la vue HTML.
+
 ## Orchestrateur Local De Projection
 
 L’orchestrateur local enchaîne les formats normalisés existants.

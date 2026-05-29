@@ -12,6 +12,7 @@ from outils.chronotime.generateur_vue_projection import (
     agreger_evenements_projetes,
     charger_chronologie,
     charger_projection,
+    charger_synthese,
     formater_date_francaise,
     formater_periode_francaise,
     generer_html,
@@ -51,6 +52,7 @@ class TestGenerateurVueProjection(unittest.TestCase):
     def test_generation_html_contient_vues(self) -> None:
         html = generer_html(self._charger_exemple())
         self.assertIn("Vue d’ensemble", html)
+        self.assertIn("Planification", html)
         self.assertIn("Frise", html)
         self.assertIn("Soldes", html)
         self.assertIn("Alertes", html)
@@ -91,6 +93,7 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("Alertes globales", html)
         self.assertIn("Soldes initiaux", html)
         self.assertIn("Soldes aux dates cibles", html)
+        self.assertIn("Planification", html)
         self.assertIn("Événements projetés", html)
 
     def test_generation_html_tableaux_defilables(self) -> None:
@@ -105,6 +108,10 @@ class TestGenerateurVueProjection(unittest.TestCase):
             "Aucune chronologie.soldes fournie. La vue affiche seulement les soldes initiaux et les dates cibles.",
             html,
         )
+
+    def test_generation_html_sans_synthese_affiche_note(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn("Aucune synthèse de planification fournie.", html)
 
     def test_chargement_chronologie_valide(self) -> None:
         with tempfile.TemporaryDirectory() as repertoire:
@@ -124,6 +131,16 @@ class TestGenerateurVueProjection(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "Source de chronologie invalide"):
                 charger_chronologie(chemin)
+
+    def test_refus_synthese_source_invalide(self) -> None:
+        with tempfile.TemporaryDirectory() as repertoire:
+            chemin = Path(repertoire) / "synthese.json"
+            donnees = self._synthese_factice()
+            donnees["source"] = "chronologie.soldes"
+            chemin.write_text(json.dumps(donnees), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "Source de synthèse invalide"):
+                charger_synthese(chemin)
 
     def test_generation_html_avec_chronologie(self) -> None:
         html = generer_html(self._charger_exemple(), self._chronologie_factice())
@@ -145,6 +162,21 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("42 j", html)
         self.assertIn("38,75 j", html)
         self.assertIn("preuve", html)
+
+    def test_generation_html_avec_synthese_planification(self) -> None:
+        html = generer_html(self._charger_exemple(), synthese=self._synthese_factice())
+
+        self.assertIn("Planification", html)
+        self.assertIn("Statut global", html)
+        self.assertIn("attention", html)
+        self.assertIn("Jours posés", html)
+        self.assertIn("4,5 j", html)
+        self.assertIn("Jours expirés", html)
+        self.assertIn("2 j", html)
+        self.assertIn("bloc_noel", html)
+        self.assertIn("Signaux", html)
+        self.assertIn("jours_expires", html)
+        self.assertIn("Détails techniques par compteur", html)
 
     def test_generation_html_titre_compact(self) -> None:
         html = generer_html(self._charger_exemple())
@@ -247,6 +279,32 @@ class TestGenerateurVueProjection(unittest.TestCase):
             self.assertIn("Soldes dans le temps", html)
             self.assertIn("chrono_factice", html)
 
+    def test_generation_fichier_html_avec_synthese(self) -> None:
+        with tempfile.TemporaryDirectory() as repertoire:
+            chemin_synthese = Path(repertoire) / "synthese.json"
+            chemin_sortie = Path(repertoire) / "vue.html"
+            chemin_synthese.write_text(json.dumps(self._synthese_factice()), encoding="utf-8")
+
+            subprocess.run(
+                [
+                    sys.executable,
+                    "outils/chronotime/generateur_vue_projection.py",
+                    "--projection",
+                    str(self._chemin_exemple()),
+                    "--synthese",
+                    str(chemin_synthese),
+                    "--sortie",
+                    str(chemin_sortie),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            html = chemin_sortie.read_text(encoding="utf-8")
+            self.assertIn("Planification", html)
+            self.assertIn("bloc_noel", html)
+
     def test_tests_sans_donnees_locales(self) -> None:
         self.assertNotIn("donnees_locales", str(self._chemin_exemple()))
 
@@ -282,6 +340,54 @@ class TestGenerateurVueProjection(unittest.TestCase):
                 "nombre_mouvements": 1,
                 "nombre_points_chronologie": 1,
                 "nombre_alertes": 1,
+            },
+        }
+
+    def _synthese_factice(self) -> dict[str, object]:
+        return {
+            "source": "synthese.planification",
+            "periode": {"debut": "2026-05-20", "fin": "2026-12-31"},
+            "resume_global": {
+                "jours_initiaux_agreges": 30.0,
+                "jours_finaux_agreges": 18.5,
+                "variation_totale": -11.5,
+                "jours_consommes": 4.5,
+                "jours_expires": 2.0,
+                "jours_credites": 1.0,
+                "jours_debites_techniques": 0.0,
+                "nombre_signaux": 1,
+                "statut": "attention",
+            },
+            "consommations_par_evenement": [
+                {
+                    "identifiant": "bloc_noel",
+                    "premiere_date": "2026-12-28",
+                    "derniere_date": "2026-12-31",
+                    "jours_consommes": 4.5,
+                    "compteurs_techniques": {"GCP": -4.5},
+                    "origines": ["projection.demi_journees"],
+                    "types": ["consommation_absence"],
+                }
+            ],
+            "soldes_agreges_aux_dates_cibles": [
+                {
+                    "identifiant": "noel",
+                    "libelle": "Noël",
+                    "date": "2026-12-25",
+                    "jours_restants_agreges": 18.5,
+                }
+            ],
+            "signaux": [
+                {
+                    "type": "jours_expires",
+                    "severite": "attention",
+                    "message": "Des jours expirent dans ce scénario.",
+                    "details": {"jours_expires": 2.0},
+                }
+            ],
+            "details_techniques": {
+                "par_compteur": {"GCP": {"initial": 20.0, "final": 15.5, "seuil_technique_suppose": 0.0}},
+                "alertes_sources": [],
             },
         }
 

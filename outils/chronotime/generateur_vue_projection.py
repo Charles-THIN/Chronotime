@@ -10,6 +10,7 @@ from typing import Any
 
 SOURCE_ATTENDUE = "projection.demi_journees"
 SOURCE_CHRONOLOGIE = "chronologie.soldes"
+SOURCE_SYNTHESE = "synthese.planification"
 MOIS_FRANCAIS = {
     1: "janvier",
     2: "février",
@@ -41,6 +42,7 @@ LABELS_SEVERITE = {
 TIRET = "—"
 VUES = (
     ("vue-ensemble", "Vue d’ensemble"),
+    ("vue-planification", "Planification"),
     ("vue-frise", "Frise"),
     ("vue-soldes", "Soldes"),
     ("vue-alertes", "Alertes"),
@@ -76,6 +78,15 @@ def charger_chronologie(chemin: Path) -> dict[str, Any]:
         raise ValueError("La chronologie doit être un objet JSON.")
     if donnees.get("source") != SOURCE_CHRONOLOGIE:
         raise ValueError(f"Source de chronologie invalide : {donnees.get('source')!r}.")
+    return donnees
+
+
+def charger_synthese(chemin: Path) -> dict[str, Any]:
+    donnees = lire_json(chemin)
+    if not isinstance(donnees, dict):
+        raise ValueError("La synthèse doit être un objet JSON.")
+    if donnees.get("source") != SOURCE_SYNTHESE:
+        raise ValueError(f"Source de synthèse invalide : {donnees.get('source')!r}.")
     return donnees
 
 
@@ -836,6 +847,150 @@ def vue_ensemble(periode: dict[str, Any], resume: dict[str, Any], projection: di
     """
 
 
+def carte_indicateur_planification(label: str, valeur: Any) -> str:
+    return (
+        "<article class=\"tuile-resume\">"
+        f"<p class=\"tuile-label\">{escape(label)}</p>"
+        f"<p class=\"tuile-valeur\">{escape(str(valeur))}</p>"
+        "</article>"
+    )
+
+
+def tableau_dates_cibles_synthese(dates_cibles: list[Any]) -> str:
+    lignes = []
+    for cible in dates_cibles:
+        if not isinstance(cible, dict):
+            continue
+        date_lisible = formater_date_francaise(str(cible.get("date"))) if cible.get("date") else TIRET
+        lignes.append(
+            "<tr>"
+            f"<td>{escape(str(cible.get('libelle') or cible.get('identifiant') or TIRET))}</td>"
+            f"<td>{escape(date_lisible)}</td>"
+            f"<td>{escape(formater_quantite_jour(cible.get('jours_restants_agreges')))}</td>"
+            "</tr>"
+        )
+    corps = "\n".join(lignes) if lignes else "<tr><td colspan=\"3\">Aucune date cible agrégée.</td></tr>"
+    return (
+        "<section class=\"carte\">"
+        "<h3>Dates cibles agrégées</h3>"
+        "<div class=\"tableau-defilable\">"
+        "<table><thead><tr><th>Date cible</th><th>Date</th><th>Reste agrégé</th></tr></thead>"
+        f"<tbody>{corps}</tbody></table>"
+        "</div>"
+        "</section>"
+    )
+
+
+def tableau_evenements_consommateurs(evenements: list[Any]) -> str:
+    lignes = []
+    for evenement in evenements[:10]:
+        if not isinstance(evenement, dict):
+            continue
+        periode = TIRET
+        if evenement.get("premiere_date") and evenement.get("derniere_date"):
+            periode = formater_periode_francaise(str(evenement["premiere_date"]), str(evenement["derniere_date"]))
+        lignes.append(
+            "<tr>"
+            f"<td>{escape(str(evenement.get('identifiant') or TIRET))}</td>"
+            f"<td>{escape(periode)}</td>"
+            f"<td>{escape(formater_quantite_jour(evenement.get('jours_consommes')))}</td>"
+            "</tr>"
+        )
+    corps = "\n".join(lignes) if lignes else "<tr><td colspan=\"3\">Aucun événement consommateur.</td></tr>"
+    return (
+        "<section class=\"carte\">"
+        "<h3>Principaux événements consommateurs</h3>"
+        "<div class=\"tableau-defilable\">"
+        "<table><thead><tr><th>Événement</th><th>Période</th><th>Jours posés</th></tr></thead>"
+        f"<tbody>{corps}</tbody></table>"
+        "</div>"
+        "</section>"
+    )
+
+
+def liste_signaux_planification(signaux: list[Any]) -> str:
+    elements = []
+    for signal in signaux:
+        if not isinstance(signal, dict):
+            continue
+        severite = str(signal.get("severite") or "information")
+        elements.append(
+            f"<li class=\"alerte alerte-{escape(severite)}\">"
+            f"<h3>{escape(str(signal.get('type') or 'signal'))}</h3>"
+            f"<p><strong>Sévérité</strong> : {escape(severite)}</p>"
+            f"<p>{escape(str(signal.get('message') or 'Signal de planification.'))}</p>"
+            f"<details><summary>Détails techniques</summary><pre>{serialiser_objet(signal.get('details', {}))}</pre></details>"
+            "</li>"
+        )
+    contenu = "\n".join(elements) if elements else "<li>Aucun signal.</li>"
+    return (
+        "<section class=\"carte\">"
+        "<h3>Signaux</h3>"
+        f"<ul class=\"liste-alertes\">{contenu}</ul>"
+        "</section>"
+    )
+
+
+def details_techniques_planification(synthese: dict[str, Any]) -> str:
+    details = synthese.get("details_techniques", {})
+    par_compteur = details.get("par_compteur", {}) if isinstance(details, dict) else {}
+    return (
+        "<section class=\"carte\">"
+        "<details>"
+        "<summary>Détails techniques par compteur</summary>"
+        f"<pre>{serialiser_objet(par_compteur)}</pre>"
+        "</details>"
+        "</section>"
+    )
+
+
+def vue_planification(synthese: dict[str, Any] | None = None) -> str:
+    if synthese is None:
+        return """
+        <section class="carte">
+          <h2>Planification</h2>
+          <p class="note">Aucune synthèse de planification fournie.</p>
+        </section>
+        """
+
+    resume = synthese.get("resume_global", {})
+    if not isinstance(resume, dict):
+        resume = {}
+    dates_cibles = synthese.get("soldes_agreges_aux_dates_cibles", [])
+    if not isinstance(dates_cibles, list):
+        dates_cibles = []
+    evenements = synthese.get("consommations_par_evenement", [])
+    if not isinstance(evenements, list):
+        evenements = []
+    signaux = synthese.get("signaux", [])
+    if not isinstance(signaux, list):
+        signaux = []
+    indicateurs = [
+        ("Statut global", resume.get("statut", TIRET)),
+        ("Jours posés", formater_quantite_jour(resume.get("jours_consommes"))),
+        ("Jours expirés", formater_quantite_jour(resume.get("jours_expires"))),
+        ("Jours crédités", formater_quantite_jour(resume.get("jours_credites"))),
+        ("Reste agrégé final", formater_quantite_jour(resume.get("jours_finaux_agreges"))),
+    ]
+    cartes = "".join(carte_indicateur_planification(label, valeur) for label, valeur in indicateurs)
+    return f"""
+    <section class="carte carte-majeure">
+      <h2>Planification</h2>
+      <p class="note">
+        Synthèse utilisateur en lecture seule issue de <code>synthese.planification</code>.
+        Les compteurs Chronotime restent disponibles comme détail technique, mais la lecture principale agrège les jours.
+      </p>
+      <div class="resume-cards">{cartes}</div>
+    </section>
+    <div class="grille">
+      {tableau_dates_cibles_synthese(dates_cibles)}
+      {tableau_evenements_consommateurs(evenements)}
+    </div>
+    {liste_signaux_planification(signaux)}
+    {details_techniques_planification(synthese)}
+    """
+
+
 def vue_frise(demi_journees: list[Any]) -> str:
     return (
         generer_frise(demi_journees)
@@ -1290,7 +1445,11 @@ def feuille_style() -> str:
     """
 
 
-def generer_html(projection: dict[str, Any], chronologie: dict[str, Any] | None = None) -> str:
+def generer_html(
+    projection: dict[str, Any],
+    chronologie: dict[str, Any] | None = None,
+    synthese: dict[str, Any] | None = None,
+) -> str:
     periode = projection.get("periode", {}) if isinstance(projection.get("periode"), dict) else {}
     resume = projection.get("resume", {}) if isinstance(projection.get("resume"), dict) else {}
     demi_journees = projection.get("demi_journees", [])
@@ -1302,6 +1461,7 @@ def generer_html(projection: dict[str, Any], chronologie: dict[str, Any] | None 
 
     contenu_vues = [
         envelopper_vue("vue-ensemble", "Vue d’ensemble", vue_ensemble(periode, resume, projection), active=True),
+        envelopper_vue("vue-planification", "Planification", vue_planification(synthese)),
         envelopper_vue("vue-frise", "Frise", vue_frise(demi_journees)),
         envelopper_vue("vue-soldes", "Soldes", vue_soldes(projection, chronologie)),
         envelopper_vue("vue-alertes", "Alertes", vue_alertes(alertes)),
@@ -1349,6 +1509,7 @@ def analyser_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     )
     analyseur.add_argument("--projection", type=Path, required=True, help="Chemin du fichier projection.demi_journees.")
     analyseur.add_argument("--chronologie", type=Path, help="Chemin facultatif du fichier chronologie.soldes.")
+    analyseur.add_argument("--synthese", type=Path, help="Chemin facultatif du fichier synthese.planification.")
     analyseur.add_argument("--sortie", type=Path, required=True, help="Chemin du fichier HTML à générer.")
     return analyseur.parse_args(argv)
 
@@ -1358,9 +1519,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         projection = charger_projection(arguments.projection)
         chronologie = charger_chronologie(arguments.chronologie) if arguments.chronologie else None
+        synthese = charger_synthese(arguments.synthese) if arguments.synthese else None
     except ValueError as erreur:
         raise SystemExit(str(erreur)) from erreur
-    ecrire_html(generer_html(projection, chronologie), arguments.sortie)
+    ecrire_html(generer_html(projection, chronologie, synthese), arguments.sortie)
     return 0
 
 
