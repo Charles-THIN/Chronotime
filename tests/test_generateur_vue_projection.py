@@ -594,6 +594,25 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("max-height: 118px", html)
         self.assertIn("overflow: hidden", html)
 
+
+    def test_generation_html_planification_barre_droite_compacte(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn("resume-droite-compact", html)
+        self.assertIn("resume-mini", html)
+        self.assertIn("grille-compteurs-droite", html)
+        self.assertIn("compteur-mini", html)
+        self.assertIn("expiration-mini", html)
+        self.assertIn("grid-template-columns: repeat(3, minmax(0, 1fr))", html)
+
+    def test_generation_html_planification_densification_visuelle(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn("V0.4.6", html)
+        self.assertIn("height: calc(100vh - 118px)", html)
+        self.assertIn("font-size: 0.92rem", html)
+        self.assertIn("white-space: nowrap", html)
+        self.assertIn("text-overflow: ellipsis", html)
+        self.assertIn("max-height: 96px", html)
+
     def _chemin_exemple(self) -> Path:
         return Path("donnees/exemples/projection_demi_journees.exemple.json")
 

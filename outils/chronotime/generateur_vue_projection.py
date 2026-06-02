@@ -1400,6 +1400,19 @@ def liste_compteurs_compacte(soldes: dict[str, Any], inclure_tous: bool = False)
     return "".join(lignes) if lignes else "<li class=\"ligne-compteur-compacte\">aucun solde disponible</li>"
 
 
+def grille_compteurs_droite(soldes: dict[str, Any]) -> str:
+    cellules = []
+    for compteur, valeur in compteurs_tries_pour_affichage(soldes):
+        valeur_lisible = formater_nombre_francais(valeur) if isinstance(valeur, (int, float)) else str(valeur)
+        cellules.append(
+            "<article class=\"compteur-mini\">"
+            f"<span>{escape(str(compteur))}</span>"
+            f"<strong>{escape(valeur_lisible)}</strong>"
+            "</article>"
+        )
+    return "".join(cellules) if cellules else "<p class=\"info-compacte\">aucun solde disponible</p>"
+
+
 def barre_infos_droite(projection: dict[str, Any], demi_journees: list[Any]) -> str:
     soldes_finaux = soldes_fin_projection(projection, demi_journees)
     total_restant = somme_soldes_numeriques(soldes_finaux)
@@ -1407,15 +1420,21 @@ def barre_infos_droite(projection: dict[str, Any], demi_journees: list[Any]) -> 
     return f"""
     <aside class="barre-infos-droite barre-infos-droite-stable" aria-label="Barre d’informations de planification">
       <section class="bloc-info-fixe">
-        <h3>Total restant</h3>
-        <p class="valeur-info">{escape(total_restant_texte)}</p>
-        <p class="note">reste agrégé provisoire en fin de projection</p>
-        <h3>Cette année</h3>
-        <p class="info-compacte">non calculé</p>
-        <h3>Compteurs</h3>
-        <ul class="liste-compteurs-compacte">{liste_compteurs_compacte(soldes_finaux)}</ul>
-        <h3>Expiration</h3>
-        <p class="info-compacte">non calculée</p>
+        <div class="resume-droite-compact">
+          <article class="resume-mini">
+            <span>Total restant</span>
+            <strong>{escape(total_restant_texte)}</strong>
+          </article>
+          <article class="resume-mini">
+            <span>Cette année</span>
+            <strong>non calculé</strong>
+          </article>
+        </div>
+        <section class="compteurs-droite-section">
+          <h3>Compteurs</h3>
+          <div class="grille-compteurs-droite">{grille_compteurs_droite(soldes_finaux)}</div>
+        </section>
+        <p class="expiration-mini"><span>Expiration</span><strong>non calculée</strong></p>
       </section>
       <section class="bloc-info-selection">
         <h3>Sélection</h3>
@@ -2788,6 +2807,243 @@ def feuille_style() -> str:
     }
     .fiche-curseur .champ-selection {
       padding: 6px 8px;
+    }
+    /* V0.4.6 — densification visuelle de la planification */
+    body {
+      font-size: 0.92rem;
+      line-height: 1.34;
+    }
+    main {
+      padding: 12px clamp(10px, 1.4vw, 22px) 30px;
+    }
+    .hero {
+      padding: 10px 14px 10px;
+      border-radius: 20px 20px 14px 14px;
+    }
+    .hero .note {
+      max-width: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin: 0;
+      font-size: 0.86rem;
+    }
+    h1 {
+      margin: 0 0 4px;
+      font-size: clamp(1.2rem, 1.9vw, 1.75rem);
+      line-height: 1;
+    }
+    h2 {
+      margin: 0 0 10px;
+      font-size: 1.18rem;
+    }
+    h3 {
+      margin: 0 0 6px;
+      font-size: 0.96rem;
+    }
+    .barre-vues {
+      gap: 7px;
+      margin-top: 10px;
+      padding-top: 9px;
+    }
+    .onglet {
+      padding: 7px 12px;
+      font-size: 0.9rem;
+    }
+    .vue-tableau-de-bord {
+      margin-top: 14px;
+    }
+    .carte {
+      margin-top: 10px;
+      padding: 13px;
+      border-radius: 17px;
+    }
+    .tuile-resume {
+      padding: 13px;
+      border-radius: 15px;
+    }
+    .tuile-valeur {
+      font-size: 1.08rem;
+    }
+    .interface-planification {
+      height: calc(100vh - 118px);
+      min-height: 500px;
+      gap: 12px;
+      grid-template-columns: minmax(130px, 165px) minmax(0, 1fr) minmax(250px, 310px);
+      overflow: hidden;
+    }
+    .barre-outils-gauche,
+    .barre-infos-droite,
+    .zone-centrale-planification {
+      padding: 12px;
+      border-radius: 15px;
+    }
+    .barre-infos-droite {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto auto;
+      height: 100%;
+      max-height: 100%;
+      overflow: hidden;
+    }
+    .zone-centrale-planification {
+      min-height: 0;
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .barre-outils-gauche {
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .outil-passif {
+      margin: 6px 0;
+      padding: 7px 9px;
+      font-size: 0.88rem;
+    }
+    .sous-vues-planification {
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .bouton-sous-vue {
+      padding: 6px 11px;
+      font-size: 0.88rem;
+    }
+    .vue-calendrier-passif,
+    .vue-frise-niveau {
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 13px;
+    }
+    .niveau-reste-agrege .note {
+      margin: 0 0 8px;
+      max-width: none;
+      font-size: 0.82rem;
+    }
+    .courbe-reste-agrege {
+      min-height: 280px;
+      margin-top: 8px;
+    }
+    .resume-droite-compact {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .resume-mini {
+      min-width: 0;
+      padding: 8px;
+      border: 1px solid rgba(216, 201, 174, 0.75);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.32);
+    }
+    .resume-mini span,
+    .expiration-mini span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.68rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .resume-mini strong {
+      display: block;
+      margin-top: 2px;
+      color: var(--accent-fort);
+      font-size: 1.05rem;
+      line-height: 1.1;
+      overflow-wrap: anywhere;
+    }
+    .compteurs-droite-section {
+      margin-bottom: 6px;
+    }
+    .compteurs-droite-section h3 {
+      margin-bottom: 4px;
+      font-size: 0.9rem;
+    }
+    .grille-compteurs-droite {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+    .compteur-mini {
+      min-width: 0;
+      padding: 6px 5px;
+      border-bottom: 1px dashed rgba(216, 201, 174, 0.9);
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+    .compteur-mini span {
+      display: block;
+      color: var(--accent-fort);
+      font-size: 0.76rem;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+    .compteur-mini strong {
+      display: block;
+      margin-top: 2px;
+      color: var(--encre);
+      font-size: 0.9rem;
+      line-height: 1.1;
+      overflow-wrap: anywhere;
+    }
+    .expiration-mini {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 3px 0 8px;
+      font-size: 0.84rem;
+    }
+    .expiration-mini strong {
+      color: var(--accent-fort);
+      font-size: 0.86rem;
+    }
+    .bloc-info-selection {
+      min-height: 0;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+    .selection-planification {
+      min-height: 0;
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 2px;
+    }
+    .separateur-infos {
+      margin: 8px 0;
+      border-top: 1px solid rgba(216, 201, 174, 0.95);
+    }
+    .bloc-info-curseur {
+      min-height: 0;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto minmax(0, auto);
+    }
+    .curseur-planification {
+      min-height: 0;
+      max-height: 96px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .fiche-selection {
+      gap: 6px;
+    }
+    .champ-selection {
+      padding: 6px;
+      border-radius: 8px;
+    }
+    .libelle-selection {
+      font-size: 0.66rem;
+    }
+    .valeur-selection {
+      font-size: 0.86rem;
+      line-height: 1.16;
+    }
+    .puce-selection {
+      padding: 3px 7px;
+      font-size: 0.74rem;
     }
     @media (max-width: 860px) {
       .hero {

@@ -429,6 +429,23 @@ Objectif : empêcher le curseur de frise de se dessiner par-dessus la ZID et lim
 
 Cette correction reste passive. Elle ne crée aucun bloc, ne modifie aucun scénario, ne recalcule aucune projection côté navigateur et ne sauvegarde rien.
 
+## V0.4.6 Densification visuelle de la planification
+
+La version `V0.4.6` réduit l’encombrement visuel de la vue `Planification`.
+
+Corrections apportées :
+
+- en-tête général réduit ;
+- description longue de l’en-tête contrainte sur une ligne ;
+- espacements, cartes, boutons et titres légèrement réduits ;
+- hauteur utile de la coquille de planification augmentée ;
+- barre droite compactée ;
+- `Total restant` et `Cette année` affichés côte à côte ;
+- compteurs principaux affichés sous forme de grille compacte ;
+- zone `Curseur` conservée mais moins haute.
+
+Cette correction reste passive. Elle ne crée aucun bloc, ne modifie aucun scénario, ne recalcule aucune projection côté navigateur et ne sauvegarde rien.
+
 ## Vue future des soldes dans le temps
 
 Une future vue `Soldes dans le temps` devra représenter :
