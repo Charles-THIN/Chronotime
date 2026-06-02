@@ -347,6 +347,34 @@ Ce repli sera remplacé lorsque les dates d'expiration explicites seront disponi
 
 Ces corrections restent purement visuelles. Elles ne stabilisent pas la formule métier du reste agrégé et n'ajoutent aucune édition, optimisation, sauvegarde ou écriture Chronotime.
 
+## V0.4.2 Sélection passive
+
+La version `V0.4.2` ajoute une première interaction locale de consultation dans la vue `Planification`.
+
+Éléments sélectionnables :
+
+- clic sur un jour du calendrier ;
+- clic sur un bloc projeté dans la frise ;
+- clic sur un point de la courbe du reste agrégé provisoire.
+
+La sélection met uniquement à jour la zone `Sélection` de la barre d'informations droite.
+
+Informations affichées selon le type de sélection :
+
+- date, consommation et alertes pour un jour calendrier ;
+- période, identifiant et quantité pour un bloc projeté ;
+- date, portion et niveau pour un point de reste agrégé provisoire.
+
+Cette sélection est un état visuel local de lecture. Elle ne modifie pas :
+
+- les sources événementielles ;
+- `projection.demi_journees` ;
+- les mouvements ou chronologies dérivés ;
+- le scénario ;
+- Chronotime.
+
+Elle ne déclenche aucun recalcul côté navigateur et ne crée aucune capacité d'édition. Elle sert seulement de première étape avant les futures interactions de création ou modification de blocs sources.
+
 ## Vue future des soldes dans le temps
 
 Une future vue `Soldes dans le temps` devra représenter :

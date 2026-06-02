@@ -821,6 +821,44 @@ def script_onglets() -> str:
           bouton.setAttribute('aria-selected', active ? 'true' : 'false');
         });
       }
+      function libelleSelection(type) {
+        if (type === 'jour') { return 'jour calendrier'; }
+        if (type === 'bloc') { return 'bloc projeté'; }
+        if (type === 'reste') { return 'reste agrégé provisoire'; }
+        return type || 'élément';
+      }
+      function ajouterLigneSelection(conteneur, libelle, valeur) {
+        const ligne = document.createElement('p');
+        ligne.className = 'info-compacte';
+        const etiquette = document.createElement('strong');
+        etiquette.textContent = libelle + ' : ';
+        ligne.appendChild(etiquette);
+        ligne.appendChild(document.createTextNode(valeur || 'aucune'));
+        conteneur.appendChild(ligne);
+      }
+      function activerSelectionPlanification(element) {
+        const cible = document.getElementById('selection-planification');
+        if (!cible) { return; }
+        document.querySelectorAll('.selection-active').forEach((selection) => {
+          selection.classList.remove('selection-active');
+        });
+        element.classList.add('selection-active');
+        cible.textContent = '';
+        ajouterLigneSelection(cible, 'Type', libelleSelection(element.dataset.selectionType));
+        if (element.dataset.selectionType === 'jour') {
+          ajouterLigneSelection(cible, 'Date', element.dataset.selectionDate);
+          ajouterLigneSelection(cible, 'Consommation', element.dataset.selectionConsommation);
+          ajouterLigneSelection(cible, 'Alertes', element.dataset.selectionAlertes);
+        } else if (element.dataset.selectionType === 'bloc') {
+          ajouterLigneSelection(cible, 'Période', element.dataset.selectionPeriode);
+          ajouterLigneSelection(cible, 'Identifiant', element.dataset.selectionIdentifiant);
+          ajouterLigneSelection(cible, 'Quantité', element.dataset.selectionQuantite);
+        } else if (element.dataset.selectionType === 'reste') {
+          ajouterLigneSelection(cible, 'Date', element.dataset.selectionDate);
+          ajouterLigneSelection(cible, 'Portion', element.dataset.selectionPortion);
+          ajouterLigneSelection(cible, 'Niveau', element.dataset.selectionNiveau);
+        }
+      }
       boutons.forEach((bouton) => {
         bouton.addEventListener('click', function () {
           activerVue(bouton.dataset.cible);
@@ -829,6 +867,17 @@ def script_onglets() -> str:
       boutonsSousVues.forEach((bouton) => {
         bouton.addEventListener('click', function () {
           activerSousVue(bouton.dataset.sousVueCible);
+        });
+      });
+      document.querySelectorAll('.element-selectionnable').forEach((element) => {
+        element.addEventListener('click', function () {
+          activerSelectionPlanification(element);
+        });
+        element.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            activerSelectionPlanification(element);
+          }
         });
       });
       activerVue('vue-ensemble');
@@ -1126,7 +1175,9 @@ def barre_infos_droite(projection: dict[str, Any], demi_journees: list[Any]) -> 
       <h3>Expiration</h3>
       <p class="info-compacte">non calculée</p>
       <h3>Sélection</h3>
-      <p class="info-compacte">aucune</p>
+      <div id="selection-planification" class="selection-planification">
+        <p class="info-compacte">aucune</p>
+      </div>
     </aside>
     """
 
@@ -1176,6 +1227,20 @@ def titre_jour_calendrier(date_iso: str, info: dict[str, Any]) -> str:
     return " — ".join(morceaux)
 
 
+def resume_consommation_jour(info: dict[str, Any]) -> str:
+    consommations = info.get("consommations", {})
+    if not isinstance(consommations, dict) or not consommations:
+        return "aucune"
+    return ", ".join(
+        f"{compteur} {formater_quantite_jour(quantite)}"
+        for compteur, quantite in sorted(consommations.items())
+    )
+
+
+def resume_alertes_jour(info: dict[str, Any]) -> str:
+    return "présente" if info.get("alertes") else "aucune"
+
+
 def vue_calendrier_passif(demi_journees: list[Any]) -> str:
     infos = date_infos_calendrier(demi_journees)
     mois: dict[str, list[str]] = {}
@@ -1186,14 +1251,19 @@ def vue_calendrier_passif(demi_journees: list[Any]) -> str:
         jours = []
         for date_iso in dates:
             info = infos[date_iso]
-            classes = ["jour-calendrier"]
+            classes = ["jour-calendrier", "element-selectionnable", "jour-selectionnable"]
             if info.get("consommations"):
                 classes.append("jour-avec-consommation")
             if info.get("alertes"):
                 classes.append("jour-avec-alerte")
             jour = date_iso_vers_objet(date_iso).day
             jours.append(
-                f"<span class=\"{' '.join(classes)}\" title=\"{escape(titre_jour_calendrier(date_iso, info))}\">{jour}</span>"
+                f"<span class=\"{' '.join(classes)}\" title=\"{escape(titre_jour_calendrier(date_iso, info))}\" "
+                "role=\"button\" tabindex=\"0\" "
+                "data-selection-type=\"jour\" "
+                f"data-selection-date=\"{escape(formater_date_francaise(date_iso))}\" "
+                f"data-selection-consommation=\"{escape(resume_consommation_jour(info))}\" "
+                f"data-selection-alertes=\"{escape(resume_alertes_jour(info))}\">{jour}</span>"
             )
         blocs_mois.append(
             "<section class=\"mois-calendrier\">"
@@ -1304,8 +1374,16 @@ def blocs_frise_svg(demi_journees: list[Any], alertes: list[Any], debut: date, f
             f"{evenement.get('identifiant_evenement') or ''} — "
             f"{formater_quantite_jour(evenement.get('quantite_appliquee_totale'))}"
         )
+        periode = formater_periode_francaise(str(date_debut), str(date_fin))
+        identifiant = str(evenement.get("identifiant_evenement") or "")
+        quantite = formater_quantite_jour(evenement.get("quantite_appliquee_totale"))
         blocs.append(
-            f"<rect class=\"bloc-temporel-projete\" x=\"{x1:.2f}\" y=\"{y}\" width=\"{largeur:.2f}\" height=\"{hauteur}\" rx=\"5\">"
+            f"<rect class=\"bloc-temporel-projete element-selectionnable\" x=\"{x1:.2f}\" y=\"{y}\" "
+            f"width=\"{largeur:.2f}\" height=\"{hauteur}\" rx=\"5\" role=\"button\" tabindex=\"0\" "
+            "data-selection-type=\"bloc\" "
+            f"data-selection-identifiant=\"{escape(identifiant)}\" "
+            f"data-selection-periode=\"{escape(periode)}\" "
+            f"data-selection-quantite=\"{escape(quantite)}\">"
             f"<title>{escape(titre)}</title>"
             "</rect>"
         )
@@ -1376,7 +1454,12 @@ def courbe_reste_agrege(points: list[dict[str, Any]], demi_journees: list[Any], 
             f"{point.get('portion') or ''} — reste agrégé provisoire {formater_quantite_jour(point.get('niveau'))}"
         )
         points_svg.append(
-            f"<circle class=\"point-reste-agrege\" cx=\"{x:.2f}\" cy=\"{y:.2f}\" r=\"3\"><title>{escape(titre)}</title></circle>"
+            f"<circle class=\"point-reste-agrege element-selectionnable\" cx=\"{x:.2f}\" cy=\"{y:.2f}\" r=\"4\" "
+            "role=\"button\" tabindex=\"0\" data-selection-type=\"reste\" "
+            f"data-selection-date=\"{escape(formater_date_francaise(str(point.get('date'))))}\" "
+            f"data-selection-portion=\"{escape(str(point.get('portion') or TIRET))}\" "
+            f"data-selection-niveau=\"{escape(formater_quantite_jour(point.get('niveau')))}\">"
+            f"<title>{escape(titre)}</title></circle>"
         )
     blocs = blocs_frise_svg(demi_journees, alertes, debut, fin, marge_gauche, largeur - marge_droite)
     return (
@@ -2041,6 +2124,20 @@ def feuille_style() -> str:
       color: var(--muted);
       font-variant-numeric: tabular-nums;
     }
+    .element-selectionnable {
+      cursor: pointer;
+      outline: none;
+    }
+    .element-selectionnable:focus {
+      outline: 3px solid rgba(20, 107, 95, 0.32);
+      outline-offset: 2px;
+    }
+    .jour-calendrier.selection-active,
+    .jour-selectionne {
+      box-shadow: inset 0 0 0 3px var(--accent-fort);
+      color: var(--accent-fort);
+      font-weight: 700;
+    }
     .jour-avec-consommation {
       background: rgba(20, 107, 95, 0.16);
       color: var(--accent-fort);
@@ -2065,6 +2162,12 @@ def feuille_style() -> str:
       fill: rgba(20, 107, 95, 0.72);
       stroke: var(--accent-fort);
       stroke-width: 1;
+    }
+    .bloc-temporel-projete.selection-active,
+    .bloc-selectionne {
+      fill: var(--alerte);
+      stroke: #5f1d16;
+      stroke-width: 3;
     }
     .axe-horizontal,
     .axe-vertical line {
@@ -2098,6 +2201,14 @@ def feuille_style() -> str:
     }
     .point-reste-agrege {
       fill: var(--accent-fort);
+    }
+    .point-reste-agrege.selection-active {
+      fill: var(--alerte);
+      stroke: #5f1d16;
+      stroke-width: 2;
+    }
+    .selection-planification {
+      min-height: 44px;
     }
     details {
       margin-top: 12px;

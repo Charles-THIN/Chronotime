@@ -203,6 +203,51 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("axe-vertical", html)
         self.assertIn("repere-reste", html)
 
+    def test_generation_html_planification_structure_selection(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("selection-planification", html)
+        self.assertIn("data-selection-type", html)
+        self.assertIn("selection-active", html)
+
+    def test_generation_html_selection_calendrier(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("jour-selectionnable", html)
+        self.assertIn("element-selectionnable", html)
+        self.assertIn('data-selection-type="jour"', html)
+        self.assertIn("data-selection-date=", html)
+        self.assertIn("data-selection-consommation=", html)
+        self.assertIn("data-selection-alertes=", html)
+        self.assertIn('role="button"', html)
+        self.assertIn('tabindex="0"', html)
+
+    def test_generation_html_selection_frise_bloc(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("bloc-temporel-projete element-selectionnable", html)
+        self.assertIn('data-selection-type="bloc"', html)
+        self.assertIn("data-selection-identifiant=", html)
+        self.assertIn("data-selection-periode=", html)
+        self.assertIn("data-selection-quantite=", html)
+
+    def test_generation_html_selection_courbe_reste(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("point-reste-agrege element-selectionnable", html)
+        self.assertIn('data-selection-type="reste"', html)
+        self.assertIn("data-selection-niveau=", html)
+        self.assertIn("data-selection-portion=", html)
+
+    def test_generation_html_javascript_selection_passive(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("function activerSelectionPlanification", html)
+        self.assertIn("selection-planification", html)
+        self.assertIn("selection-active", html)
+        self.assertIn("addEventListener('keydown'", html)
+        self.assertIn("event.key === 'Enter'", html)
+
     def test_compteurs_barre_principale_filtre_les_nuls_non_importants(self) -> None:
         soldes = {"GCP": 10.0, "JRTT": 0.0, "CANC": 0.0, "REHV": 0.0, "RECU": 3.0}
 
@@ -365,6 +410,22 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertNotIn("localStorage", html)
         self.assertNotIn("indexedDB", html)
         self.assertNotIn("FileSystem", html)
+
+    def test_generation_html_planification_non_regression_vues_et_outils(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("Vue d’ensemble", html)
+        self.assertIn("Planification", html)
+        self.assertIn("Calendrier", html)
+        self.assertIn("Frise", html)
+        self.assertIn("Soldes", html)
+        self.assertIn("Alertes", html)
+        self.assertIn("Événements projetés", html)
+        self.assertIn("Technique", html)
+        self.assertIn("Poser des jours", html)
+        self.assertIn("Scinder", html)
+        self.assertIn("Fusionner", html)
+        self.assertIn("disabled", html)
 
     def test_generation_fichier_html(self) -> None:
         with tempfile.TemporaryDirectory() as repertoire:
