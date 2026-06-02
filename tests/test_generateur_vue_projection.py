@@ -482,8 +482,14 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("pointerup", html)
         self.assertIn("pointermove", html)
         self.assertIn("elementFromPoint", html)
+        self.assertIn("finaliserPoseLocalePrototype(jour ? jour.dataset.dateIso : dateSurvolPose)", html)
         self.assertIn("window.addEventListener('blur'", html)
         self.assertIn("jour-survol-simple", html)
+        self.assertIn("jour-avec-bloc-utilisateur", html)
+        self.assertNotIn(".jour-avec-bloc-utilisateur::after", html)
+        self.assertNotIn("background: linear-gradient(180deg, rgba(255, 250, 240, 0.95), rgba(230, 244, 240, 0.92));", html)
+        self.assertNotIn("bloc-utilisateur-selectionne {\n      fill: var(--alerte)", html)
+        self.assertIn("afficherCurseurPrototype(dateA, dateB, true);\n          return;", html)
         self.assertNotIn("bloc-local-calendrier", html)
 
     def test_generation_html_planification_non_regression_vues_et_outils(self) -> None:

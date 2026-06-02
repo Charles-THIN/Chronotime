@@ -501,6 +501,24 @@ Le mode `Poser des jours` reste volontairement prudent :
 
 Cette version prépare le futur remplacement par un scénario local explicite puis un recalcul Python. Elle ne constitue pas encore une sauvegarde métier durable.
 
+## V0.4.9 Stabilisation visuelle de la pose utilisateur
+
+La version `V0.4.9` stabilise le prototype de pose locale sans changer les règles métier.
+
+Grammaire visuelle retenue :
+
+- la couleur de fond indique l'origine du bloc ;
+- le contour indique l'état interactif, par exemple survol ou sélection ;
+- le type de compteur reste un détail futur du mode détaillé ;
+- le fantôme de pose n'apparaît que sur une plage entièrement libre ;
+- une plage occupée est signalée dans la zone d'information, sans overlay visuel sur les jours déjà occupés.
+
+Les jours ajoutés par l'utilisateur utilisent un style plat, sans point décoratif ni dégradé. La sélection d'un bloc utilisateur conserve sa couleur d'origine et ajoute seulement un contour renforcé ; elle ne devient pas une alerte.
+
+Le cliquer-déplacer multi-jours est corrigé : la finalisation utilise la dernière date réellement survolée ou la position du pointeur, et non seulement le jour de départ capturé par l'événement.
+
+La frise conserve un rendu dynamique des blocs utilisateur avec un style plat. Dette restante : le calendrier et la frise ne sont pas encore alimentés par un modèle de planification commun complet. La cible suivante reste un scénario local explicite, puis un recalcul Python qui produira à nouveau les sorties dérivées.
+
 ## Vue future des soldes dans le temps
 
 Une future vue `Soldes dans le temps` devra représenter :

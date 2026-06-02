@@ -1135,15 +1135,18 @@ def script_onglets() -> str:
         nettoyerFantomeLocal();
         const dates = datesProjeteesEntre(dateA, dateB);
         const impossible = !plageLibrePourPose(dateA, dateB);
+        if (impossible) {
+          afficherCurseurPrototype(dateA, dateB, true);
+          return;
+        }
         dates.forEach((dateIso, index) => {
           const jour = document.querySelector('.jour-calendrier[data-date-iso="' + dateIso + '"]');
           if (!jour) { return; }
           jour.classList.add('bloc-fantome-local');
-          jour.classList.toggle('bloc-fantome-impossible', impossible);
           if (index === 0) { jour.classList.add('bloc-fantome-debut'); }
           if (index === dates.length - 1) { jour.classList.add('bloc-fantome-fin'); }
         });
-        afficherCurseurPrototype(dateA, dateB, impossible);
+        afficherCurseurPrototype(dateA, dateB, false);
       }
 
       function lireBlocsLocauxPrototype() {
@@ -1552,7 +1555,8 @@ def script_onglets() -> str:
       document.addEventListener('pointerup', function (event) {
         if (outilPlanification !== 'poser' || !poseEnCours) { return; }
         event.preventDefault();
-        const jour = event.target.closest ? event.target.closest('.jour-calendrier[data-date-iso]') : null;
+        const element = document.elementFromPoint(event.clientX, event.clientY);
+        const jour = element && element.closest ? element.closest('.jour-calendrier[data-date-iso]') : null;
         finaliserPoseLocalePrototype(jour ? jour.dataset.dateIso : dateSurvolPose);
       });
 
@@ -3069,21 +3073,10 @@ def feuille_style() -> str:
       outline-offset: 2px;
     }
     .jour-avec-bloc-utilisateur {
-      background: linear-gradient(180deg, rgba(255, 250, 240, 0.95), rgba(230, 244, 240, 0.92));
+      background: rgba(20, 107, 95, 0.12);
       border-color: rgba(20, 107, 95, 0.75);
       color: var(--accent-fort);
       font-weight: 700;
-    }
-    .jour-avec-bloc-utilisateur::after {
-      content: "";
-      position: absolute;
-      right: 4px;
-      bottom: 4px;
-      width: 5px;
-      height: 5px;
-      border-radius: 999px;
-      background: var(--confirmation);
-      pointer-events: none;
     }
     .bloc-fantome-local {
       background: rgba(155, 107, 0, 0.18);
@@ -3122,15 +3115,15 @@ def feuille_style() -> str:
       stroke-width: 3;
     }
     .bloc-utilisateur-frise {
-      fill: rgba(20, 107, 95, 0.34);
+      fill: rgba(20, 107, 95, 0.28);
       stroke: var(--accent-fort);
       stroke-width: 1;
       cursor: pointer;
     }
     .bloc-utilisateur-frise.selection-active,
     .bloc-utilisateur-frise.bloc-utilisateur-selectionne {
-      fill: var(--alerte);
-      stroke: #5f1d16;
+      fill: rgba(20, 107, 95, 0.34);
+      stroke: var(--accent-fort);
       stroke-width: 3;
     }
     .liaison-bloc-courbe {
