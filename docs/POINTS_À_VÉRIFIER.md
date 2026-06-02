@@ -43,6 +43,10 @@ Ce document liste les points encore ouverts avant de figer un moteur de calcul p
 - Les alertes doivent-elles distinguer manque de solde, incompatibilité de compteur et unité non projetée ?
 - Le projecteur V1 doit-il gérer les jours fériés publics ?
 - Vérifier si `chronologie.soldes` doit devenir sensible aux périodes `precedent`, `courant` et `suivant` pour les reports et expirations fines.
+- Définir la formule exacte du reste agrégé à afficher dans la future GUI.
+- Distinguer précisément reste total, reste libre après réserves et réserve pour l’année suivante.
+- Définir le comportement exact de scission et de fusion des blocs dans la future GUI.
+- Définir la forme exacte de la courbe ou du niveau de reste agrégé dans la vue frise.
 
 ## Événements de compteur
 

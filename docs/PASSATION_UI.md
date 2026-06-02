@@ -135,15 +135,40 @@ Exemples :
 
 ## Vues cibles prévues
 
-Trois vues sont prévues.
+La cible GUI doit d’abord être pensée autour du reste global agrégé, pas autour d’une lecture primaire par compteurs.
 
-### Vue 1 : frise temporelle 1D
+Le détail par compteur reste utile, mais comme vue secondaire, panneau explicatif ou niveau de lecture avancé.
+
+Le moteur devra encore préciser la formule exacte entre :
+
+- reste agrégé total ;
+- reste libre après réserves ;
+- congés à conserver pour l’année suivante.
+
+Quatre vues ou familles de vues sont prévues.
+
+### Vue 1 : calendrier classique
+
+Cette vue doit rester familière.
+
+Elle doit permettre à terme :
+
+- repérer les dates civiles ;
+- distinguer jours travaillés et non travaillés ;
+- créer ou sélectionner des blocs ;
+- lire l’effet d’une action sur le reste agrégé dans la barre d’informations droite.
+
+### Vue 2 : frise avec niveau de reste agrégé
 
 C’est la vue principale d’édition.
 
 Elle doit permettre à terme :
 
 - afficher une période longue ;
+- afficher une frise des blocs ;
+- afficher une courbe ou un niveau du reste agrégé sur le même axe temporel ;
+- visualiser immédiatement l’impact d’un bloc sur le reste ;
+- montrer les contraintes lorsqu’un bloc ne peut plus être tiré ;
 - voir les absences réelles ;
 - voir les obligations non encore posées ;
 - voir les blocs simulés ;
@@ -154,7 +179,9 @@ Elle doit permettre à terme :
 - ouvrir un éditeur de détail ;
 - zoomer entre année, trimestre, mois, semaine.
 
-### Vue 2 : projection des soldes
+La frise et le niveau peuvent être superposés ou placés verticalement l’un au-dessus de l’autre.
+
+### Vue 3 : projection des soldes
 
 Elle doit montrer l’évolution des compteurs.
 
@@ -171,7 +198,7 @@ Elle ne doit pas inventer les crédits futurs, ouvertures de validité, expirati
 
 Pour une première vue `Soldes dans le temps`, lire d’abord les données déjà dérivées par le moteur, notamment `mouvements.soldes` et `chronologie.soldes`. La GUI ne doit pas recalculer elle-même les mouvements de solde ni inventer des crédits, expirations, reports ou acquisitions.
 
-### Vue 3 : calendrier annuel compact
+### Vue 4 : calendrier annuel compact
 
 Elle doit permettre :
 
@@ -180,6 +207,75 @@ Elle doit permettre :
 - voir les demi-journées ;
 - repérer les blocs mal placés ;
 - repérer les périodes de fermeture ou de congé imposé.
+
+## Barres communes
+
+Les vues centrales doivent partager :
+
+- une barre d’outils à gauche ;
+- une barre d’informations à droite.
+
+### Barre d’outils gauche
+
+Contenu fixé actuellement :
+
+- outil `poser des jours` ;
+- outil `scinder des jours déjà posés` ;
+- outil `joindre / fusionner` ;
+- groupe de boutons de mode `général` et `détaillé` ;
+- emplacements réservés pour outils futurs.
+
+Mode général :
+
+- lecture centrée sur jours travaillés, congés et blocs ;
+- pas de distinction fine de compteur au premier regard.
+
+Mode détaillé :
+
+- affichage de la nature exacte des blocs ;
+- compteur, droit parentalité, obligation, absence réelle, simulation, alerte et autres détails utiles.
+
+### Barre d’informations droite
+
+Contenu fixé actuellement :
+
+- total restant ;
+- dont prévus pour cette année ;
+- détail compteurs ;
+- prochaine expiration ;
+- zone d’information sur la sélection ;
+- autres champs futurs possibles.
+
+La zone de sélection reste vide si rien n’est sélectionné.
+
+Cette barre doit aussi permettre à la vue calendrier de montrer l’effet d’une action sur le reste agrégé, même si la courbe n’est pas visible au centre.
+
+## Interactions communes
+
+Interactions centrales visées :
+
+clic sur un élément :
+
+- sélection ;
+- affichage des détails dans la barre droite.
+
+clic-déplacement :
+
+- déplacement du bloc dans les limites des contraintes.
+
+déplacement du début ou de la fin :
+
+- redimensionnement du bloc.
+
+survol :
+
+- infobulle légère.
+
+action non autorisée :
+
+- signalement, blocage ou prévisualisation comme impossible.
+
+Ces interactions modifient les blocs sources, puis déclenchent un recalcul de la projection.
 
 ## Première GUI recommandée
 
@@ -471,6 +567,16 @@ Elle ne doit pas gérer elle-même :
 La future vue devra lire ces informations depuis `projection.demi_journees`, `mouvements.soldes`, `chronologie.soldes` ou une projection enrichie produite par le moteur.
 
 La GUI peut afficher `mouvements.soldes` ou `chronologie.soldes` plus tard, mais ne doit pas les traiter comme des sources éditables.
+
+La future GUI ne doit jamais traiter `projection.demi_journees` comme une source éditable.
+
+La cible GUI n’inclut pas à ce stade :
+
+- communication directe avec Chronotime ;
+- écriture automatique ;
+- optimisation automatique ;
+- allocation complète des compteurs ;
+- calcul moteur définitif du reste agrégé.
 
 Le modèle attendu est documenté dans [docs/MODÈLE_ÉVÉNEMENTS_COMPTEURS.md](./MODÈLE_ÉVÉNEMENTS_COMPTEURS.md).
 

@@ -22,6 +22,149 @@ La projection demi-journalière ne doit pas devenir une source de vérité édit
 
 Les futures actions utilisateur devront modifier les événements sources ou les blocs de scénario, puis recalculer la projection.
 
+## Concept primaire
+
+La vue primaire ne doit pas être organisée d’abord par compteurs individuels.
+
+Concept primaire :
+
+- reste global agrégé.
+
+Concepts secondaires :
+
+- détail par compteur ;
+- mouvements de solde ;
+- expirations ;
+- règles d’allocation ;
+- justification des alertes.
+
+Le détail par compteur reste utile, mais comme vue avancée, panneau explicatif ou détail repliable.
+
+Le reste agrégé devra probablement distinguer plus tard :
+
+- le reste agrégé total ;
+- le reste libre après réserves ;
+- les congés à conserver pour l’année suivante.
+
+La formule exacte du reste agrégé n’est pas encore figée côté moteur. La GUI doit donc traiter cette notion comme une cible de conception, pas comme une règle déjà stabilisée.
+
+## Vues centrales principales
+
+La cible GUI à moyen terme repose sur deux vues centrales principales.
+
+### Vue calendrier
+
+Rôle :
+
+- vue familière ;
+- repérage civil des congés ;
+- affichage des jours travaillés et non travaillés ;
+- création ou sélection de blocs ;
+- effet sur le reste agrégé visible dans la barre d’informations.
+
+### Vue frise avec niveau
+
+Rôle :
+
+- vue principale de planification ;
+- frise des blocs de congés ;
+- courbe ou niveau du reste agrégé aligné sur le même axe temporel ;
+- visualisation immédiate de l’impact d’un bloc sur le reste ;
+- indication des contraintes lorsque le bloc ne peut plus être tiré.
+
+La frise et le niveau pourront être superposés ou placés verticalement l’un au-dessus de l’autre.
+
+Schéma conceptuel :
+
+```text
+[ blocs de congés / obligations / scénarios ]
+-----------------------------------------------------> temps
+
+[ niveau de reste agrégé ]
+-----------------------------------------------------> temps
+```
+
+## Barre d’outils gauche commune
+
+La GUI cible doit partager une barre d’outils gauche commune entre les vues centrales.
+
+Contenu fixé actuellement :
+
+- outil `poser des jours` ;
+- outil `scinder des jours déjà posés` ;
+- outil `joindre / fusionner` ;
+- groupe de boutons de mode `général` et `détaillé` ;
+- emplacements réservés pour outils futurs.
+
+Mode général :
+
+- affichage sans distinction fine de compteur ;
+- lecture centrée sur jours travaillés, congés et blocs.
+
+Mode détaillé :
+
+- affichage de la nature exacte des blocs ;
+- compteur, droit parentalité, obligation, absence réelle, simulation, alerte et autres détails utiles.
+
+## Barre d’informations droite commune
+
+La GUI cible doit partager une barre d’informations droite commune entre les vues centrales.
+
+Contenu fixé actuellement :
+
+- total restant ;
+- dont prévus pour cette année ;
+- détail compteurs ;
+- prochaine expiration ;
+- zone d’information sur la sélection ;
+- autres champs futurs possibles.
+
+La zone de sélection reste vide si rien n’est sélectionné.
+
+Cette barre doit aussi permettre à la vue calendrier de montrer l’effet d’une action sur le reste agrégé, même si la courbe de niveau n’est pas visible au centre.
+
+## Interactions communes des vues centrales
+
+Les interactions centrales visées sont les suivantes :
+
+clic sur un élément :
+
+- sélectionne l’élément ;
+- affiche ses détails dans la barre droite.
+
+clic-déplacement d’un élément :
+
+- déplace le bloc dans les limites des contraintes.
+
+clic-déplacement du début ou de la fin :
+
+- modifie la période ou la durée du bloc.
+
+survol :
+
+- affiche une infobulle légère.
+
+action non autorisée :
+
+- doit être signalée, bloquée ou prévisualisée comme impossible.
+
+Ces interactions doivent modifier les blocs sources, puis déclencher un recalcul de la projection.
+
+## Points ouverts de conception
+
+Points encore ouverts à documenter côté moteur et GUI :
+
+- formule exacte du reste agrégé ;
+- distinction entre reste total, reste libre et réserve pour l’année suivante ;
+- règles d’allocation automatique des compteurs ;
+- comportement précis de scission ;
+- comportement précis de fusion ;
+- affichage exact des contraintes pendant un déplacement ;
+- degré d’édition autorisé dans la vue calendrier ;
+- forme exacte de la courbe de niveau ;
+- futur mode `préparer les actions Chronotime` ;
+- éventuelle communication directe avec Chronotime, non prévue à ce stade.
+
 ## Générateur statique V0
 
 Le générateur local lit un fichier JSON déjà produit par l’orchestrateur local, puis écrit une page HTML autonome.
