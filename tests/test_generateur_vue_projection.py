@@ -581,6 +581,19 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("dblclick", html)
         self.assertIn("event.preventDefault()", html)
 
+
+    def test_generation_html_barre_droite_cloisonnee_zid_curseur(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn("barre-infos-droite-stable", html)
+        self.assertIn("grid-template-rows: auto minmax(0, 1fr) auto auto", html)
+        self.assertIn("bloc-info-selection", html)
+        self.assertIn("grid-template-rows: auto minmax(0, 1fr)", html)
+        self.assertIn("selection-planification", html)
+        self.assertIn("height: 100%", html)
+        self.assertIn("curseur-planification", html)
+        self.assertIn("max-height: 118px", html)
+        self.assertIn("overflow: hidden", html)
+
     def _chemin_exemple(self) -> Path:
         return Path("donnees/exemples/projection_demi_journees.exemple.json")
 

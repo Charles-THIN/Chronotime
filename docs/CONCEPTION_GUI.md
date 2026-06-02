@@ -414,6 +414,21 @@ Corrections apportées :
 
 Ces corrections restent passives. Elles ne créent aucun bloc, ne modifient aucun scénario, ne recalculent aucune projection côté navigateur et ne sauvegardent rien.
 
+## V0.4.5 Cloisonnement de la barre d’informations
+
+La version `V0.4.5` corrige le cloisonnement de la barre d’informations droite.
+
+La barre droite est structurée en lignes explicites :
+
+- synthèse fixe ;
+- zone `Sélection` / ZID, avec défilement interne ;
+- séparateur ;
+- zone `Curseur`, bornée et séparée.
+
+Objectif : empêcher le curseur de frise de se dessiner par-dessus la ZID et limiter les recompositions visuelles lorsque le curseur ou la sélection changent.
+
+Cette correction reste passive. Elle ne crée aucun bloc, ne modifie aucun scénario, ne recalcule aucune projection côté navigateur et ne sauvegarde rien.
+
 ## Vue future des soldes dans le temps
 
 Une future vue `Soldes dans le temps` devra représenter :

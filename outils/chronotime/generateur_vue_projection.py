@@ -2455,8 +2455,10 @@ def feuille_style() -> str:
       overflow-x: hidden;
     }
     .barre-infos-droite {
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto auto;
+      height: 100%;
+      max-height: 100%;
       overflow: hidden;
     }
     .outil-passif {
@@ -2715,31 +2717,36 @@ def feuille_style() -> str:
       user-select: none;
     }
     .bloc-info-fixe {
-      flex: 0 0 auto;
+      min-height: 0;
+      overflow: visible;
     }
     .bloc-info-selection {
-      flex: 1 1 auto;
       min-height: 0;
-      display: flex;
-      flex-direction: column;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
     }
     .selection-planification {
-      min-height: 160px;
+      min-height: 0;
+      height: 100%;
       overflow-y: auto;
       overflow-x: hidden;
       padding-right: 2px;
     }
     .separateur-infos {
-      flex: 0 0 auto;
-      margin: 12px 0;
+      min-height: 0;
+      margin: 10px 0;
       border-top: 1px solid rgba(216, 201, 174, 0.95);
     }
     .bloc-info-curseur {
-      flex: 0 0 auto;
-      min-height: 118px;
+      min-height: 0;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto minmax(0, auto);
     }
     .curseur-planification {
-      min-height: 78px;
+      min-height: 0;
+      max-height: 118px;
       overflow-y: auto;
       overflow-x: hidden;
     }
@@ -2791,10 +2798,15 @@ def feuille_style() -> str:
       }
       .interface-planification {
         grid-template-columns: 1fr;
+        height: auto;
+        overflow: visible;
       }
+      .zone-centrale-planification,
       .barre-outils-gauche,
       .barre-infos-droite {
-        position: static;
+        height: auto;
+        max-height: none;
+        overflow: visible;
       }
     }
     @media (max-width: 720px) {
