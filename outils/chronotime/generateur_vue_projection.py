@@ -987,14 +987,250 @@ def section_secondaire_planification(resume: dict[str, Any]) -> str:
     )
 
 
-def vue_planification(synthese: dict[str, Any] | None = None) -> str:
+def somme_soldes_numeriques(soldes: Any) -> float | None:
+    if not isinstance(soldes, dict):
+        return None
+    total = 0.0
+    au_moins_un_solde = False
+    for valeur in soldes.values():
+        if isinstance(valeur, (int, float)):
+            total += float(valeur)
+            au_moins_un_solde = True
+    return total if au_moins_un_solde else None
+
+
+def derniere_demi_journee_avec_soldes(demi_journees: list[Any]) -> dict[str, Any] | None:
+    for demi_journee in reversed(demi_journees):
+        if isinstance(demi_journee, dict) and isinstance(demi_journee.get("soldes_apres"), dict):
+            return demi_journee
+    return None
+
+
+def soldes_fin_projection(projection: dict[str, Any], demi_journees: list[Any]) -> dict[str, Any]:
+    derniere = derniere_demi_journee_avec_soldes(demi_journees)
+    if derniere is not None:
+        return derniere.get("soldes_apres", {})
+    soldes_initiaux = projection.get("soldes_initiaux", {})
+    return soldes_initiaux if isinstance(soldes_initiaux, dict) else {}
+
+
+def barre_outils_gauche() -> str:
+    return """
+    <aside class="barre-outils-gauche" aria-label="Barre d’outils de planification">
+      <h3>Outils</h3>
+      <button type="button" class="outil-passif outil-desactive" disabled>Poser des jours</button>
+      <button type="button" class="outil-passif outil-desactive" disabled>Scinder</button>
+      <button type="button" class="outil-passif outil-desactive" disabled>Fusionner</button>
+      <h3>Affichage</h3>
+      <button type="button" class="outil-passif outil-actif" aria-pressed="true">Général</button>
+      <button type="button" class="outil-passif" aria-pressed="false">Détaillé</button>
+    </aside>
+    """
+
+
+def tableau_detail_compteurs(soldes: dict[str, Any]) -> str:
+    lignes = []
+    for compteur, valeur in sorted(soldes.items()):
+        lignes.append(
+            "<tr>"
+            f"<th>{escape(str(compteur))}</th>"
+            f"<td>{escape(formater_quantite_jour(valeur))}</td>"
+            "</tr>"
+        )
+    corps = "\n".join(lignes) if lignes else "<tr><td colspan=\"2\">Aucun solde disponible.</td></tr>"
+    return (
+        "<div class=\"tableau-defilable\">"
+        "<table><thead><tr><th>Compteur</th><th>Solde final</th></tr></thead>"
+        f"<tbody>{corps}</tbody></table>"
+        "</div>"
+    )
+
+
+def barre_infos_droite(projection: dict[str, Any], demi_journees: list[Any]) -> str:
+    soldes_finaux = soldes_fin_projection(projection, demi_journees)
+    total_restant = somme_soldes_numeriques(soldes_finaux)
+    total_restant_texte = formater_quantite_jour(total_restant) if total_restant is not None else "Niveau non disponible"
+    return f"""
+    <aside class="barre-infos-droite" aria-label="Barre d’informations de planification">
+      <h3>Total restant</h3>
+      <p class="valeur-info">{escape(total_restant_texte)}</p>
+      <p class="note">reste agrégé provisoire en fin de projection</p>
+      <h3>Dont prévus pour cette année</h3>
+      <p>non calculé</p>
+      <h3>Détail compteurs</h3>
+      {tableau_detail_compteurs(soldes_finaux)}
+      <h3>Prochaine expiration</h3>
+      <p>non calculée</p>
+      <h3>Sélection</h3>
+      <p>aucune sélection</p>
+    </aside>
+    """
+
+
+def date_infos_calendrier(demi_journees: list[Any]) -> dict[str, dict[str, Any]]:
+    infos: dict[str, dict[str, Any]] = {}
+    for demi_journee in demi_journees:
+        if not isinstance(demi_journee, dict):
+            continue
+        date_iso = str(demi_journee.get("date", ""))
+        if not date_iso:
+            continue
+        info = infos.setdefault(
+            date_iso,
+            {
+                "consommations": {},
+                "alertes": False,
+            },
+        )
+        if demi_journee.get("alertes"):
+            info["alertes"] = True
+        details = demi_journee.get("consommations_detaillees", [])
+        if not isinstance(details, list):
+            details = []
+        for detail in details:
+            if not isinstance(detail, dict):
+                continue
+            compteur = str(detail.get("compteur") or "")
+            quantite = detail.get("quantite_appliquee")
+            if compteur and isinstance(quantite, (int, float)):
+                consommations = info["consommations"]
+                consommations[compteur] = float(consommations.get(compteur, 0.0)) + float(quantite)
+    return infos
+
+
+def titre_jour_calendrier(date_iso: str, info: dict[str, Any]) -> str:
+    morceaux = [formater_date_francaise(date_iso)]
+    consommations = info.get("consommations", {})
+    if isinstance(consommations, dict) and consommations:
+        resume = ", ".join(
+            f"{compteur} {formater_nombre_francais(quantite)}"
+            for compteur, quantite in sorted(consommations.items())
+        )
+        morceaux.append(f"consommation : {resume}")
+    if info.get("alertes"):
+        morceaux.append("alerte")
+    return " — ".join(morceaux)
+
+
+def vue_calendrier_passif(demi_journees: list[Any]) -> str:
+    infos = date_infos_calendrier(demi_journees)
+    mois: dict[str, list[str]] = {}
+    for date_iso in sorted(infos):
+        mois.setdefault(formater_mois_annee(date_iso), []).append(date_iso)
+    blocs_mois = []
+    for libelle_mois, dates in mois.items():
+        jours = []
+        for date_iso in dates:
+            info = infos[date_iso]
+            classes = ["jour-calendrier"]
+            if info.get("consommations"):
+                classes.append("jour-avec-consommation")
+            if info.get("alertes"):
+                classes.append("jour-avec-alerte")
+            jour = date_iso_vers_objet(date_iso).day
+            jours.append(
+                f"<span class=\"{' '.join(classes)}\" title=\"{escape(titre_jour_calendrier(date_iso, info))}\">{jour}</span>"
+            )
+        blocs_mois.append(
+            "<section class=\"mois-calendrier\">"
+            f"<h4>{escape(libelle_mois)}</h4>"
+            f"<div class=\"jours-calendrier\">{''.join(jours)}</div>"
+            "</section>"
+        )
+    contenu = "".join(blocs_mois) if blocs_mois else "<p>Aucune date projetée.</p>"
+    return f"""
+    <section class="vue-calendrier-passif">
+      <h3>Calendrier</h3>
+      {contenu}
+    </section>
+    """
+
+
+def points_reste_agrege(demi_journees: list[Any]) -> list[dict[str, Any]]:
+    points = []
+    for demi_journee in demi_journees:
+        if not isinstance(demi_journee, dict):
+            continue
+        niveau = somme_soldes_numeriques(demi_journee.get("soldes_apres"))
+        if niveau is None:
+            continue
+        points.append(
+            {
+                "date": demi_journee.get("date"),
+                "portion": demi_journee.get("portion"),
+                "niveau": niveau,
+            }
+        )
+    return points
+
+
+def courbe_reste_agrege(points: list[dict[str, Any]]) -> str:
+    if not points:
+        return "<p>Niveau non disponible</p>"
+    largeur = 680
+    hauteur = 170
+    marge = 18
+    valeurs = [float(point["niveau"]) for point in points]
+    minimum = min(valeurs)
+    maximum = max(valeurs)
+    amplitude = maximum - minimum or 1.0
+    coordonnees = []
+    for index, point in enumerate(points):
+        x = marge + (index * (largeur - 2 * marge) / max(len(points) - 1, 1))
+        y = hauteur - marge - ((float(point["niveau"]) - minimum) * (hauteur - 2 * marge) / amplitude)
+        coordonnees.append((x, y, point))
+    polyline = " ".join(f"{x:.2f},{y:.2f}" for x, y, _point in coordonnees)
+    points_svg = []
+    pas = max(1, len(coordonnees) // 24)
+    for index, (x, y, point) in enumerate(coordonnees):
+        if index % pas != 0 and index != len(coordonnees) - 1:
+            continue
+        titre = (
+            f"{formater_date_francaise(str(point.get('date')))} "
+            f"{point.get('portion') or ''} — reste agrégé provisoire {formater_quantite_jour(point.get('niveau'))}"
+        )
+        points_svg.append(
+            f"<circle class=\"point-reste-agrege\" cx=\"{x:.2f}\" cy=\"{y:.2f}\" r=\"3\"><title>{escape(titre)}</title></circle>"
+        )
+    return (
+        f"<svg class=\"courbe-reste-agrege\" viewBox=\"0 0 {largeur} {hauteur}\" role=\"img\" "
+        "aria-label=\"Courbe du reste agrégé provisoire\">"
+        f"<polyline points=\"{polyline}\" fill=\"none\" />"
+        f"{''.join(points_svg)}"
+        "</svg>"
+    )
+
+
+def vue_frise_niveau_passive(demi_journees: list[Any], alertes: list[Any]) -> str:
+    evenements = agreger_evenements_projetes(demi_journees, alertes)
+    evenements = evenements[:8]
+    blocs = []
+    for evenement in evenements:
+        blocs.append(
+            "<article class=\"bloc-frise-passif\">"
+            f"<strong>{escape(titre_evenement_projete(evenement))}</strong>"
+            f"<span>{escape(str(evenement.get('identifiant_evenement') or ''))}</span>"
+            f"<span>{escape(formater_quantite_jour(evenement.get('quantite_appliquee_totale')))}</span>"
+            "</article>"
+        )
+    contenu_blocs = "".join(blocs) if blocs else "<p>Aucun bloc projeté.</p>"
+    points = points_reste_agrege(demi_journees)
+    return f"""
+    <section class="vue-frise-niveau">
+      <h3>Frise + niveau</h3>
+      <div class="ligne-blocs-passifs">{contenu_blocs}</div>
+      <div class="niveau-reste-agrege">
+        <h4>reste agrégé provisoire</h4>
+        <p class="note">Formule temporaire : somme simple des soldes_apres numériques. N’inclut pas encore réserves, expirations fines, acquisitions futures ni règles d’allocation complètes.</p>
+        {courbe_reste_agrege(points)}
+      </div>
+    </section>
+    """
+
+
+def bloc_synthese_planification(synthese: dict[str, Any] | None = None) -> str:
     if synthese is None:
-        return """
-        <section class="carte">
-          <h2>Planification</h2>
-          <p class="note">Aucune synthèse de planification fournie.</p>
-        </section>
-        """
+        return "<section class=\"carte\"><p class=\"note\">Aucune synthèse de planification fournie.</p></section>"
 
     resume = synthese.get("resume_global", {})
     if not isinstance(resume, dict):
@@ -1035,6 +1271,30 @@ def vue_planification(synthese: dict[str, Any] | None = None) -> str:
     {section_secondaire_planification(resume)}
     {liste_signaux_planification(signaux)}
     {details_techniques_planification(synthese)}
+    """
+
+
+def vue_planification(
+    projection: dict[str, Any],
+    demi_journees: list[Any],
+    alertes: list[Any],
+    synthese: dict[str, Any] | None = None,
+) -> str:
+    return f"""
+    <section class="interface-planification">
+      {barre_outils_gauche()}
+      <div class="zone-centrale-planification">
+        <h2>Planification</h2>
+        <div class="sous-vues-planification" aria-label="Vues passives de planification">
+          <span class="sous-vue-active">Calendrier</span>
+          <span>Frise + niveau</span>
+        </div>
+        {vue_calendrier_passif(demi_journees)}
+        {vue_frise_niveau_passive(demi_journees, alertes)}
+        {bloc_synthese_planification(synthese)}
+      </div>
+      {barre_infos_droite(projection, demi_journees)}
+    </section>
     """
 
 
@@ -1461,6 +1721,152 @@ def feuille_style() -> str:
       color: var(--confirmation);
       font-weight: 700;
     }
+    .interface-planification {
+      display: grid;
+      grid-template-columns: minmax(150px, 0.7fr) minmax(360px, 2.4fr) minmax(240px, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .barre-outils-gauche,
+    .barre-infos-droite,
+    .zone-centrale-planification {
+      padding: 16px;
+      border: 1px solid var(--trait);
+      border-radius: 18px;
+      background: rgba(255, 250, 240, 0.9);
+      box-shadow: 0 10px 26px rgba(41, 31, 19, 0.08);
+    }
+    .barre-outils-gauche,
+    .barre-infos-droite {
+      position: sticky;
+      top: 128px;
+    }
+    .outil-passif {
+      display: block;
+      width: 100%;
+      margin: 8px 0;
+      padding: 9px 10px;
+      border: 1px solid var(--trait);
+      border-radius: 8px;
+      background: #fffaf0;
+      color: var(--accent-fort);
+      font: inherit;
+      text-align: left;
+    }
+    .outil-actif {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent-fort);
+    }
+    .outil-desactive {
+      opacity: 0.48;
+      cursor: not-allowed;
+    }
+    .valeur-info {
+      margin: 0;
+      color: var(--accent-fort);
+      font-size: 1.35rem;
+      font-weight: 700;
+    }
+    .sous-vues-planification {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .sous-vues-planification span {
+      padding: 6px 10px;
+      border: 1px solid var(--trait);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.35);
+    }
+    .sous-vues-planification .sous-vue-active {
+      color: white;
+      background: var(--accent);
+      border-color: var(--accent-fort);
+    }
+    .vue-calendrier-passif,
+    .vue-frise-niveau {
+      margin-top: 14px;
+      padding: 14px;
+      border: 1px solid rgba(216, 201, 174, 0.8);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.34);
+    }
+    .mois-calendrier {
+      margin-top: 12px;
+    }
+    .mois-calendrier h4,
+    .niveau-reste-agrege h4 {
+      margin: 0 0 8px;
+      color: var(--accent-fort);
+      text-transform: lowercase;
+    }
+    .jours-calendrier {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+      gap: 5px;
+    }
+    .jour-calendrier {
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #cbbd9f;
+      border-radius: 8px;
+      background: #fffaf0;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .jour-avec-consommation {
+      background: rgba(20, 107, 95, 0.16);
+      color: var(--accent-fort);
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+    .jour-avec-alerte {
+      box-shadow: inset 0 0 0 2px rgba(177, 59, 46, 0.5);
+    }
+    .ligne-blocs-passifs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .bloc-frise-passif {
+      display: grid;
+      gap: 4px;
+      padding: 10px;
+      border: 1px solid var(--trait);
+      border-radius: 8px;
+      background: #fffaf0;
+    }
+    .bloc-frise-passif span {
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+    .niveau-reste-agrege {
+      padding-top: 10px;
+      border-top: 1px dashed var(--trait);
+    }
+    .courbe-reste-agrege {
+      width: 100%;
+      max-height: 190px;
+      margin-top: 10px;
+      border: 1px solid var(--trait);
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(255, 250, 240, 0.88), rgba(239, 228, 208, 0.8));
+    }
+    .courbe-reste-agrege polyline {
+      stroke: var(--accent);
+      stroke-width: 3;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+    }
+    .point-reste-agrege {
+      fill: var(--accent-fort);
+    }
     details {
       margin-top: 12px;
       border-top: 1px dashed var(--trait);
@@ -1477,6 +1883,13 @@ def feuille_style() -> str:
       }
       .grille-hero {
         grid-template-columns: 1fr;
+      }
+      .interface-planification {
+        grid-template-columns: 1fr;
+      }
+      .barre-outils-gauche,
+      .barre-infos-droite {
+        position: static;
       }
     }
     @media (max-width: 720px) {
@@ -1508,7 +1921,7 @@ def generer_html(
 
     contenu_vues = [
         envelopper_vue("vue-ensemble", "Vue d’ensemble", vue_ensemble(periode, resume, projection), active=True),
-        envelopper_vue("vue-planification", "Planification", vue_planification(synthese)),
+        envelopper_vue("vue-planification", "Planification", vue_planification(projection, demi_journees, alertes, synthese)),
         envelopper_vue("vue-frise", "Frise", vue_frise(demi_journees)),
         envelopper_vue("vue-soldes", "Soldes", vue_soldes(projection, chronologie)),
         envelopper_vue("vue-alertes", "Alertes", vue_alertes(alertes)),

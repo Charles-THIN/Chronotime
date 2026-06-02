@@ -263,6 +263,54 @@ Les objectifs sont limités à la lisibilité :
 - aucune nouvelle logique métier ;
 - vue toujours strictement en lecture seule.
 
+## V0.4 Planification passive
+
+La version `V0.4` ajoute une première structure concrète de planification en trois zones :
+
+- barre d’outils gauche passive ;
+- zone centrale de planification ;
+- barre d’informations droite passive.
+
+La barre d’outils gauche affiche les outils prévus, sans interaction réelle :
+
+- poser des jours ;
+- scinder ;
+- fusionner ;
+- mode général ;
+- mode détaillé.
+
+La zone centrale affiche deux vues passives :
+
+- calendrier ;
+- frise avec niveau.
+
+Le niveau affiché est un `reste agrégé provisoire`.
+
+Cette formule est temporaire. Elle sert uniquement à tester la lecture visuelle de la future interface et n’inclut pas encore :
+
+- réserves ;
+- expirations fines ;
+- acquisitions futures ;
+- règles d’allocation complètes.
+
+La barre d’informations droite affiche une première lecture passive :
+
+- total restant ;
+- dont prévus pour cette année, non calculé à ce stade ;
+- détail compteurs ;
+- prochaine expiration, non calculée à ce stade ;
+- sélection, vide si rien n’est sélectionné.
+
+Cette version ne fait aucune édition :
+
+- aucune création de bloc ;
+- aucun déplacement ;
+- aucun redimensionnement ;
+- aucune scission ;
+- aucune fusion ;
+- aucune sauvegarde ;
+- aucune écriture Chronotime.
+
 ## Vue future des soldes dans le temps
 
 Une future vue `Soldes dans le temps` devra représenter :

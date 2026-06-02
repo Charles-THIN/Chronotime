@@ -113,6 +113,56 @@ class TestGenerateurVueProjection(unittest.TestCase):
         html = generer_html(self._charger_exemple())
         self.assertIn("Aucune synthèse de planification fournie.", html)
 
+    def test_generation_html_planification_passive_structure(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("Planification", html)
+        self.assertIn("interface-planification", html)
+        self.assertIn("barre-outils-gauche", html)
+        self.assertIn("zone-centrale-planification", html)
+        self.assertIn("barre-infos-droite", html)
+
+    def test_generation_html_planification_barre_outils(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("Poser des jours", html)
+        self.assertIn("Scinder", html)
+        self.assertIn("Fusionner", html)
+        self.assertIn("Général", html)
+        self.assertIn("Détaillé", html)
+        self.assertIn("outil-desactive", html)
+        self.assertIn("disabled", html)
+
+    def test_generation_html_planification_barre_infos(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("Total restant", html)
+        self.assertIn("Dont prévus pour cette année", html)
+        self.assertIn("Détail compteurs", html)
+        self.assertIn("Prochaine expiration", html)
+        self.assertIn("Sélection", html)
+        self.assertIn("non calculé", html)
+        self.assertIn("non calculée", html)
+        self.assertIn("aucune sélection", html)
+
+    def test_generation_html_planification_calendrier_passif(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("vue-calendrier-passif", html)
+        self.assertIn("mois-calendrier", html)
+        self.assertIn("jour-calendrier", html)
+        self.assertIn("jour-avec-consommation", html)
+
+    def test_generation_html_planification_frise_niveau(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("vue-frise-niveau", html)
+        self.assertIn("niveau-reste-agrege", html)
+        self.assertIn("courbe-reste-agrege", html)
+        self.assertIn("point-reste-agrege", html)
+        self.assertIn("reste agrégé provisoire", html)
+        self.assertIn("Formule temporaire", html)
+
     def test_chargement_chronologie_valide(self) -> None:
         with tempfile.TemporaryDirectory() as repertoire:
             chemin = Path(repertoire) / "chronologie.json"
@@ -245,6 +295,13 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertNotIn("https://", html)
         self.assertNotIn("<script src=", html)
         self.assertNotIn("<link rel=", html)
+
+    def test_generation_html_sans_persistance_ni_acces_fichier(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertNotIn("fetch(", html)
+        self.assertNotIn("localStorage", html)
+        self.assertNotIn("indexedDB", html)
+        self.assertNotIn("FileSystem", html)
 
     def test_generation_fichier_html(self) -> None:
         with tempfile.TemporaryDirectory() as repertoire:
