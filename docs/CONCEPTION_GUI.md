@@ -375,6 +375,27 @@ Cette sélection est un état visuel local de lecture. Elle ne modifie pas :
 
 Elle ne déclenche aucun recalcul côté navigateur et ne crée aucune capacité d'édition. Elle sert seulement de première étape avant les futures interactions de création ou modification de blocs sources.
 
+## V0.4.3 Corrections de sélection passive
+
+La sélection passive est corrigée pour mieux préparer la future interaction détaillée.
+
+Corrections apportées :
+
+- un jour du calendrier peut proposer plusieurs niveaux de sélection ;
+- les clics successifs sur un même jour font tourner les niveaux disponibles ;
+- niveaux visés : bloc complet, sous-bloc monotype lorsqu'il existe, puis jour seul ;
+- clic dans une zone centrale vide ou touche `Escape` : désélection ;
+- la zone `Sélection` de la barre droite devient une fiche structurée, avec champs courts et valeurs longues renvoyées à la ligne ;
+- le bloc `Tous les compteurs` est retiré de la barre droite principale ;
+- les mois du calendrier sont compactés pour tenir sur une ligne autant que possible ;
+- la frise ajoute des liaisons visuelles entre blocs projetés et courbe de reste agrégé provisoire.
+
+Cette sélection reste passive. Elle ne crée pas de bloc, ne déplace rien, ne modifie aucune projection et ne sauvegarde aucun scénario.
+
+Note sur les crédits futurs :
+
+La frise ne montre pas encore de remontée liée aux crédits futurs, par exemple `JRTT`, car ces crédits ne sont pas encore modélisés dans la projection ou la chronologie de soldes. La GUI devra les afficher lorsque le moteur produira des événements de crédit ou une chronologie enrichie. Elle ne doit pas inventer ces remontées côté interface.
+
 ## Vue future des soldes dans le temps
 
 Une future vue `Soldes dans le temps` devra représenter :

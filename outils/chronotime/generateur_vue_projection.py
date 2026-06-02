@@ -824,40 +824,95 @@ def script_onglets() -> str:
       function libelleSelection(type) {
         if (type === 'jour') { return 'jour calendrier'; }
         if (type === 'bloc') { return 'bloc projeté'; }
+        if (type === 'sous-bloc') { return 'sous-bloc'; }
         if (type === 'reste') { return 'reste agrégé provisoire'; }
         return type || 'élément';
       }
-      function ajouterLigneSelection(conteneur, libelle, valeur) {
-        const ligne = document.createElement('p');
-        ligne.className = 'info-compacte';
-        const etiquette = document.createElement('strong');
-        etiquette.textContent = libelle + ' : ';
-        ligne.appendChild(etiquette);
-        ligne.appendChild(document.createTextNode(valeur || 'aucune'));
-        conteneur.appendChild(ligne);
+      function ajouterChampSelection(conteneur, libelle, valeur, long) {
+        const champ = document.createElement('div');
+        champ.className = 'champ-selection';
+        const etiquette = document.createElement('span');
+        etiquette.className = 'libelle-selection';
+        etiquette.textContent = libelle;
+        const contenu = document.createElement('strong');
+        contenu.className = 'valeur-selection' + (long ? ' valeur-longue' : '');
+        contenu.textContent = valeur || 'aucune';
+        champ.appendChild(etiquette);
+        champ.appendChild(contenu);
+        conteneur.appendChild(champ);
       }
-      function activerSelectionPlanification(element) {
+      function lireSelection(element) {
+        const niveaux = Array.from(element.querySelectorAll('.selection-niveaux .niveau-selection'));
+        if (!niveaux.length) {
+          return element.dataset;
+        }
+        const prochain = Number(element.dataset.selectionIndex || '-1') + 1;
+        const index = prochain % niveaux.length;
+        element.dataset.selectionIndex = String(index);
+        return niveaux[index].dataset;
+      }
+      function reinitialiserCyclesSelection() {
+        document.querySelectorAll('.element-selectionnable[data-selection-index]').forEach((element) => {
+          delete element.dataset.selectionIndex;
+        });
+      }
+      function afficherSelectionPlanification(donnees) {
         const cible = document.getElementById('selection-planification');
         if (!cible) { return; }
+        cible.textContent = '';
+        const fiche = document.createElement('div');
+        fiche.className = 'fiche-selection';
+        const puce = document.createElement('span');
+        puce.className = 'puce-selection';
+        puce.textContent = libelleSelection(donnees.selectionType);
+        fiche.appendChild(puce);
+        if (donnees.selectionType === 'jour') {
+          ajouterChampSelection(fiche, 'Date', donnees.selectionDate, false);
+          ajouterChampSelection(fiche, 'Consommation', donnees.selectionConsommation, false);
+          ajouterChampSelection(fiche, 'Alertes', donnees.selectionAlertes, false);
+        } else if (donnees.selectionType === 'bloc') {
+          ajouterChampSelection(fiche, 'Période', donnees.selectionPeriode, false);
+          ajouterChampSelection(fiche, 'Libellé', donnees.selectionLibelle, false);
+          ajouterChampSelection(fiche, 'Quantité', donnees.selectionQuantite, false);
+          ajouterChampSelection(fiche, 'Compteurs', donnees.selectionCompteurs, false);
+          ajouterChampSelection(fiche, 'Alertes', donnees.selectionAlertes, false);
+          ajouterChampSelection(fiche, 'Identifiant', donnees.selectionIdentifiant, true);
+        } else if (donnees.selectionType === 'sous-bloc') {
+          ajouterChampSelection(fiche, 'Période', donnees.selectionPeriode, false);
+          ajouterChampSelection(fiche, 'Compteur', donnees.selectionCompteur, false);
+          ajouterChampSelection(fiche, 'Quantité', donnees.selectionQuantite, false);
+          ajouterChampSelection(fiche, 'Bloc parent', donnees.selectionParent, true);
+        } else if (donnees.selectionType === 'reste') {
+          ajouterChampSelection(fiche, 'Date', donnees.selectionDate, false);
+          ajouterChampSelection(fiche, 'Portion', donnees.selectionPortion, false);
+          ajouterChampSelection(fiche, 'Niveau', donnees.selectionNiveau, false);
+        }
+        cible.appendChild(fiche);
+      }
+      function deselectionnerPlanification() {
+        document.querySelectorAll('.selection-active').forEach((selection) => {
+          selection.classList.remove('selection-active');
+        });
+        reinitialiserCyclesSelection();
+        const cible = document.getElementById('selection-planification');
+        if (cible) {
+          cible.textContent = '';
+          const vide = document.createElement('p');
+          vide.className = 'info-compacte';
+          vide.textContent = 'aucune';
+          cible.appendChild(vide);
+        }
+      }
+      function activerSelectionPlanification(element) {
+        if (!element.classList.contains('selection-active')) {
+          reinitialiserCyclesSelection();
+        }
+        const donnees = lireSelection(element);
         document.querySelectorAll('.selection-active').forEach((selection) => {
           selection.classList.remove('selection-active');
         });
         element.classList.add('selection-active');
-        cible.textContent = '';
-        ajouterLigneSelection(cible, 'Type', libelleSelection(element.dataset.selectionType));
-        if (element.dataset.selectionType === 'jour') {
-          ajouterLigneSelection(cible, 'Date', element.dataset.selectionDate);
-          ajouterLigneSelection(cible, 'Consommation', element.dataset.selectionConsommation);
-          ajouterLigneSelection(cible, 'Alertes', element.dataset.selectionAlertes);
-        } else if (element.dataset.selectionType === 'bloc') {
-          ajouterLigneSelection(cible, 'Période', element.dataset.selectionPeriode);
-          ajouterLigneSelection(cible, 'Identifiant', element.dataset.selectionIdentifiant);
-          ajouterLigneSelection(cible, 'Quantité', element.dataset.selectionQuantite);
-        } else if (element.dataset.selectionType === 'reste') {
-          ajouterLigneSelection(cible, 'Date', element.dataset.selectionDate);
-          ajouterLigneSelection(cible, 'Portion', element.dataset.selectionPortion);
-          ajouterLigneSelection(cible, 'Niveau', element.dataset.selectionNiveau);
-        }
+        afficherSelectionPlanification(donnees);
       }
       boutons.forEach((bouton) => {
         bouton.addEventListener('click', function () {
@@ -870,7 +925,8 @@ def script_onglets() -> str:
         });
       });
       document.querySelectorAll('.element-selectionnable').forEach((element) => {
-        element.addEventListener('click', function () {
+        element.addEventListener('click', function (event) {
+          event.stopPropagation();
           activerSelectionPlanification(element);
         });
         element.addEventListener('keydown', function (event) {
@@ -879,6 +935,18 @@ def script_onglets() -> str:
             activerSelectionPlanification(element);
           }
         });
+      });
+      document.querySelectorAll('.zone-centrale-planification').forEach((zone) => {
+        zone.addEventListener('click', function (event) {
+          if (!event.target.closest('.element-selectionnable, .bouton-sous-vue')) {
+            deselectionnerPlanification();
+          }
+        });
+      });
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+          deselectionnerPlanification();
+        }
       });
       activerVue('vue-ensemble');
       activerSousVue('calendrier');
@@ -1149,15 +1217,6 @@ def liste_compteurs_compacte(soldes: dict[str, Any], inclure_tous: bool = False)
     return "".join(lignes) if lignes else "<li class=\"ligne-compteur-compacte\">aucun solde disponible</li>"
 
 
-def details_compteurs_replies(soldes: dict[str, Any]) -> str:
-    return (
-        "<details class=\"details-compteurs-complets\">"
-        "<summary>Tous les compteurs</summary>"
-        f"<ul class=\"liste-compteurs-compacte\">{liste_compteurs_compacte(soldes, inclure_tous=True)}</ul>"
-        "</details>"
-    )
-
-
 def barre_infos_droite(projection: dict[str, Any], demi_journees: list[Any]) -> str:
     soldes_finaux = soldes_fin_projection(projection, demi_journees)
     total_restant = somme_soldes_numeriques(soldes_finaux)
@@ -1171,7 +1230,6 @@ def barre_infos_droite(projection: dict[str, Any], demi_journees: list[Any]) -> 
       <p class="info-compacte">non calculé</p>
       <h3>Compteurs</h3>
       <ul class="liste-compteurs-compacte">{liste_compteurs_compacte(soldes_finaux)}</ul>
-      {details_compteurs_replies(soldes_finaux)}
       <h3>Expiration</h3>
       <p class="info-compacte">non calculée</p>
       <h3>Sélection</h3>
@@ -1184,6 +1242,9 @@ def barre_infos_droite(projection: dict[str, Any], demi_journees: list[Any]) -> 
 
 def date_infos_calendrier(demi_journees: list[Any]) -> dict[str, dict[str, Any]]:
     infos: dict[str, dict[str, Any]] = {}
+    blocs: dict[str, dict[str, Any]] = {}
+    sous_blocs: dict[tuple[str, str], dict[str, Any]] = {}
+    evenements_par_date: dict[str, set[str]] = {}
     for demi_journee in demi_journees:
         if not isinstance(demi_journee, dict):
             continue
@@ -1195,6 +1256,7 @@ def date_infos_calendrier(demi_journees: list[Any]) -> dict[str, dict[str, Any]]
             {
                 "consommations": {},
                 "alertes": False,
+                "evenements": set(),
             },
         )
         if demi_journee.get("alertes"):
@@ -1210,6 +1272,60 @@ def date_infos_calendrier(demi_journees: list[Any]) -> dict[str, dict[str, Any]]
             if compteur and isinstance(quantite, (int, float)):
                 consommations = info["consommations"]
                 consommations[compteur] = float(consommations.get(compteur, 0.0)) + float(quantite)
+            identifiant = str(detail.get("identifiant_evenement") or "")
+            if not identifiant:
+                continue
+            info["evenements"].add(identifiant)
+            evenements_par_date.setdefault(date_iso, set()).add(identifiant)
+            bloc = blocs.setdefault(
+                identifiant,
+                {
+                    "identifiant": identifiant,
+                    "date_debut": date_iso,
+                    "date_fin": date_iso,
+                    "quantite": 0.0,
+                    "compteurs": {},
+                    "alertes": False,
+                },
+            )
+            bloc["date_debut"] = min(str(bloc["date_debut"]), date_iso)
+            bloc["date_fin"] = max(str(bloc["date_fin"]), date_iso)
+            if isinstance(quantite, (int, float)):
+                bloc["quantite"] = float(bloc["quantite"]) + float(quantite)
+                if compteur:
+                    compteurs = bloc["compteurs"]
+                    compteurs[compteur] = float(compteurs.get(compteur, 0.0)) + float(quantite)
+            if demi_journee.get("alertes"):
+                bloc["alertes"] = True
+            if compteur and isinstance(quantite, (int, float)):
+                cle_sous_bloc = (identifiant, compteur)
+                sous_bloc = sous_blocs.setdefault(
+                    cle_sous_bloc,
+                    {
+                        "identifiant": identifiant,
+                        "compteur": compteur,
+                        "date_debut": date_iso,
+                        "date_fin": date_iso,
+                        "quantite": 0.0,
+                    },
+                )
+                sous_bloc["date_debut"] = min(str(sous_bloc["date_debut"]), date_iso)
+                sous_bloc["date_fin"] = max(str(sous_bloc["date_fin"]), date_iso)
+                sous_bloc["quantite"] = float(sous_bloc["quantite"]) + float(quantite)
+    for date_iso, info in infos.items():
+        variantes = []
+        for identifiant in sorted(evenements_par_date.get(date_iso, set())):
+            if identifiant in blocs:
+                variantes.append(("bloc", blocs[identifiant]))
+            sous_blocs_evenement = [
+                sous_bloc
+                for (id_evenement, _compteur), sous_bloc in sous_blocs.items()
+                if id_evenement == identifiant
+            ]
+            for sous_bloc in sorted(sous_blocs_evenement, key=lambda valeur: str(valeur["compteur"])):
+                variantes.append(("sous-bloc", sous_bloc))
+        variantes.append(("jour", {"date": date_iso}))
+        info["variantes_selection"] = variantes
     return infos
 
 
@@ -1241,6 +1357,68 @@ def resume_alertes_jour(info: dict[str, Any]) -> str:
     return "présente" if info.get("alertes") else "aucune"
 
 
+def resume_compteurs_selection(compteurs: Any) -> str:
+    if not isinstance(compteurs, dict) or not compteurs:
+        return "aucun"
+    return ", ".join(
+        f"{compteur} {formater_quantite_jour(quantite)}"
+        for compteur, quantite in sorted(compteurs.items())
+    )
+
+
+def attributs_niveau_selection(type_selection: str, donnees: dict[str, Any], info: dict[str, Any]) -> str:
+    attributs = [f"data-selection-type=\"{escape(type_selection)}\""]
+    if type_selection == "jour":
+        date_iso = str(donnees.get("date", ""))
+        attributs.extend(
+            [
+                f"data-selection-date=\"{escape(formater_date_francaise(date_iso))}\"",
+                f"data-selection-consommation=\"{escape(resume_consommation_jour(info))}\"",
+                f"data-selection-alertes=\"{escape(resume_alertes_jour(info))}\"",
+            ]
+        )
+    elif type_selection == "bloc":
+        attributs.extend(
+            [
+                f"data-selection-periode=\"{escape(formater_periode_francaise(str(donnees.get('date_debut')), str(donnees.get('date_fin'))))}\"",
+                f"data-selection-identifiant=\"{escape(str(donnees.get('identifiant') or ''))}\"",
+                f"data-selection-libelle=\"{escape(str(donnees.get('identifiant') or ''))}\"",
+                f"data-selection-quantite=\"{escape(formater_quantite_jour(donnees.get('quantite')))}\"",
+                f"data-selection-compteurs=\"{escape(resume_compteurs_selection(donnees.get('compteurs')))}\"",
+                f"data-selection-alertes=\"{escape('présente' if donnees.get('alertes') else 'aucune')}\"",
+            ]
+        )
+    elif type_selection == "sous-bloc":
+        attributs.extend(
+            [
+                f"data-selection-periode=\"{escape(formater_periode_francaise(str(donnees.get('date_debut')), str(donnees.get('date_fin'))))}\"",
+                f"data-selection-compteur=\"{escape(str(donnees.get('compteur') or ''))}\"",
+                f"data-selection-quantite=\"{escape(formater_quantite_jour(donnees.get('quantite')))}\"",
+                f"data-selection-parent=\"{escape(str(donnees.get('identifiant') or ''))}\"",
+            ]
+        )
+    return " ".join(attributs)
+
+
+def niveaux_selection_jour(info: dict[str, Any]) -> str:
+    variantes = info.get("variantes_selection", [])
+    if not isinstance(variantes, list):
+        variantes = []
+    niveaux = []
+    for index, variante in enumerate(variantes):
+        if not isinstance(variante, tuple) or len(variante) != 2:
+            continue
+        type_selection, donnees = variante
+        if not isinstance(donnees, dict):
+            continue
+        niveaux.append(
+            f"<span class=\"niveau-selection selection-type-{escape(str(type_selection))}\" "
+            f"data-selection-niveau=\"{index}\" "
+            f"{attributs_niveau_selection(str(type_selection), donnees, info)}></span>"
+        )
+    return f"<span class=\"selection-niveaux\" hidden>{''.join(niveaux)}</span>"
+
+
 def vue_calendrier_passif(demi_journees: list[Any]) -> str:
     infos = date_infos_calendrier(demi_journees)
     mois: dict[str, list[str]] = {}
@@ -1260,10 +1438,11 @@ def vue_calendrier_passif(demi_journees: list[Any]) -> str:
             jours.append(
                 f"<span class=\"{' '.join(classes)}\" title=\"{escape(titre_jour_calendrier(date_iso, info))}\" "
                 "role=\"button\" tabindex=\"0\" "
+                "data-selection-cyclique=\"true\" "
                 "data-selection-type=\"jour\" "
                 f"data-selection-date=\"{escape(formater_date_francaise(date_iso))}\" "
                 f"data-selection-consommation=\"{escape(resume_consommation_jour(info))}\" "
-                f"data-selection-alertes=\"{escape(resume_alertes_jour(info))}\">{jour}</span>"
+                f"data-selection-alertes=\"{escape(resume_alertes_jour(info))}\">{jour}{niveaux_selection_jour(info)}</span>"
             )
         blocs_mois.append(
             "<section class=\"mois-calendrier\">"
@@ -1377,13 +1556,28 @@ def blocs_frise_svg(demi_journees: list[Any], alertes: list[Any], debut: date, f
         periode = formater_periode_francaise(str(date_debut), str(date_fin))
         identifiant = str(evenement.get("identifiant_evenement") or "")
         quantite = formater_quantite_jour(evenement.get("quantite_appliquee_totale"))
+        compteurs = {
+            compteur: valeurs.get("quantite_appliquee")
+            for compteur, valeurs in evenement.get("compteurs", {}).items()
+            if isinstance(valeurs, dict)
+        }
+        compteurs_texte = resume_compteurs_selection(compteurs)
+        alertes_texte = "présente" if evenement.get("alertes") else "aucune"
+        liaisons = (
+            f"<line class=\"liaison-bloc-courbe borne-bloc-debut\" x1=\"{x1:.2f}\" y1=\"{y + hauteur}\" x2=\"{x1:.2f}\" y2=\"276\" />"
+            f"<line class=\"liaison-bloc-courbe borne-bloc-fin\" x1=\"{x1 + largeur:.2f}\" y1=\"{y + hauteur}\" x2=\"{x1 + largeur:.2f}\" y2=\"276\" />"
+        )
         blocs.append(
+            liaisons +
             f"<rect class=\"bloc-temporel-projete element-selectionnable\" x=\"{x1:.2f}\" y=\"{y}\" "
             f"width=\"{largeur:.2f}\" height=\"{hauteur}\" rx=\"5\" role=\"button\" tabindex=\"0\" "
             "data-selection-type=\"bloc\" "
             f"data-selection-identifiant=\"{escape(identifiant)}\" "
             f"data-selection-periode=\"{escape(periode)}\" "
-            f"data-selection-quantite=\"{escape(quantite)}\">"
+            f"data-selection-libelle=\"{escape(str(evenement.get('libelle') or identifiant))}\" "
+            f"data-selection-quantite=\"{escape(quantite)}\" "
+            f"data-selection-compteurs=\"{escape(compteurs_texte)}\" "
+            f"data-selection-alertes=\"{escape(alertes_texte)}\">"
             f"<title>{escape(titre)}</title>"
             "</rect>"
         )
@@ -2007,6 +2201,15 @@ def feuille_style() -> str:
       background: rgba(255, 250, 240, 0.9);
       box-shadow: 0 10px 26px rgba(41, 31, 19, 0.08);
     }
+    .barre-infos-droite,
+    .selection-planification,
+    .champ-selection,
+    .valeur-longue {
+      max-width: 100%;
+      overflow-x: hidden;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
     .zone-centrale-planification {
       min-width: 0;
     }
@@ -2110,18 +2313,20 @@ def feuille_style() -> str:
     }
     .jours-calendrier {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
-      gap: 5px;
+      grid-template-columns: repeat(31, minmax(20px, 1fr));
+      gap: 3px;
+      width: 100%;
     }
     .jour-calendrier {
-      min-height: 30px;
+      min-height: 26px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       border: 1px solid #cbbd9f;
-      border-radius: 8px;
+      border-radius: 7px;
       background: #fffaf0;
       color: var(--muted);
+      font-size: 0.82rem;
       font-variant-numeric: tabular-nums;
     }
     .element-selectionnable {
@@ -2169,6 +2374,12 @@ def feuille_style() -> str:
       stroke: #5f1d16;
       stroke-width: 3;
     }
+    .liaison-bloc-courbe {
+      stroke: rgba(177, 59, 46, 0.42);
+      stroke-width: 1.4;
+      stroke-dasharray: 5 5;
+      pointer-events: none;
+    }
     .axe-horizontal,
     .axe-vertical line {
       stroke: #917f62;
@@ -2209,6 +2420,41 @@ def feuille_style() -> str:
     }
     .selection-planification {
       min-height: 44px;
+    }
+    .fiche-selection {
+      display: grid;
+      gap: 8px;
+    }
+    .puce-selection {
+      display: inline-flex;
+      width: fit-content;
+      max-width: 100%;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: rgba(20, 107, 95, 0.12);
+      color: var(--accent-fort);
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: lowercase;
+    }
+    .champ-selection {
+      display: grid;
+      gap: 2px;
+      padding: 8px;
+      border: 1px solid rgba(216, 201, 174, 0.75);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.34);
+    }
+    .libelle-selection {
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .valeur-selection {
+      color: var(--accent-fort);
+      font-size: 0.95rem;
+      line-height: 1.25;
     }
     details {
       margin-top: 12px;

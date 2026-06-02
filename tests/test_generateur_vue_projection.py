@@ -156,6 +156,8 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("mois-calendrier", html)
         self.assertIn("jour-calendrier", html)
         self.assertIn("jour-avec-consommation", html)
+        self.assertIn("jours-calendrier", html)
+        self.assertIn("grid-template-columns: repeat(31, minmax", html)
 
     def test_generation_html_planification_frise_niveau(self) -> None:
         html = generer_html(self._charger_exemple())
@@ -202,6 +204,9 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("repere-jour", html)
         self.assertIn("axe-vertical", html)
         self.assertIn("repere-reste", html)
+        self.assertIn("liaison-bloc-courbe", html)
+        self.assertIn("borne-bloc-debut", html)
+        self.assertIn("borne-bloc-fin", html)
 
     def test_generation_html_planification_structure_selection(self) -> None:
         html = generer_html(self._charger_exemple())
@@ -209,6 +214,10 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("selection-planification", html)
         self.assertIn("data-selection-type", html)
         self.assertIn("selection-active", html)
+        self.assertIn("selection-niveaux", html)
+        self.assertIn("data-selection-niveau", html)
+        self.assertIn("selection-type-jour", html)
+        self.assertIn("selection-type-bloc", html)
 
     def test_generation_html_selection_calendrier(self) -> None:
         html = generer_html(self._charger_exemple())
@@ -221,6 +230,8 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("data-selection-alertes=", html)
         self.assertIn('role="button"', html)
         self.assertIn('tabindex="0"', html)
+        self.assertIn('data-selection-cyclique="true"', html)
+        self.assertIn('data-selection-type="sous-bloc"', html)
 
     def test_generation_html_selection_frise_bloc(self) -> None:
         html = generer_html(self._charger_exemple())
@@ -230,6 +241,8 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("data-selection-identifiant=", html)
         self.assertIn("data-selection-periode=", html)
         self.assertIn("data-selection-quantite=", html)
+        self.assertIn("data-selection-compteurs=", html)
+        self.assertIn("data-selection-alertes=", html)
 
     def test_generation_html_selection_courbe_reste(self) -> None:
         html = generer_html(self._charger_exemple())
@@ -243,10 +256,35 @@ class TestGenerateurVueProjection(unittest.TestCase):
         html = generer_html(self._charger_exemple())
 
         self.assertIn("function activerSelectionPlanification", html)
+        self.assertIn("function deselectionnerPlanification", html)
+        self.assertIn("function lireSelection", html)
         self.assertIn("selection-planification", html)
         self.assertIn("selection-active", html)
         self.assertIn("addEventListener('keydown'", html)
         self.assertIn("event.key === 'Enter'", html)
+        self.assertIn("Escape", html)
+        self.assertIn("selectionIndex", html)
+        self.assertIn("niveau", html)
+
+    def test_generation_html_selection_infos_contraintes(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("fiche-selection", html)
+        self.assertIn("puce-selection", html)
+        self.assertIn("champ-selection", html)
+        self.assertIn("libelle-selection", html)
+        self.assertIn("valeur-selection", html)
+        self.assertIn("valeur-longue", html)
+        self.assertIn("overflow-wrap", html)
+        self.assertIn("word-break", html)
+        self.assertIn("max-width", html)
+        self.assertIn("overflow-x: hidden", html)
+
+    def test_generation_html_barre_droite_sans_tous_les_compteurs(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertNotIn("Tous les compteurs", html)
+        self.assertNotIn("details-compteurs-complets", html)
 
     def test_compteurs_barre_principale_filtre_les_nuls_non_importants(self) -> None:
         soldes = {"GCP": 10.0, "JRTT": 0.0, "CANC": 0.0, "REHV": 0.0, "RECU": 3.0}
