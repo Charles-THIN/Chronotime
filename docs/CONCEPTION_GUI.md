@@ -474,6 +474,33 @@ Limites explicites :
 
 La cible future reste un scénario local explicite, versionnable et recalculé par le moteur Python. Le stockage `localStorage` devra donc être remplacé par une source événementielle locale propre avant toute utilisation métier durable.
 
+## V0.4.8 Absences utilisateur dans le modèle commun de sélection
+
+La version `V0.4.8` corrige le prototype local pour que les absences ajoutées par l'utilisateur soient traitées comme de futurs blocs de scénario source, et non comme de simples marqueurs visuels.
+
+Chaque absence locale conservée dans `localStorage` porte notamment :
+
+- `type = absence_locale_prototype` ;
+- `origine = ajoute_par_utilisateur` ;
+- `statut = scenario_local_prototype` ;
+- un compteur seulement indicatif, non recalculé par le moteur.
+
+Ces blocs sont intégrés au cycle commun de sélection du calendrier :
+
+- clic sur un jour contenant un bloc utilisateur : sélection du bloc utilisateur ;
+- clics successifs : retour possible au jour ou aux autres niveaux disponibles ;
+- suppression avec `Suppr` uniquement si le bloc utilisateur est sélectionné ;
+- aucun bloc projeté, Chronotime ou obligation locale n'est supprimable depuis ce prototype.
+
+Le mode `Poser des jours` reste volontairement prudent :
+
+- il prévisualise une plage libre ;
+- il refuse de poser sur une journée déjà occupée par un bloc projeté ou par un bloc utilisateur ;
+- il ne recalcule aucun solde réel ;
+- il ne modifie pas `projection.demi_journees`.
+
+Cette version prépare le futur remplacement par un scénario local explicite puis un recalcul Python. Elle ne constitue pas encore une sauvegarde métier durable.
+
 ## Vue future des soldes dans le temps
 
 Une future vue `Soldes dans le temps` devra représenter :

@@ -919,7 +919,7 @@ def script_onglets() -> str:
 
       function nettoyerSelectionVisuelle() {
         document.querySelectorAll(
-          '.selection-active, .selection-plage, .selection-plage-debut, .selection-plage-fin, .selection-plage-sous-bloc, .selection-jour-courant'
+          '.selection-active, .selection-plage, .selection-plage-debut, .selection-plage-fin, .selection-plage-sous-bloc, .selection-plage-bloc-utilisateur, .selection-jour-courant, .bloc-utilisateur-selectionne'
         ).forEach((element) => {
           element.classList.remove(
             'selection-active',
@@ -927,7 +927,9 @@ def script_onglets() -> str:
             'selection-plage-debut',
             'selection-plage-fin',
             'selection-plage-sous-bloc',
-            'selection-jour-courant'
+            'selection-plage-bloc-utilisateur',
+            'selection-jour-courant',
+            'bloc-utilisateur-selectionne'
           );
         });
       }
@@ -960,6 +962,9 @@ def script_onglets() -> str:
           if (donnees.selectionType === 'sous-bloc') {
             jour.classList.add('selection-plage-sous-bloc');
           }
+          if (donnees.selectionOrigine === 'ajoute_par_utilisateur') {
+            jour.classList.add('selection-plage-bloc-utilisateur');
+          }
           if (jour.dataset.dateIso === dateDebut) {
             jour.classList.add('selection-plage-debut');
           }
@@ -968,18 +973,26 @@ def script_onglets() -> str:
           }
         });
 
-        element.classList.add('selection-active', 'selection-jour-courant');
+        element.classList.add('selection-active');
+        if (element.classList.contains('jour-calendrier')) {
+          element.classList.add('selection-jour-courant');
+        }
       }
 
       function afficherSelectionPlanification(donnees) {
         const cible = document.getElementById('selection-planification');
         if (!cible) { return; }
+        blocLocalSelectionne = donnees.selectionOrigine === 'ajoute_par_utilisateur'
+          ? donnees.selectionIdentifiant
+          : null;
         cible.textContent = '';
         const fiche = document.createElement('div');
         fiche.className = 'fiche-selection';
         const puce = document.createElement('span');
         puce.className = 'puce-selection';
-        puce.textContent = libelleSelection(donnees.selectionType);
+        puce.textContent = donnees.selectionOrigine === 'ajoute_par_utilisateur'
+          ? 'bloc utilisateur prototype'
+          : libelleSelection(donnees.selectionType);
         fiche.appendChild(puce);
 
         if (donnees.selectionType === 'jour') {
@@ -990,8 +1003,15 @@ def script_onglets() -> str:
           ajouterChampSelection(fiche, 'Période', donnees.selectionPeriode, false);
           ajouterChampSelection(fiche, 'Libellé', donnees.selectionLibelle, false);
           ajouterChampSelection(fiche, 'Quantité', donnees.selectionQuantite, false);
-          ajouterChampSelection(fiche, 'Compteurs', donnees.selectionCompteurs, false);
-          ajouterChampSelection(fiche, 'Alertes', donnees.selectionAlertes, false);
+          if (donnees.selectionOrigine === 'ajoute_par_utilisateur') {
+            ajouterChampSelection(fiche, 'Compteur indicatif', donnees.selectionCompteurIndicatif, false);
+            ajouterChampSelection(fiche, 'Source', 'prototype local localStorage', false);
+            ajouterChampSelection(fiche, 'Moteur', 'non recalculé par le moteur', false);
+            ajouterChampSelection(fiche, 'Instruction', 'Suppr pour supprimer', false);
+          } else {
+            ajouterChampSelection(fiche, 'Compteurs', donnees.selectionCompteurs, false);
+            ajouterChampSelection(fiche, 'Alertes', donnees.selectionAlertes, false);
+          }
           ajouterChampSelection(fiche, 'Identifiant', donnees.selectionIdentifiant, true);
         } else if (donnees.selectionType === 'sous-bloc') {
           ajouterChampSelection(fiche, 'Période', donnees.selectionPeriode, false);
@@ -1019,7 +1039,7 @@ def script_onglets() -> str:
         cible.appendChild(fiche);
       }
 
-      function afficherCurseurPrototype(dateDebut, dateFin) {
+      function afficherCurseurPrototype(dateDebut, dateFin, impossible) {
         const cible = document.getElementById('curseur-planification');
         if (!cible) { return; }
         const quantite = datesProjeteesEntre(dateDebut, dateFin).length;
@@ -1028,12 +1048,15 @@ def script_onglets() -> str:
         fiche.className = 'fiche-selection fiche-curseur fiche-prototype';
         const puce = document.createElement('span');
         puce.className = 'puce-selection';
-        puce.textContent = 'prévisualisation locale';
+        puce.textContent = impossible ? 'pose impossible' : 'prévisualisation locale';
         fiche.appendChild(puce);
         ajouterChampSelection(fiche, 'Période', periodeLisible(dateDebut, dateFin), false);
         ajouterChampSelection(fiche, 'Quantité', quantite + ' j projeté(s)', false);
-        ajouterChampSelection(fiche, 'Compteur indicatif', 'à choisir plus tard', false);
+        ajouterChampSelection(fiche, 'Compteur indicatif', 'non_recalcule', false);
         ajouterChampSelection(fiche, 'Moteur', 'non recalculé par le moteur', false);
+        if (impossible) {
+          ajouterChampSelection(fiche, 'Raison', 'plage déjà occupée', false);
+        }
         cible.appendChild(fiche);
       }
 
@@ -1076,6 +1099,21 @@ def script_onglets() -> str:
           .filter((dateIso) => dateIso >= bornes[0] && dateIso <= bornes[1]);
       }
 
+      function jourOccupePourPose(jour) {
+        if (!jour) { return false; }
+        if (jour.classList.contains('jour-avec-bloc-utilisateur')) { return true; }
+        return Array.from(jour.querySelectorAll('.niveau-selection')).some((niveau) => {
+          return niveau.dataset.selectionType === 'bloc';
+        });
+      }
+
+      function plageLibrePourPose(dateA, dateB) {
+        return datesProjeteesEntre(dateA, dateB).every((dateIso) => {
+          const jour = document.querySelector('.jour-calendrier[data-date-iso="' + dateIso + '"]');
+          return !jourOccupePourPose(jour);
+        });
+      }
+
       function periodeLisible(dateA, dateB) {
         const dates = datesProjeteesEntre(dateA, dateB);
         if (!dates.length) {
@@ -1089,46 +1127,74 @@ def script_onglets() -> str:
 
       function nettoyerFantomeLocal() {
         document.querySelectorAll('.bloc-fantome-local').forEach((jour) => {
-          jour.classList.remove('bloc-fantome-local', 'bloc-fantome-debut', 'bloc-fantome-fin');
+          jour.classList.remove('bloc-fantome-local', 'bloc-fantome-impossible', 'bloc-fantome-debut', 'bloc-fantome-fin');
         });
       }
 
       function afficherFantomeLocal(dateA, dateB) {
         nettoyerFantomeLocal();
         const dates = datesProjeteesEntre(dateA, dateB);
+        const impossible = !plageLibrePourPose(dateA, dateB);
         dates.forEach((dateIso, index) => {
           const jour = document.querySelector('.jour-calendrier[data-date-iso="' + dateIso + '"]');
           if (!jour) { return; }
           jour.classList.add('bloc-fantome-local');
+          jour.classList.toggle('bloc-fantome-impossible', impossible);
           if (index === 0) { jour.classList.add('bloc-fantome-debut'); }
           if (index === dates.length - 1) { jour.classList.add('bloc-fantome-fin'); }
         });
-        afficherCurseurPrototype(dateA, dateB);
+        afficherCurseurPrototype(dateA, dateB, impossible);
       }
 
       function lireBlocsLocauxPrototype() {
         try {
           const texte = localStorage.getItem(CLE_STOCKAGE_PROTO);
           const donnees = texte ? JSON.parse(texte) : [];
-          return Array.isArray(donnees) ? donnees.filter((bloc) => bloc && bloc.type === 'absence_locale_prototype') : [];
+          return Array.isArray(donnees)
+            ? donnees.filter((bloc) => bloc && bloc.type === 'absence_locale_prototype').map(normaliserBlocLocalPrototype)
+            : [];
         } catch (_erreur) {
           return [];
         }
       }
 
       function sauvegarderBlocsLocauxPrototype() {
-        localStorage.setItem(CLE_STOCKAGE_PROTO, JSON.stringify(blocsLocauxPrototype));
+        try {
+          localStorage.setItem(CLE_STOCKAGE_PROTO, JSON.stringify(blocsLocauxPrototype));
+        } catch (_erreur) {
+          afficherCurseurPrototype(dateSurvolPose || dateDebutPose || '', dateSurvolPose || dateDebutPose || '', true);
+        }
+      }
+
+      function normaliserBlocLocalPrototype(bloc) {
+        return {
+          id: bloc.id || 'bloc_utilisateur_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+          type: 'absence_locale_prototype',
+          date_debut: bloc.date_debut,
+          date_fin: bloc.date_fin,
+          origine: bloc.origine || 'ajoute_par_utilisateur',
+          statut: bloc.statut || 'scenario_local_prototype',
+          compteur_indicatif: bloc.compteur_indicatif || 'non_recalcule',
+          quantite_jours: Number(bloc.quantite_jours || datesProjeteesEntre(bloc.date_debut, bloc.date_fin).length || 0),
+          cree_le: bloc.cree_le || new Date().toISOString()
+        };
       }
 
       function creerBlocLocalPrototype(dateA, dateB) {
         const dates = datesProjeteesEntre(dateA, dateB);
         if (!dates.length) { return; }
+        if (!plageLibrePourPose(dateA, dateB)) {
+          afficherFantomeLocal(dateA, dateB);
+          return;
+        }
         const bloc = {
-          id: 'bloc_local_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+          id: 'bloc_utilisateur_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
           type: 'absence_locale_prototype',
           date_debut: dates[0],
           date_fin: dates[dates.length - 1],
-          compteur_indicatif: 'à choisir plus tard',
+          origine: 'ajoute_par_utilisateur',
+          statut: 'scenario_local_prototype',
+          compteur_indicatif: 'non_recalcule',
           quantite_jours: dates.length,
           cree_le: new Date().toISOString()
         };
@@ -1148,12 +1214,32 @@ def script_onglets() -> str:
       }
 
       function nettoyerRenduBlocsLocaux() {
-        document.querySelectorAll('.bloc-local-calendrier, .bloc-local-frise').forEach((element) => {
+        document.querySelectorAll('.bloc-utilisateur-frise').forEach((element) => {
           element.remove();
         });
-        document.querySelectorAll('.jour-avec-bloc-local').forEach((jour) => {
-          jour.classList.remove('jour-avec-bloc-local');
+        document.querySelectorAll('.bloc-utilisateur-prototype').forEach((element) => {
+          element.remove();
         });
+        document.querySelectorAll('.jour-avec-bloc-utilisateur').forEach((jour) => {
+          jour.classList.remove('jour-avec-bloc-utilisateur');
+        });
+      }
+
+      function niveauSelectionBlocUtilisateur(bloc) {
+        const niveau = document.createElement('span');
+        niveau.className = 'niveau-selection selection-type-bloc bloc-utilisateur-prototype';
+        niveau.dataset.selectionNiveau = 'local';
+        niveau.dataset.selectionType = 'bloc';
+        niveau.dataset.selectionOrigine = 'ajoute_par_utilisateur';
+        niveau.dataset.selectionDateDebut = bloc.date_debut;
+        niveau.dataset.selectionDateFin = bloc.date_fin;
+        niveau.dataset.selectionPeriode = periodeLisible(bloc.date_debut, bloc.date_fin);
+        niveau.dataset.selectionIdentifiant = bloc.id;
+        niveau.dataset.selectionLibelle = 'absence locale prototype';
+        niveau.dataset.selectionQuantite = bloc.quantite_jours + ' j';
+        niveau.dataset.selectionCompteurIndicatif = bloc.compteur_indicatif || 'non_recalcule';
+        niveau.dataset.selectionAlertes = 'aucune';
+        return niveau;
       }
 
       function rendreBlocsLocauxCalendrier() {
@@ -1161,12 +1247,10 @@ def script_onglets() -> str:
           datesBlocLocal(bloc).forEach((dateIso) => {
             const jour = document.querySelector('.jour-calendrier[data-date-iso="' + dateIso + '"]');
             if (!jour) { return; }
-            jour.classList.add('jour-avec-bloc-local');
-            const marqueur = document.createElement('span');
-            marqueur.className = 'bloc-local-calendrier element-bloc-local';
-            marqueur.dataset.blocLocalId = bloc.id;
-            marqueur.title = 'Bloc local prototype ' + libelleBlocLocal(bloc);
-            jour.appendChild(marqueur);
+            jour.classList.add('jour-avec-bloc-utilisateur');
+            const conteneur = jour.querySelector('.selection-niveaux');
+            if (!conteneur) { return; }
+            conteneur.insertBefore(niveauSelectionBlocUtilisateur(bloc), conteneur.firstChild);
           });
         });
       }
@@ -1189,17 +1273,29 @@ def script_onglets() -> str:
             const x1 = xFrisePourDate(svg, bloc.date_debut);
             const x2 = xFrisePourDate(svg, bloc.date_fin);
             const rect = document.createElementNS(svg.namespaceURI, 'rect');
-            rect.setAttribute('class', 'bloc-local-frise element-bloc-local');
+            rect.setAttribute('class', 'bloc-utilisateur-frise element-selectionnable');
             rect.setAttribute('x', String(x1));
             rect.setAttribute('y', '60');
             rect.setAttribute('width', String(Math.max(10, x2 - x1 + 8)));
             rect.setAttribute('height', '14');
             rect.setAttribute('rx', '5');
-            rect.dataset.blocLocalId = bloc.id;
+            rect.setAttribute('role', 'button');
+            rect.setAttribute('tabindex', '0');
+            rect.dataset.selectionType = 'bloc';
+            rect.dataset.selectionOrigine = 'ajoute_par_utilisateur';
+            rect.dataset.selectionDateDebut = bloc.date_debut;
+            rect.dataset.selectionDateFin = bloc.date_fin;
+            rect.dataset.selectionPeriode = libelleBlocLocal(bloc);
+            rect.dataset.selectionIdentifiant = bloc.id;
+            rect.dataset.selectionLibelle = 'absence locale prototype';
+            rect.dataset.selectionQuantite = bloc.quantite_jours + ' j';
+            rect.dataset.selectionCompteurIndicatif = bloc.compteur_indicatif || 'non_recalcule';
+            rect.dataset.selectionAlertes = 'aucune';
             const titre = document.createElementNS(svg.namespaceURI, 'title');
             titre.textContent = 'Bloc local prototype ' + libelleBlocLocal(bloc);
             rect.appendChild(titre);
             groupe.appendChild(rect);
+            connecterElementSelectionnable(rect);
           });
         });
       }
@@ -1218,9 +1314,27 @@ def script_onglets() -> str:
         if (!bloc) { return; }
         blocLocalSelectionne = bloc.id;
         nettoyerSelectionVisuelle();
-        document.querySelectorAll('[data-bloc-local-id="' + bloc.id + '"]').forEach((element) => {
-          element.classList.add('selection-active', 'bloc-local-selectionne');
+        let donnees = null;
+        document.querySelectorAll('.niveau-selection[data-selection-identifiant="' + bloc.id + '"]').forEach((niveau) => {
+          donnees = niveau.dataset;
+          const jour = niveau.closest('.jour-calendrier');
+          if (jour) {
+            jour.classList.add('selection-plage', 'selection-plage-bloc-utilisateur');
+            if (jour.dataset.dateIso === bloc.date_debut) {
+              jour.classList.add('selection-plage-debut');
+            }
+            if (jour.dataset.dateIso === bloc.date_fin) {
+              jour.classList.add('selection-plage-fin');
+            }
+          }
         });
+        document.querySelectorAll('.bloc-utilisateur-frise[data-selection-identifiant="' + bloc.id + '"]').forEach((element) => {
+          element.classList.add('selection-active', 'bloc-utilisateur-selectionne');
+        });
+        if (donnees) {
+          afficherSelectionPlanification(donnees);
+          return;
+        }
         const cible = document.getElementById('selection-planification');
         if (!cible) { return; }
         cible.textContent = '';
@@ -1233,7 +1347,8 @@ def script_onglets() -> str:
         ajouterChampSelection(fiche, 'Période', libelleBlocLocal(bloc), false);
         ajouterChampSelection(fiche, 'Quantité', bloc.quantite_jours + ' j', false);
         ajouterChampSelection(fiche, 'Compteur indicatif', bloc.compteur_indicatif, false);
-        ajouterChampSelection(fiche, 'Source', 'localStorage prototype', false);
+        ajouterChampSelection(fiche, 'Source', 'prototype local localStorage', false);
+        ajouterChampSelection(fiche, 'Moteur', 'non recalculé par le moteur', false);
         ajouterChampSelection(fiche, 'Instruction', 'Suppr pour supprimer', false);
         ajouterChampSelection(fiche, 'Identifiant', bloc.id, true);
         cible.appendChild(fiche);
@@ -1255,6 +1370,8 @@ def script_onglets() -> str:
         const donnees = lireSelection(element);
         nettoyerSelectionVisuelle();
         if (element.classList.contains('jour-calendrier')) {
+          appliquerSelectionCalendrier(element, donnees);
+        } else if (donnees.selectionOrigine === 'ajoute_par_utilisateur' && donnees.selectionType === 'bloc') {
           appliquerSelectionCalendrier(element, donnees);
         } else {
           element.classList.add('selection-active');
@@ -1304,6 +1421,49 @@ def script_onglets() -> str:
         });
       }
 
+      function connecterElementSelectionnable(element) {
+        if (!element || element.dataset.selectionConnectee === 'true') { return; }
+        element.dataset.selectionConnectee = 'true';
+        element.addEventListener('click', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (outilPlanification === 'poser') {
+            return;
+          }
+          activerSelectionPlanification(element);
+        });
+        element.addEventListener('dblclick', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        });
+        element.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            activerSelectionPlanification(element);
+          }
+        });
+      }
+
+      function annulerPoseLocalePrototype() {
+        dateDebutPose = null;
+        dateSurvolPose = null;
+        poseEnCours = false;
+        nettoyerFantomeLocal();
+      }
+
+      function finaliserPoseLocalePrototype(dateFin) {
+        if (!poseEnCours || !dateDebutPose) { return; }
+        const fin = dateFin || dateSurvolPose || dateDebutPose;
+        if (plageLibrePourPose(dateDebutPose, fin)) {
+          creerBlocLocalPrototype(dateDebutPose, fin);
+        } else {
+          afficherFantomeLocal(dateDebutPose, fin);
+        }
+        dateDebutPose = null;
+        dateSurvolPose = null;
+        poseEnCours = false;
+      }
+
       boutons.forEach((bouton) => {
         bouton.addEventListener('click', function () {
           activerVue(bouton.dataset.cible);
@@ -1328,71 +1488,50 @@ def script_onglets() -> str:
         });
       });
 
-      document.querySelectorAll('.element-selectionnable').forEach((element) => {
-        element.addEventListener('click', function (event) {
-          if (event.target.closest('.element-bloc-local')) {
-            return;
-          }
-          event.preventDefault();
-          event.stopPropagation();
-          if (outilPlanification === 'poser') {
-            return;
-          }
-          activerSelectionPlanification(element);
-        });
-        element.addEventListener('dblclick', function (event) {
-          event.preventDefault();
-          event.stopPropagation();
-        });
-        element.addEventListener('keydown', function (event) {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            activerSelectionPlanification(element);
-          }
-        });
-      });
+      document.querySelectorAll('.element-selectionnable').forEach(connecterElementSelectionnable);
 
       joursCalendrier().forEach((jour) => {
         jour.addEventListener('mouseenter', function () {
+          jour.classList.add('jour-survol-simple');
           if (outilPlanification !== 'poser') { return; }
           const dateIso = jour.dataset.dateIso;
           if (!dateIso) { return; }
           dateSurvolPose = dateIso;
           afficherFantomeLocal(dateDebutPose || dateIso, dateIso);
         });
-        jour.addEventListener('mousedown', function (event) {
+        jour.addEventListener('mouseleave', function () {
+          jour.classList.remove('jour-survol-simple');
+        });
+        jour.addEventListener('pointerdown', function (event) {
           if (outilPlanification !== 'poser') { return; }
           event.preventDefault();
           event.stopPropagation();
+          if (jourOccupePourPose(jour)) {
+            activerSelectionPlanification(jour);
+            return;
+          }
           dateDebutPose = jour.dataset.dateIso;
           dateSurvolPose = dateDebutPose;
           poseEnCours = true;
+          if (jour.setPointerCapture) {
+            try { jour.setPointerCapture(event.pointerId); } catch (_erreur) {}
+          }
           if (dateDebutPose) {
             afficherFantomeLocal(dateDebutPose, dateDebutPose);
           }
         });
-        jour.addEventListener('mouseup', function (event) {
-          if (outilPlanification !== 'poser' || !poseEnCours || !dateDebutPose) { return; }
-          event.preventDefault();
-          event.stopPropagation();
-          creerBlocLocalPrototype(dateDebutPose, jour.dataset.dateIso || dateDebutPose);
-          dateDebutPose = null;
-          dateSurvolPose = null;
-          poseEnCours = false;
+        jour.addEventListener('pointerenter', function () {
+          if (outilPlanification !== 'poser' || !poseEnCours) { return; }
+          const dateIso = jour.dataset.dateIso;
+          if (!dateIso) { return; }
+          dateSurvolPose = dateIso;
+          afficherFantomeLocal(dateDebutPose || dateIso, dateIso);
         });
-      });
-
-      document.addEventListener('click', function (event) {
-        const elementLocal = event.target.closest('.element-bloc-local');
-        if (!elementLocal || outilPlanification !== 'selection') { return; }
-        event.preventDefault();
-        event.stopPropagation();
-        afficherSelectionBlocLocal(blocLocalParId(elementLocal.dataset.blocLocalId));
       });
 
       document.querySelectorAll('.zone-centrale-planification').forEach((zone) => {
         zone.addEventListener('click', function (event) {
-          if (!event.target.closest('.element-selectionnable, .element-bloc-local, .bouton-sous-vue, [data-mode-planification], [data-outil-planification]')) {
+          if (!event.target.closest('.element-selectionnable, .bouton-sous-vue, [data-mode-planification], [data-outil-planification]')) {
             deselectionnerPlanification();
           }
         });
@@ -1403,9 +1542,32 @@ def script_onglets() -> str:
 
       document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
+          annulerPoseLocalePrototype();
           deselectionnerPlanification();
         } else if (event.key === 'Delete' || event.key === 'Suppr') {
           supprimerBlocLocalSelectionne();
+        }
+      });
+
+      document.addEventListener('pointerup', function (event) {
+        if (outilPlanification !== 'poser' || !poseEnCours) { return; }
+        event.preventDefault();
+        const jour = event.target.closest ? event.target.closest('.jour-calendrier[data-date-iso]') : null;
+        finaliserPoseLocalePrototype(jour ? jour.dataset.dateIso : dateSurvolPose);
+      });
+
+      document.addEventListener('pointermove', function (event) {
+        if (outilPlanification !== 'poser' || !poseEnCours || !dateDebutPose) { return; }
+        const element = document.elementFromPoint(event.clientX, event.clientY);
+        const jour = element && element.closest ? element.closest('.jour-calendrier[data-date-iso]') : null;
+        if (!jour || !jour.dataset.dateIso || jour.dataset.dateIso === dateSurvolPose) { return; }
+        dateSurvolPose = jour.dataset.dateIso;
+        afficherFantomeLocal(dateDebutPose, dateSurvolPose);
+      });
+
+      window.addEventListener('blur', function () {
+        if (poseEnCours) {
+          annulerPoseLocalePrototype();
         }
       });
 
@@ -2902,34 +3064,40 @@ def feuille_style() -> str:
     .jour-avec-alerte {
       box-shadow: inset 0 0 0 2px rgba(177, 59, 46, 0.5);
     }
+    .jour-survol-simple {
+      outline: 2px solid rgba(20, 107, 95, 0.18);
+      outline-offset: 2px;
+    }
+    .jour-avec-bloc-utilisateur {
+      background: linear-gradient(180deg, rgba(255, 250, 240, 0.95), rgba(230, 244, 240, 0.92));
+      border-color: rgba(20, 107, 95, 0.75);
+      color: var(--accent-fort);
+      font-weight: 700;
+    }
+    .jour-avec-bloc-utilisateur::after {
+      content: "";
+      position: absolute;
+      right: 4px;
+      bottom: 4px;
+      width: 5px;
+      height: 5px;
+      border-radius: 999px;
+      background: var(--confirmation);
+      pointer-events: none;
+    }
     .bloc-fantome-local {
       background: rgba(155, 107, 0, 0.18);
       box-shadow: inset 0 0 0 2px rgba(155, 107, 0, 0.55);
+    }
+    .bloc-fantome-impossible {
+      background: rgba(177, 59, 46, 0.14);
+      box-shadow: inset 0 0 0 2px rgba(177, 59, 46, 0.55);
     }
     .bloc-fantome-debut {
       border-left-width: 3px;
     }
     .bloc-fantome-fin {
       border-right-width: 3px;
-    }
-    .bloc-local-calendrier {
-      position: absolute;
-      left: 4px;
-      right: 4px;
-      bottom: 3px;
-      height: 4px;
-      border-radius: 999px;
-      background: var(--confirmation);
-      pointer-events: auto;
-    }
-    .bloc-local-calendrier {
-      cursor: pointer;
-      z-index: 2;
-    }
-    .bloc-local-calendrier.selection-active,
-    .bloc-local-calendrier.bloc-local-selectionne {
-      height: 7px;
-      background: var(--alerte);
     }
     .niveau-reste-agrege {
       padding-top: 4px;
@@ -2953,14 +3121,14 @@ def feuille_style() -> str:
       stroke: #5f1d16;
       stroke-width: 3;
     }
-    .bloc-local-frise {
-      fill: rgba(155, 107, 0, 0.76);
-      stroke: #654400;
+    .bloc-utilisateur-frise {
+      fill: rgba(20, 107, 95, 0.34);
+      stroke: var(--accent-fort);
       stroke-width: 1;
       cursor: pointer;
     }
-    .bloc-local-frise.selection-active,
-    .bloc-local-frise.bloc-local-selectionne {
+    .bloc-utilisateur-frise.selection-active,
+    .bloc-utilisateur-frise.bloc-utilisateur-selectionne {
       fill: var(--alerte);
       stroke: #5f1d16;
       stroke-width: 3;
@@ -3115,6 +3283,10 @@ def feuille_style() -> str:
     }
     .selection-plage-sous-bloc {
       box-shadow: inset 0 0 0 3px var(--confirmation);
+    }
+    .selection-plage-bloc-utilisateur {
+      box-shadow: inset 0 0 0 3px var(--accent-fort);
+      background: rgba(20, 107, 95, 0.22);
     }
     .selection-jour-courant {
       outline: 3px solid rgba(20, 107, 95, 0.35);
