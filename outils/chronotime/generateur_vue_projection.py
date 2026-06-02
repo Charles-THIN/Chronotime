@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import date
+from datetime import date, timedelta
 from html import escape
 from pathlib import Path
 from typing import Any
@@ -797,6 +797,8 @@ def script_onglets() -> str:
     (function () {
       const boutons = Array.from(document.querySelectorAll('.onglet'));
       const vues = Array.from(document.querySelectorAll('.vue-tableau-de-bord'));
+      const boutonsSousVues = Array.from(document.querySelectorAll('.bouton-sous-vue'));
+      const sousVues = Array.from(document.querySelectorAll('.sous-vue-planification'));
       function activerVue(id) {
         vues.forEach((vue) => {
           const active = vue.dataset.vue === id;
@@ -808,12 +810,29 @@ def script_onglets() -> str:
           bouton.setAttribute('aria-selected', active ? 'true' : 'false');
         });
       }
+      function activerSousVue(id) {
+        sousVues.forEach((vue) => {
+          const active = vue.dataset.sousVue === id;
+          vue.classList.toggle('sous-vue-planification-active', active);
+        });
+        boutonsSousVues.forEach((bouton) => {
+          const active = bouton.dataset.sousVueCible === id;
+          bouton.classList.toggle('sous-vue-active', active);
+          bouton.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+      }
       boutons.forEach((bouton) => {
         bouton.addEventListener('click', function () {
           activerVue(bouton.dataset.cible);
         });
       });
+      boutonsSousVues.forEach((bouton) => {
+        bouton.addEventListener('click', function () {
+          activerSousVue(bouton.dataset.sousVueCible);
+        });
+      });
       activerVue('vue-ensemble');
+      activerSousVue('calendrier');
     }());
     </script>
     """
@@ -1014,6 +1033,46 @@ def soldes_fin_projection(projection: dict[str, Any], demi_journees: list[Any]) 
     return soldes_initiaux if isinstance(soldes_initiaux, dict) else {}
 
 
+def compteur_important_pour_barre_principale(code: Any) -> bool:
+    texte = str(code).strip().upper()
+    if texte in {"GCP", "JRTT", "CANC"}:
+        return True
+    return "PARENT" in texte or "PARENTAL" in texte or "PARENTALITE" in texte
+
+
+def solde_numerique(valeur: Any) -> float | None:
+    if isinstance(valeur, (int, float)):
+        return float(valeur)
+    return None
+
+
+def solde_est_nul(valeur: Any) -> bool:
+    nombre = solde_numerique(valeur)
+    return nombre is not None and abs(nombre) < 0.000000001
+
+
+def compteurs_tries_pour_affichage(soldes: dict[str, Any], inclure_tous: bool = False) -> list[tuple[str, Any]]:
+    elements = []
+    for compteur, valeur in soldes.items():
+        code = str(compteur)
+        important = compteur_important_pour_barre_principale(code)
+        nul = solde_est_nul(valeur)
+        if not inclure_tous and nul and not important:
+            continue
+        # Le tri par expiration réelle remplacera ce repli dès que les dates d’expiration
+        # seront disponibles dans le modèle.
+        if not nul:
+            groupe = 0
+        elif important:
+            groupe = 1
+        elif inclure_tous:
+            groupe = 3
+        else:
+            groupe = 2
+        elements.append((groupe, code.upper(), code, valeur))
+    return [(code, valeur) for _groupe, _cle, code, valeur in sorted(elements)]
+
+
 def barre_outils_gauche() -> str:
     return """
     <aside class="barre-outils-gauche" aria-label="Barre d’outils de planification">
@@ -1028,21 +1087,25 @@ def barre_outils_gauche() -> str:
     """
 
 
-def tableau_detail_compteurs(soldes: dict[str, Any]) -> str:
+def liste_compteurs_compacte(soldes: dict[str, Any], inclure_tous: bool = False) -> str:
     lignes = []
-    for compteur, valeur in sorted(soldes.items()):
+    for compteur, valeur in compteurs_tries_pour_affichage(soldes, inclure_tous=inclure_tous):
+        valeur_lisible = formater_nombre_francais(valeur) if isinstance(valeur, (int, float)) else str(valeur)
         lignes.append(
-            "<tr>"
-            f"<th>{escape(str(compteur))}</th>"
-            f"<td>{escape(formater_quantite_jour(valeur))}</td>"
-            "</tr>"
+            "<li class=\"ligne-compteur-compacte\">"
+            f"<span>{escape(str(compteur))}</span>"
+            f"<strong>{escape(valeur_lisible)}</strong>"
+            "</li>"
         )
-    corps = "\n".join(lignes) if lignes else "<tr><td colspan=\"2\">Aucun solde disponible.</td></tr>"
+    return "".join(lignes) if lignes else "<li class=\"ligne-compteur-compacte\">aucun solde disponible</li>"
+
+
+def details_compteurs_replies(soldes: dict[str, Any]) -> str:
     return (
-        "<div class=\"tableau-defilable\">"
-        "<table><thead><tr><th>Compteur</th><th>Solde final</th></tr></thead>"
-        f"<tbody>{corps}</tbody></table>"
-        "</div>"
+        "<details class=\"details-compteurs-complets\">"
+        "<summary>Tous les compteurs</summary>"
+        f"<ul class=\"liste-compteurs-compacte\">{liste_compteurs_compacte(soldes, inclure_tous=True)}</ul>"
+        "</details>"
     )
 
 
@@ -1055,14 +1118,15 @@ def barre_infos_droite(projection: dict[str, Any], demi_journees: list[Any]) -> 
       <h3>Total restant</h3>
       <p class="valeur-info">{escape(total_restant_texte)}</p>
       <p class="note">reste agrégé provisoire en fin de projection</p>
-      <h3>Dont prévus pour cette année</h3>
-      <p>non calculé</p>
-      <h3>Détail compteurs</h3>
-      {tableau_detail_compteurs(soldes_finaux)}
-      <h3>Prochaine expiration</h3>
-      <p>non calculée</p>
+      <h3>Cette année</h3>
+      <p class="info-compacte">non calculé</p>
+      <h3>Compteurs</h3>
+      <ul class="liste-compteurs-compacte">{liste_compteurs_compacte(soldes_finaux)}</ul>
+      {details_compteurs_replies(soldes_finaux)}
+      <h3>Expiration</h3>
+      <p class="info-compacte">non calculée</p>
       <h3>Sélection</h3>
-      <p>aucune sélection</p>
+      <p class="info-compacte">aucune</p>
     </aside>
     """
 
@@ -1139,7 +1203,7 @@ def vue_calendrier_passif(demi_journees: list[Any]) -> str:
         )
     contenu = "".join(blocs_mois) if blocs_mois else "<p>Aucune date projetée.</p>"
     return f"""
-    <section class="vue-calendrier-passif">
+    <section class="vue-calendrier-passif sous-vue-planification sous-vue-planification-active" data-sous-vue="calendrier">
       <h3>Calendrier</h3>
       {contenu}
     </section>
@@ -1164,22 +1228,144 @@ def points_reste_agrege(demi_journees: list[Any]) -> list[dict[str, Any]]:
     return points
 
 
-def courbe_reste_agrege(points: list[dict[str, Any]]) -> str:
-    if not points:
-        return "<p>Niveau non disponible</p>"
-    largeur = 680
-    hauteur = 170
-    marge = 18
+def dates_projection(demi_journees: list[Any], points: list[dict[str, Any]]) -> tuple[date, date] | None:
+    valeurs = []
+    for point in points:
+        date_point = point.get("date")
+        if isinstance(date_point, str) and date_point:
+            valeurs.append(date_iso_vers_objet(date_point))
+    for demi_journee in demi_journees:
+        if isinstance(demi_journee, dict) and demi_journee.get("date"):
+            valeurs.append(date_iso_vers_objet(str(demi_journee["date"])))
+    if not valeurs:
+        return None
+    return min(valeurs), max(valeurs)
+
+
+def x_temps(jour: date, debut: date, fin: date, gauche: float, droite: float) -> float:
+    duree = max(1, (fin - debut).days)
+    return gauche + ((jour - debut).days / duree) * (droite - gauche)
+
+
+def bornes_reste(points: list[dict[str, Any]]) -> tuple[int, int]:
     valeurs = [float(point["niveau"]) for point in points]
-    minimum = min(valeurs)
-    maximum = max(valeurs)
-    amplitude = maximum - minimum or 1.0
+    minimum = min(0.0, min(valeurs))
+    maximum = max(0.0, max(valeurs))
+    borne_min = int(minimum // 5 * 5)
+    borne_max = int(((maximum + 4.999999) // 5) * 5)
+    if borne_min == borne_max:
+        borne_max = borne_min + 5
+    return borne_min, borne_max
+
+
+def graduations_reste(minimum: int, maximum: int) -> list[int]:
+    return list(range(maximum, minimum - 1, -5))
+
+
+def graduations_mois(debut: date, fin: date) -> list[date]:
+    mois = date(debut.year, debut.month, 1)
+    if mois < debut:
+        mois = date(mois.year + 1, 1, 1) if mois.month == 12 else date(mois.year, mois.month + 1, 1)
+    valeurs = []
+    while mois <= fin:
+        valeurs.append(mois)
+        mois = date(mois.year + 1, 1, 1) if mois.month == 12 else date(mois.year, mois.month + 1, 1)
+    return valeurs
+
+
+def graduations_jours(debut: date, fin: date) -> list[date]:
+    valeurs = []
+    courant = debut
+    while courant <= fin:
+        valeurs.append(courant)
+        courant += timedelta(days=7)
+    if valeurs and valeurs[-1] != fin:
+        valeurs.append(fin)
+    return valeurs
+
+
+def blocs_frise_svg(demi_journees: list[Any], alertes: list[Any], debut: date, fin: date, gauche: float, droite: float) -> str:
+    evenements = agreger_evenements_projetes(demi_journees, alertes)
+    blocs = []
+    y = 34
+    hauteur = 18
+    for evenement in evenements:
+        date_debut = evenement.get("date_debut")
+        date_fin = evenement.get("date_fin")
+        if not date_debut or not date_fin:
+            continue
+        debut_evenement = date_iso_vers_objet(str(date_debut))
+        fin_evenement = date_iso_vers_objet(str(date_fin))
+        x1 = x_temps(debut_evenement, debut, fin, gauche, droite)
+        x2 = x_temps(fin_evenement, debut, fin, gauche, droite)
+        largeur = max(8.0, x2 - x1 + 8.0)
+        titre = (
+            f"{titre_evenement_projete(evenement)} — "
+            f"{evenement.get('identifiant_evenement') or ''} — "
+            f"{formater_quantite_jour(evenement.get('quantite_appliquee_totale'))}"
+        )
+        blocs.append(
+            f"<rect class=\"bloc-temporel-projete\" x=\"{x1:.2f}\" y=\"{y}\" width=\"{largeur:.2f}\" height=\"{hauteur}\" rx=\"5\">"
+            f"<title>{escape(titre)}</title>"
+            "</rect>"
+        )
+    return "".join(blocs)
+
+
+def courbe_reste_agrege(points: list[dict[str, Any]], demi_journees: list[Any], alertes: list[Any]) -> str:
+    periode = dates_projection(demi_journees, points)
+    if not points or periode is None:
+        return "<p>Niveau non disponible</p>"
+    debut, fin = periode
+    largeur = 1120
+    hauteur = 360
+    marge_gauche = 58
+    marge_droite = 28
+    graphe_haut = 92
+    graphe_bas = 282
+    minimum, maximum = bornes_reste(points)
+    amplitude = maximum - minimum or 1
+
+    def y_reste(valeur: float) -> float:
+        return graphe_bas - ((valeur - minimum) * (graphe_bas - graphe_haut) / amplitude)
+
     coordonnees = []
-    for index, point in enumerate(points):
-        x = marge + (index * (largeur - 2 * marge) / max(len(points) - 1, 1))
-        y = hauteur - marge - ((float(point["niveau"]) - minimum) * (hauteur - 2 * marge) / amplitude)
+    for point in points:
+        x = x_temps(date_iso_vers_objet(str(point["date"])), debut, fin, marge_gauche, largeur - marge_droite)
+        y = y_reste(float(point["niveau"]))
         coordonnees.append((x, y, point))
     polyline = " ".join(f"{x:.2f},{y:.2f}" for x, y, _point in coordonnees)
+
+    lignes_reste = []
+    for valeur in graduations_reste(minimum, maximum):
+        y = y_reste(float(valeur))
+        lignes_reste.append(
+            f"<g class=\"repere-reste\">"
+            f"<line x1=\"{marge_gauche}\" y1=\"{y:.2f}\" x2=\"{largeur - marge_droite}\" y2=\"{y:.2f}\" />"
+            f"<text x=\"{marge_gauche - 10}\" y=\"{y + 4:.2f}\" text-anchor=\"end\">{valeur}</text>"
+            "</g>"
+        )
+
+    mois_svg = []
+    for mois in graduations_mois(debut, fin):
+        x = x_temps(mois, debut, fin, marge_gauche, largeur - marge_droite)
+        mois_svg.append(
+            f"<g class=\"repere-mois\">"
+            f"<line x1=\"{x:.2f}\" y1=\"{graphe_haut - 18}\" x2=\"{x:.2f}\" y2=\"{graphe_bas + 14}\" />"
+            f"<text x=\"{x:.2f}\" y=\"{hauteur - 34}\" text-anchor=\"middle\">{escape(MOIS_FRANCAIS[mois.month])}</text>"
+            "</g>"
+        )
+
+    jours_svg = []
+    for jour in graduations_jours(debut, fin):
+        x = x_temps(jour, debut, fin, marge_gauche, largeur - marge_droite)
+        jours_svg.append(
+            f"<g class=\"repere-jour\">"
+            f"<line x1=\"{x:.2f}\" y1=\"{graphe_bas}\" x2=\"{x:.2f}\" y2=\"{graphe_bas + 7}\" />"
+            f"<text x=\"{x:.2f}\" y=\"{hauteur - 14}\" text-anchor=\"middle\">{jour.day:02d}</text>"
+            "</g>"
+        )
+
     points_svg = []
     pas = max(1, len(coordonnees) // 24)
     for index, (x, y, point) in enumerate(coordonnees):
@@ -1192,9 +1378,21 @@ def courbe_reste_agrege(points: list[dict[str, Any]]) -> str:
         points_svg.append(
             f"<circle class=\"point-reste-agrege\" cx=\"{x:.2f}\" cy=\"{y:.2f}\" r=\"3\"><title>{escape(titre)}</title></circle>"
         )
+    blocs = blocs_frise_svg(demi_journees, alertes, debut, fin, marge_gauche, largeur - marge_droite)
     return (
         f"<svg class=\"courbe-reste-agrege\" viewBox=\"0 0 {largeur} {hauteur}\" role=\"img\" "
         "aria-label=\"Courbe du reste agrégé provisoire\">"
+        "<g class=\"ligne-blocs-temporels\">"
+        f"{blocs}"
+        "</g>"
+        "<g class=\"axe-vertical\">"
+        f"{''.join(lignes_reste)}"
+        "</g>"
+        f"<line class=\"axe-horizontal\" x1=\"{marge_gauche}\" y1=\"{graphe_bas}\" x2=\"{largeur - marge_droite}\" y2=\"{graphe_bas}\" />"
+        f"<line class=\"axe-vertical\" x1=\"{marge_gauche}\" y1=\"{graphe_haut}\" x2=\"{marge_gauche}\" y2=\"{graphe_bas}\" />"
+        "<g class=\"axe-horizontal-reperes\">"
+        f"{''.join(mois_svg)}{''.join(jours_svg)}"
+        "</g>"
         f"<polyline points=\"{polyline}\" fill=\"none\" />"
         f"{''.join(points_svg)}"
         "</svg>"
@@ -1202,27 +1400,14 @@ def courbe_reste_agrege(points: list[dict[str, Any]]) -> str:
 
 
 def vue_frise_niveau_passive(demi_journees: list[Any], alertes: list[Any]) -> str:
-    evenements = agreger_evenements_projetes(demi_journees, alertes)
-    evenements = evenements[:8]
-    blocs = []
-    for evenement in evenements:
-        blocs.append(
-            "<article class=\"bloc-frise-passif\">"
-            f"<strong>{escape(titre_evenement_projete(evenement))}</strong>"
-            f"<span>{escape(str(evenement.get('identifiant_evenement') or ''))}</span>"
-            f"<span>{escape(formater_quantite_jour(evenement.get('quantite_appliquee_totale')))}</span>"
-            "</article>"
-        )
-    contenu_blocs = "".join(blocs) if blocs else "<p>Aucun bloc projeté.</p>"
     points = points_reste_agrege(demi_journees)
     return f"""
-    <section class="vue-frise-niveau">
-      <h3>Frise + niveau</h3>
-      <div class="ligne-blocs-passifs">{contenu_blocs}</div>
+    <section class="vue-frise-niveau sous-vue-planification" data-sous-vue="frise">
+      <h3>Frise et reste agrégé provisoire</h3>
       <div class="niveau-reste-agrege">
         <h4>reste agrégé provisoire</h4>
         <p class="note">Formule temporaire : somme simple des soldes_apres numériques. N’inclut pas encore réserves, expirations fines, acquisitions futures ni règles d’allocation complètes.</p>
-        {courbe_reste_agrege(points)}
+        {courbe_reste_agrege(points, demi_journees, alertes)}
       </div>
     </section>
     """
@@ -1285,9 +1470,9 @@ def vue_planification(
       {barre_outils_gauche()}
       <div class="zone-centrale-planification">
         <h2>Planification</h2>
-        <div class="sous-vues-planification" aria-label="Vues passives de planification">
-          <span class="sous-vue-active">Calendrier</span>
-          <span>Frise + niveau</span>
+        <div class="sous-vues-planification" role="tablist" aria-label="Vues passives de planification">
+          <button type="button" class="bouton-sous-vue sous-vue-active" data-sous-vue-cible="calendrier" aria-selected="true">Calendrier</button>
+          <button type="button" class="bouton-sous-vue" data-sous-vue-cible="frise" aria-selected="false">Frise</button>
         </div>
         {vue_calendrier_passif(demi_journees)}
         {vue_frise_niveau_passive(demi_journees, alertes)}
@@ -1410,9 +1595,10 @@ def feuille_style() -> str:
       line-height: 1.45;
     }
     main {
-      max-width: 1220px;
+      width: 100%;
+      max-width: none;
       margin: 0 auto;
-      padding: 24px 18px 56px;
+      padding: 24px clamp(14px, 2vw, 30px) 56px;
     }
     .hero {
       padding: 20px 22px 16px;
@@ -1616,7 +1802,7 @@ def feuille_style() -> str:
       background: #efe4d0;
       align-items: end;
     }
-    .repere-mois {
+    .rail-frise .repere-mois {
       width: 100%;
       margin-top: 10px;
       padding-top: 10px;
@@ -1723,7 +1909,9 @@ def feuille_style() -> str:
     }
     .interface-planification {
       display: grid;
-      grid-template-columns: minmax(150px, 0.7fr) minmax(360px, 2.4fr) minmax(240px, 1fr);
+      width: 100%;
+      max-width: none;
+      grid-template-columns: minmax(150px, 180px) minmax(0, 1fr) minmax(210px, 260px);
       gap: 16px;
       align-items: start;
     }
@@ -1735,6 +1923,9 @@ def feuille_style() -> str:
       border-radius: 18px;
       background: rgba(255, 250, 240, 0.9);
       box-shadow: 0 10px 26px rgba(41, 31, 19, 0.08);
+    }
+    .zone-centrale-planification {
+      min-width: 0;
     }
     .barre-outils-gauche,
     .barre-infos-droite {
@@ -1768,28 +1959,59 @@ def feuille_style() -> str:
       font-size: 1.35rem;
       font-weight: 700;
     }
+    .info-compacte {
+      margin: 0 0 12px;
+    }
+    .liste-compteurs-compacte {
+      padding: 0;
+      margin: 0 0 10px;
+      list-style: none;
+    }
+    .ligne-compteur-compacte {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 4px 0;
+      border-bottom: 1px dashed rgba(216, 201, 174, 0.75);
+      font-variant-numeric: tabular-nums;
+    }
+    .ligne-compteur-compacte span {
+      color: var(--accent-fort);
+      font-weight: 700;
+    }
     .sous-vues-planification {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       margin-bottom: 14px;
     }
-    .sous-vues-planification span {
-      padding: 6px 10px;
+    .bouton-sous-vue {
+      padding: 8px 14px;
       border: 1px solid var(--trait);
       border-radius: 999px;
       color: var(--muted);
       background: rgba(255, 255, 255, 0.35);
+      font: inherit;
+      cursor: pointer;
     }
-    .sous-vues-planification .sous-vue-active {
+    .bouton-sous-vue:hover {
+      background: rgba(20, 107, 95, 0.1);
+    }
+    .bouton-sous-vue.sous-vue-active {
       color: white;
       background: var(--accent);
       border-color: var(--accent-fort);
     }
+    .sous-vue-planification {
+      display: none;
+    }
+    .sous-vue-planification-active {
+      display: block;
+    }
     .vue-calendrier-passif,
     .vue-frise-niveau {
       margin-top: 14px;
-      padding: 14px;
+      padding: 16px;
       border: 1px solid rgba(216, 201, 174, 0.8);
       border-radius: 16px;
       background: rgba(255, 255, 255, 0.34);
@@ -1828,39 +2050,49 @@ def feuille_style() -> str:
     .jour-avec-alerte {
       box-shadow: inset 0 0 0 2px rgba(177, 59, 46, 0.5);
     }
-    .ligne-blocs-passifs {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-      gap: 8px;
-      margin-bottom: 14px;
-    }
-    .bloc-frise-passif {
-      display: grid;
-      gap: 4px;
-      padding: 10px;
-      border: 1px solid var(--trait);
-      border-radius: 8px;
-      background: #fffaf0;
-    }
-    .bloc-frise-passif span {
-      color: var(--muted);
-      font-size: 0.88rem;
-    }
     .niveau-reste-agrege {
-      padding-top: 10px;
-      border-top: 1px dashed var(--trait);
+      padding-top: 4px;
     }
     .courbe-reste-agrege {
       width: 100%;
-      max-height: 190px;
+      min-height: 320px;
       margin-top: 10px;
       border: 1px solid var(--trait);
       border-radius: 8px;
       background: linear-gradient(180deg, rgba(255, 250, 240, 0.88), rgba(239, 228, 208, 0.8));
     }
+    .bloc-temporel-projete {
+      fill: rgba(20, 107, 95, 0.72);
+      stroke: var(--accent-fort);
+      stroke-width: 1;
+    }
+    .axe-horizontal,
+    .axe-vertical line {
+      stroke: #917f62;
+      stroke-width: 1;
+    }
+    .repere-reste line {
+      stroke: rgba(145, 127, 98, 0.25);
+      stroke-width: 1;
+    }
+    .repere-reste text,
+    .repere-mois text,
+    .repere-jour text {
+      fill: var(--muted);
+      font-size: 12px;
+      font-family: Georgia, "Times New Roman", serif;
+    }
+    .repere-mois line {
+      stroke: rgba(20, 107, 95, 0.35);
+      stroke-width: 1;
+    }
+    .repere-jour line {
+      stroke: rgba(145, 127, 98, 0.45);
+      stroke-width: 1;
+    }
     .courbe-reste-agrege polyline {
       stroke: var(--accent);
-      stroke-width: 3;
+      stroke-width: 4;
       stroke-linejoin: round;
       stroke-linecap: round;
     }

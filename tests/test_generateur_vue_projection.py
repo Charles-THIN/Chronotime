@@ -13,6 +13,8 @@ from outils.chronotime.generateur_vue_projection import (
     charger_chronologie,
     charger_projection,
     charger_synthese,
+    compteurs_tries_pour_affichage,
+    compteur_important_pour_barre_principale,
     formater_date_francaise,
     formater_periode_francaise,
     generer_html,
@@ -137,13 +139,15 @@ class TestGenerateurVueProjection(unittest.TestCase):
         html = generer_html(self._charger_exemple())
 
         self.assertIn("Total restant", html)
-        self.assertIn("Dont prévus pour cette année", html)
-        self.assertIn("Détail compteurs", html)
-        self.assertIn("Prochaine expiration", html)
+        self.assertIn("Cette année", html)
+        self.assertIn("Compteurs", html)
+        self.assertIn("Expiration", html)
         self.assertIn("Sélection", html)
         self.assertIn("non calculé", html)
         self.assertIn("non calculée", html)
-        self.assertIn("aucune sélection", html)
+        self.assertIn("aucune", html)
+        self.assertNotIn("Détail compteurs", html)
+        self.assertNotIn("Compteur</th><th>Solde final", html)
 
     def test_generation_html_planification_calendrier_passif(self) -> None:
         html = generer_html(self._charger_exemple())
@@ -162,6 +166,65 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("point-reste-agrege", html)
         self.assertIn("reste agrégé provisoire", html)
         self.assertIn("Formule temporaire", html)
+
+    def test_generation_html_planification_largeur_flexible(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("interface-planification", html)
+        self.assertIn("zone-centrale-planification", html)
+        self.assertIn("width: 100%", html)
+        self.assertIn("max-width: none", html)
+        self.assertIn("grid-template-columns", html)
+
+    def test_generation_html_planification_navigation_calendrier_frise(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("bouton-sous-vue", html)
+        self.assertIn("data-sous-vue-cible=\"calendrier\"", html)
+        self.assertIn("data-sous-vue-cible=\"frise\"", html)
+        self.assertIn(">Calendrier</button>", html)
+        self.assertIn(">Frise</button>", html)
+        self.assertIn("function activerSousVue", html)
+        self.assertIn("sous-vue-planification-active", html)
+
+    def test_generation_html_planification_frise_sans_cartes_textuelles(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertNotIn("bloc-frise-passif", html)
+        self.assertNotIn("ligne-blocs-passifs", html)
+        self.assertIn("bloc-temporel-projete", html)
+
+    def test_generation_html_planification_axes_frise(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("axe-horizontal", html)
+        self.assertIn("repere-mois", html)
+        self.assertIn("repere-jour", html)
+        self.assertIn("axe-vertical", html)
+        self.assertIn("repere-reste", html)
+
+    def test_compteurs_barre_principale_filtre_les_nuls_non_importants(self) -> None:
+        soldes = {"GCP": 10.0, "JRTT": 0.0, "CANC": 0.0, "REHV": 0.0, "RECU": 3.0}
+
+        comptes = [compteur for compteur, _valeur in compteurs_tries_pour_affichage(soldes)]
+
+        self.assertIn("GCP", comptes)
+        self.assertIn("JRTT", comptes)
+        self.assertIn("CANC", comptes)
+        self.assertIn("RECU", comptes)
+        self.assertNotIn("REHV", comptes)
+
+    def test_compteurs_detail_affiche_tout_avec_nuls_a_la_fin(self) -> None:
+        soldes = {"GCP": 10.0, "JRTT": 0.0, "REHV": 0.0, "RECU": 3.0}
+
+        comptes = [compteur for compteur, _valeur in compteurs_tries_pour_affichage(soldes, inclure_tous=True)]
+
+        self.assertEqual(set(comptes), {"GCP", "JRTT", "REHV", "RECU"})
+        self.assertGreater(comptes.index("REHV"), comptes.index("GCP"))
+        self.assertGreater(comptes.index("REHV"), comptes.index("RECU"))
+        self.assertTrue(compteur_important_pour_barre_principale("GCP"))
+        self.assertTrue(compteur_important_pour_barre_principale("JRTT"))
+        self.assertTrue(compteur_important_pour_barre_principale("CANC"))
 
     def test_chargement_chronologie_valide(self) -> None:
         with tempfile.TemporaryDirectory() as repertoire:

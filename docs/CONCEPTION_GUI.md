@@ -311,6 +311,42 @@ Cette version ne fait aucune édition :
 - aucune sauvegarde ;
 - aucune écriture Chronotime.
 
+## V0.4.1 Corrections visuelles de la planification passive
+
+La version `V0.4.1` corrige les premiers défauts visuels de la vue `Planification`.
+
+Corrections d'affichage :
+
+- la structure de planification utilise davantage la largeur disponible ;
+- la sous-vue `Frise` devient accessible par un bouton local cliquable ;
+- les cartes textuelles qui encombraient la frise sont retirées de cette sous-vue ;
+- la frise est agrandie ;
+- l'axe horizontal affiche des repères de mois et des graduations de jours ;
+- l'axe vertical du reste agrégé provisoire affiche des graduations numériques ;
+- la barre d'informations droite est compactée.
+
+La barre droite affiche uniquement une synthèse de consultation :
+
+- total restant ;
+- cette année, non calculé à ce stade ;
+- compteurs principaux ;
+- expiration, non calculée à ce stade ;
+- sélection courante.
+
+Les compteurs nuls sont masqués dans la barre principale, sauf compteurs courants importants comme `GCP`, `JRTT` et `CANC`, ou compteur explicitement lié à la parentalité dans les données.
+
+Le tri cible des compteurs est un tri par proximité d'expiration réelle. Cette information n'est pas encore disponible de façon fiable dans le modèle ; la V0.4.1 utilise donc un repli temporaire :
+
+- compteurs non nuls ;
+- compteurs importants ;
+- autres compteurs ;
+- compteurs nuls ;
+- ordre alphabétique à l'intérieur d'un groupe.
+
+Ce repli sera remplacé lorsque les dates d'expiration explicites seront disponibles dans les données moteur.
+
+Ces corrections restent purement visuelles. Elles ne stabilisent pas la formule métier du reste agrégé et n'ajoutent aucune édition, optimisation, sauvegarde ou écriture Chronotime.
+
 ## Vue future des soldes dans le temps
 
 Une future vue `Soldes dans le temps` devra représenter :
