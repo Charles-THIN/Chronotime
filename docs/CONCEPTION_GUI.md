@@ -519,6 +519,31 @@ Le cliquer-déplacer multi-jours est corrigé : la finalisation utilise la derni
 
 La frise conserve un rendu dynamique des blocs utilisateur avec un style plat. Dette restante : le calendrier et la frise ne sont pas encore alimentés par un modèle de planification commun complet. La cible suivante reste un scénario local explicite, puis un recalcul Python qui produira à nouveau les sorties dérivées.
 
+## V0.5.0 Grammaire visuelle du calendrier
+
+La version `V0.5.0` clarifie la lecture du calendrier de planification sans modifier le moteur.
+
+Grammaire retenue :
+
+- type de compteur : couleur dédiée en mode détaillé ;
+- origine issue de la projection : couleur normale et contour continu ;
+- origine manuelle de prototype : rendu plus clair ou plus transparent et contour pointillé ;
+- survol et sélection : contour ou ombre renforcée, sans utiliser la couleur d'alerte ;
+- information secondaire : texte discret dans la case.
+
+Couleurs préparées :
+
+- `GCP` : rouge doux distinct de la couleur d'alerte ;
+- `JRTT` : bleu ;
+- `CANC` : vert ;
+- autre ou inconnu : couleur par défaut.
+
+Les jours affichent aussi le libellé court du jour de semaine sous la case (`lun`, `mar`, `mer`, `jeu`, `ven`, `sam`, `dim`). Le dimanche est typographiquement renforcé.
+
+Les absences ajoutées par l'utilisateur restent des prototypes locaux persistés via `localStorage`. Elles ne recalculent aucun compteur réel, ne modifient pas `projection.demi_journees` et devront être remplacées plus tard par un scénario local explicite puis un recalcul Python.
+
+La frise reste une dette connue : elle ne bloque pas cette clarification et devra être réalimentée plus tard par un modèle de planification commun au calendrier et à la frise.
+
 ## Vue future des soldes dans le temps
 
 Une future vue `Soldes dans le temps` devra représenter :

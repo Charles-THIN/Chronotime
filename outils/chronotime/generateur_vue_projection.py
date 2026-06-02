@@ -25,6 +25,7 @@ MOIS_FRANCAIS = {
     11: "novembre",
     12: "décembre",
 }
+JOURS_SEMAINE_COURTS = ("lun", "mar", "mer", "jeu", "ven", "sam", "dim")
 TYPES_ALERTES = {
     "evenement_hors_periode_projection": "Événement hors période de projection",
     "solde_negatif_confirmation_possible": "Solde négatif probablement confirmable",
@@ -1224,8 +1225,34 @@ def script_onglets() -> str:
           element.remove();
         });
         document.querySelectorAll('.jour-avec-bloc-utilisateur').forEach((jour) => {
-          jour.classList.remove('jour-avec-bloc-utilisateur');
+          jour.classList.remove(
+            'jour-avec-bloc-utilisateur',
+            'origine-utilisateur',
+            'compteur-manuel-gcp',
+            'compteur-manuel-jrtt',
+            'compteur-manuel-canc',
+            'compteur-manuel-defaut'
+          );
+          const typeCompteur = jour.querySelector('.type-compteur-jour');
+          if (typeCompteur && typeCompteur.dataset.libelleProjection !== undefined) {
+            typeCompteur.textContent = typeCompteur.dataset.libelleProjection;
+          }
         });
+      }
+
+      function classeCompteurManuel(compteur) {
+        const normalise = String(compteur || '').trim().toUpperCase();
+        if (normalise === 'GCP') { return 'compteur-manuel-gcp'; }
+        if (normalise === 'JRTT') { return 'compteur-manuel-jrtt'; }
+        if (normalise === 'CANC') { return 'compteur-manuel-canc'; }
+        return 'compteur-manuel-defaut';
+      }
+
+      function libelleCompteurManuel(compteur) {
+        const normalise = String(compteur || '').trim().toUpperCase();
+        if (normalise === 'NON_RECALCULE') { return 'non rec.'; }
+        if (normalise === 'GCP' || normalise === 'JRTT' || normalise === 'CANC') { return normalise; }
+        return normalise ? normalise.toLowerCase() : 'non rec.';
       }
 
       function niveauSelectionBlocUtilisateur(bloc) {
@@ -1250,7 +1277,14 @@ def script_onglets() -> str:
           datesBlocLocal(bloc).forEach((dateIso) => {
             const jour = document.querySelector('.jour-calendrier[data-date-iso="' + dateIso + '"]');
             if (!jour) { return; }
-            jour.classList.add('jour-avec-bloc-utilisateur');
+            jour.classList.add('jour-avec-bloc-utilisateur', 'origine-utilisateur', classeCompteurManuel(bloc.compteur_indicatif));
+            const typeCompteur = jour.querySelector('.type-compteur-jour');
+            if (typeCompteur) {
+              if (typeCompteur.dataset.libelleProjection === undefined) {
+                typeCompteur.dataset.libelleProjection = typeCompteur.textContent || '';
+              }
+              typeCompteur.textContent = libelleCompteurManuel(bloc.compteur_indicatif);
+            }
             const conteneur = jour.querySelector('.selection-niveaux');
             if (!conteneur) { return; }
             conteneur.insertBefore(niveauSelectionBlocUtilisateur(bloc), conteneur.firstChild);
@@ -2032,6 +2066,34 @@ def resume_compteurs_selection(compteurs: Any) -> str:
     )
 
 
+def compteur_principal_jour(consommations: Any) -> str:
+    if not isinstance(consommations, dict) or not consommations:
+        return ""
+    compteurs = {str(compteur) for compteur in consommations.keys() if str(compteur)}
+    for compteur_prioritaire in ("GCP", "JRTT", "CANC"):
+        if compteur_prioritaire in compteurs:
+            return compteur_prioritaire
+    return sorted(compteurs)[0] if compteurs else ""
+
+
+def classe_compteur_calendrier(compteur: str) -> str:
+    compteur_normalise = compteur.strip().upper().replace("_", "-")
+    if compteur_normalise in {"GCP", "JRTT", "CANC"}:
+        return f"compteur-{compteur_normalise.lower()}"
+    if compteur_normalise:
+        return "compteur-defaut"
+    return ""
+
+
+def libelle_compteur_calendrier(compteur: str) -> str:
+    compteur_normalise = compteur.strip().upper()
+    if compteur_normalise == "NON_RECALCULE":
+        return "non rec."
+    if compteur_normalise in {"GCP", "JRTT", "CANC"}:
+        return compteur_normalise
+    return compteur.strip() or ""
+
+
 def attributs_niveau_selection(type_selection: str, donnees: dict[str, Any], info: dict[str, Any]) -> str:
     attributs = [f"data-selection-type=\"{escape(type_selection)}\""]
     if type_selection == "jour":
@@ -2111,10 +2173,26 @@ def vue_calendrier_passif(demi_journees: list[Any]) -> str:
             classes = ["jour-calendrier", "element-selectionnable", "jour-selectionnable"]
             if info.get("consommations"):
                 classes.append("jour-avec-consommation")
+            compteur_principal = compteur_principal_jour(info.get("consommations"))
+            classe_compteur = classe_compteur_calendrier(compteur_principal)
+            if classe_compteur:
+                classes.append(classe_compteur)
             if info.get("alertes"):
                 classes.append("jour-avec-alerte")
-            jour = date_iso_vers_objet(date_iso).day
+            date_jour = date_iso_vers_objet(date_iso)
+            jour = date_jour.day
+            libelle_semaine = JOURS_SEMAINE_COURTS[date_jour.weekday()]
+            classe_libelle_semaine = "libelle-jour-semaine"
+            if libelle_semaine == "dim":
+                classe_libelle_semaine += " jour-dimanche"
+            libelle_compteur = libelle_compteur_calendrier(compteur_principal)
+            type_compteur = (
+                f"<span class=\"type-compteur-jour\">{escape(libelle_compteur)}</span>"
+                if libelle_compteur
+                else "<span class=\"type-compteur-jour type-compteur-vide\" aria-hidden=\"true\"></span>"
+            )
             jours.append(
+                "<span class=\"cellule-calendrier\">"
                 f"<span class=\"{' '.join(classes)}\" title=\"{escape(titre_jour_calendrier(date_iso, info))}\" "
                 "role=\"button\" tabindex=\"0\" "
                 "data-selection-cyclique=\"true\" "
@@ -2122,7 +2200,13 @@ def vue_calendrier_passif(demi_journees: list[Any]) -> str:
                 "data-selection-type=\"jour\" "
                 f"data-selection-date=\"{escape(formater_date_francaise(date_iso))}\" "
                 f"data-selection-consommation=\"{escape(resume_consommation_jour(info))}\" "
-                f"data-selection-alertes=\"{escape(resume_alertes_jour(info))}\">{jour}{niveaux_selection_jour(info)}</span>"
+                f"data-selection-alertes=\"{escape(resume_alertes_jour(info))}\">"
+                f"<span class=\"numero-jour-calendrier\">{jour}</span>"
+                f"{type_compteur}"
+                f"{niveaux_selection_jour(info)}"
+                "</span>"
+                f"<span class=\"{classe_libelle_semaine}\">{libelle_semaine}</span>"
+                "</span>"
             )
         blocs_mois.append(
             "<section class=\"mois-calendrier\">"
@@ -2554,6 +2638,10 @@ def feuille_style() -> str:
       --alerte: #b13b2e;
       --confirmation: #9b6b00;
       --info: #35648f;
+      --compteur-gcp: #c96f75;
+      --compteur-jrtt: #4f86c6;
+      --compteur-canc: #4f9b73;
+      --compteur-defaut: #146b5f;
       --ombre: 0 18px 40px rgba(41, 31, 19, 0.14);
     }
     * { box-sizing: border-box; }
@@ -3032,18 +3120,60 @@ def feuille_style() -> str:
       gap: 3px;
       width: 100%;
     }
+    .cellule-calendrier {
+      display: grid;
+      grid-template-rows: minmax(31px, auto) auto;
+      gap: 2px;
+      min-width: 0;
+    }
     .jour-calendrier {
       position: relative;
-      min-height: 26px;
-      display: inline-flex;
+      min-height: 31px;
+      display: grid;
+      grid-template-rows: 1fr auto;
       align-items: center;
-      justify-content: center;
+      justify-items: center;
+      gap: 1px;
+      padding: 2px 1px;
       border: 1px solid #cbbd9f;
       border-radius: 7px;
       background: #fffaf0;
       color: var(--muted);
       font-size: 0.82rem;
       font-variant-numeric: tabular-nums;
+    }
+    .numero-jour-calendrier {
+      line-height: 1;
+    }
+    .type-compteur-jour {
+      min-height: 0.7rem;
+      color: var(--muted);
+      font-size: 0.58rem;
+      font-weight: 650;
+      line-height: 1;
+      opacity: 0.78;
+      text-transform: lowercase;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .interface-planification[data-mode-planification="general"] .type-compteur-jour {
+      visibility: hidden;
+    }
+    .interface-planification[data-mode-planification="detaille"] .type-compteur-jour {
+      visibility: visible;
+    }
+    .libelle-jour-semaine {
+      color: var(--muted);
+      font-size: 0.58rem;
+      line-height: 1;
+      text-align: center;
+      text-transform: lowercase;
+      user-select: none;
+    }
+    .libelle-jour-semaine.jour-dimanche {
+      font-weight: 800;
     }
     .element-selectionnable {
       cursor: pointer;
@@ -3065,6 +3195,26 @@ def feuille_style() -> str:
       border-color: var(--accent);
       font-weight: 700;
     }
+    .interface-planification[data-mode-planification="detaille"] .jour-calendrier.compteur-gcp {
+      background: rgba(201, 111, 117, 0.22);
+      border-color: var(--compteur-gcp);
+      color: #743c42;
+    }
+    .interface-planification[data-mode-planification="detaille"] .jour-calendrier.compteur-jrtt {
+      background: rgba(79, 134, 198, 0.22);
+      border-color: var(--compteur-jrtt);
+      color: #28547f;
+    }
+    .interface-planification[data-mode-planification="detaille"] .jour-calendrier.compteur-canc {
+      background: rgba(79, 155, 115, 0.22);
+      border-color: var(--compteur-canc);
+      color: #2d6b4b;
+    }
+    .interface-planification[data-mode-planification="detaille"] .jour-calendrier.compteur-defaut {
+      background: rgba(20, 107, 95, 0.14);
+      border-color: var(--compteur-defaut);
+      color: var(--accent-fort);
+    }
     .jour-avec-alerte {
       box-shadow: inset 0 0 0 2px rgba(177, 59, 46, 0.5);
     }
@@ -3073,10 +3223,31 @@ def feuille_style() -> str:
       outline-offset: 2px;
     }
     .jour-avec-bloc-utilisateur {
-      background: rgba(20, 107, 95, 0.12);
-      border-color: rgba(20, 107, 95, 0.75);
+      background: rgba(20, 107, 95, 0.08);
+      border-color: rgba(20, 107, 95, 0.62);
+      border-style: dashed;
       color: var(--accent-fort);
       font-weight: 700;
+    }
+    .interface-planification[data-mode-planification="detaille"] .jour-calendrier.origine-utilisateur.compteur-manuel-gcp {
+      background: rgba(201, 111, 117, 0.12);
+      border-color: rgba(201, 111, 117, 0.78);
+      color: #743c42;
+    }
+    .interface-planification[data-mode-planification="detaille"] .jour-calendrier.origine-utilisateur.compteur-manuel-jrtt {
+      background: rgba(79, 134, 198, 0.12);
+      border-color: rgba(79, 134, 198, 0.78);
+      color: #28547f;
+    }
+    .interface-planification[data-mode-planification="detaille"] .jour-calendrier.origine-utilisateur.compteur-manuel-canc {
+      background: rgba(79, 155, 115, 0.12);
+      border-color: rgba(79, 155, 115, 0.78);
+      color: #2d6b4b;
+    }
+    .interface-planification[data-mode-planification="detaille"] .jour-calendrier.origine-utilisateur.compteur-manuel-defaut {
+      background: rgba(20, 107, 95, 0.08);
+      border-color: rgba(20, 107, 95, 0.62);
+      color: var(--accent-fort);
     }
     .bloc-fantome-local {
       background: rgba(155, 107, 0, 0.18);

@@ -158,10 +158,59 @@ class TestGenerateurVueProjection(unittest.TestCase):
 
         self.assertIn("vue-calendrier-passif", html)
         self.assertIn("mois-calendrier", html)
+        self.assertIn("cellule-calendrier", html)
         self.assertIn("jour-calendrier", html)
+        self.assertIn("numero-jour-calendrier", html)
+        self.assertIn("type-compteur-jour", html)
+        self.assertIn("libelle-jour-semaine", html)
+        self.assertIn("jour-dimanche", html)
         self.assertIn("jour-avec-consommation", html)
         self.assertIn("jours-calendrier", html)
         self.assertIn("grid-template-columns: repeat(31, minmax", html)
+
+    def test_generation_html_calendrier_grammaire_visuelle_compteurs(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("--compteur-gcp", html)
+        self.assertIn("--compteur-jrtt", html)
+        self.assertIn("--compteur-canc", html)
+        self.assertIn("--compteur-defaut", html)
+        self.assertIn("compteur-gcp", html)
+        self.assertIn("compteur-jrtt", html)
+        self.assertIn("compteur-canc", html)
+        self.assertIn("compteur-defaut", html)
+        self.assertIn('data-mode-planification="detaille"', html)
+
+    def test_generation_html_calendrier_origine_utilisateur_distincte(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("origine-utilisateur", html)
+        self.assertIn("compteur-manuel-gcp", html)
+        self.assertIn("compteur-manuel-jrtt", html)
+        self.assertIn("compteur-manuel-canc", html)
+        self.assertIn("compteur-manuel-defaut", html)
+        self.assertIn("border-style: dashed", html)
+        self.assertNotIn(".jour-avec-bloc-utilisateur::after", html)
+        self.assertNotIn(".jour-avec-bloc-utilisateur {\n      background: linear-gradient", html)
+
+    def test_generation_html_calendrier_libelles_jours_semaine(self) -> None:
+        projection = copy.deepcopy(self._charger_exemple())
+        modele = copy.deepcopy(projection["demi_journees"][0])
+        projection["demi_journees"] = []
+        for jour in range(1, 8):
+            demi_journee = copy.deepcopy(modele)
+            demi_journee["date"] = f"2026-06-0{jour}"
+            demi_journee["portion"] = "matin"
+            demi_journee["consommations"] = {}
+            demi_journee["consommations_detaillees"] = []
+            demi_journee["alertes"] = []
+            projection["demi_journees"].append(demi_journee)
+        html = generer_html(projection)
+
+        for libelle in ("lun", "mar", "mer", "jeu", "ven", "sam", "dim"):
+            self.assertIn(f">{libelle}</span>", html)
+        self.assertIn(".libelle-jour-semaine.jour-dimanche", html)
+        self.assertIn("font-weight: 800", html)
 
     def test_generation_html_planification_frise_niveau(self) -> None:
         html = generer_html(self._charger_exemple())
