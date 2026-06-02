@@ -127,6 +127,7 @@ class TestGenerateurVueProjection(unittest.TestCase):
     def test_generation_html_planification_barre_outils(self) -> None:
         html = generer_html(self._charger_exemple())
 
+        self.assertIn("Sélection", html)
         self.assertIn("Poser des jours", html)
         self.assertIn("Scinder", html)
         self.assertIn("Fusionner", html)
@@ -134,6 +135,9 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("Détaillé", html)
         self.assertIn("outil-desactive", html)
         self.assertIn("disabled", html)
+        self.assertIn('data-outil-planification="selection"', html)
+        self.assertIn('data-outil-planification="poser"', html)
+        self.assertNotIn('data-outil-planification="poser" aria-pressed="false" disabled', html)
 
     def test_generation_html_planification_barre_infos(self) -> None:
         html = generer_html(self._charger_exemple())
@@ -442,12 +446,29 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertNotIn("<script src=", html)
         self.assertNotIn("<link rel=", html)
 
-    def test_generation_html_sans_persistance_ni_acces_fichier(self) -> None:
+    def test_generation_html_sans_reseau_ni_acces_fichier_navigateur(self) -> None:
         html = generer_html(self._charger_exemple())
         self.assertNotIn("fetch(", html)
-        self.assertNotIn("localStorage", html)
         self.assertNotIn("indexedDB", html)
         self.assertNotIn("FileSystem", html)
+
+    def test_generation_html_prototype_pose_locale(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("chronotime.planification.prototype.v1", html)
+        self.assertIn("absence_locale_prototype", html)
+        self.assertIn("function creerBlocLocalPrototype", html)
+        self.assertIn("function supprimerBlocLocalSelectionne", html)
+        self.assertIn("localStorage.getItem", html)
+        self.assertIn("localStorage.setItem", html)
+        self.assertIn("data-outil-planification=\"poser\"", html)
+        self.assertIn("bloc-local-calendrier", html)
+        self.assertIn("bloc-local-frise", html)
+        self.assertIn("bloc-fantome-local", html)
+        self.assertIn("prévisualisation locale", html)
+        self.assertIn("Compteur indicatif", html)
+        self.assertIn("non recalculé par le moteur", html)
+        self.assertIn("Suppr pour supprimer", html)
 
     def test_generation_html_planification_non_regression_vues_et_outils(self) -> None:
         html = generer_html(self._charger_exemple())

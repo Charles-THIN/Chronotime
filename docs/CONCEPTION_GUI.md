@@ -446,6 +446,34 @@ Corrections apportées :
 
 Cette correction reste passive. Elle ne crée aucun bloc, ne modifie aucun scénario, ne recalcule aucune projection côté navigateur et ne sauvegarde rien.
 
+## V0.4.7 Prototype local de pose de jours
+
+La version `V0.4.7` ajoute un prototype local de l'outil `Poser des jours`.
+
+Capacités de prototype :
+
+- activation de l'outil `Poser des jours` depuis la barre gauche ;
+- prévisualisation locale d'un bloc fantôme dans le calendrier ;
+- clic simple pour poser un bloc local d'un jour ;
+- cliquer-déplacer pour poser un bloc local sur une plage de dates projetées ;
+- affichage des blocs locaux dans le calendrier et dans la frise ;
+- sélection d'un bloc local en mode `Sélection` ;
+- suppression du bloc local sélectionné avec `Suppr` ;
+- persistance provisoire via `localStorage`.
+
+Cette persistance utilise une clé de prototype d'interface. Elle ne devient pas une source métier canonique.
+
+Limites explicites :
+
+- aucun recalcul moteur ;
+- aucun recalcul réel de compteur ;
+- compteur seulement indicatif ;
+- aucune modification de `projection.demi_journees` ;
+- aucune sauvegarde de scénario ;
+- aucune écriture Chronotime.
+
+La cible future reste un scénario local explicite, versionnable et recalculé par le moteur Python. Le stockage `localStorage` devra donc être remplacé par une source événementielle locale propre avant toute utilisation métier durable.
+
 ## Vue future des soldes dans le temps
 
 Une future vue `Soldes dans le temps` devra représenter :

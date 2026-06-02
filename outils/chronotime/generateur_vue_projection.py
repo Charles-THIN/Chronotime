@@ -800,7 +800,15 @@ def script_onglets() -> str:
       const boutonsSousVues = Array.from(document.querySelectorAll('.bouton-sous-vue'));
       const sousVues = Array.from(document.querySelectorAll('.sous-vue-planification'));
       const boutonsMode = Array.from(document.querySelectorAll('[data-mode-planification]'));
+      const boutonsOutils = Array.from(document.querySelectorAll('[data-outil-planification]'));
+      const CLE_STOCKAGE_PROTO = 'chronotime.planification.prototype.v1';
       let modePlanification = 'general';
+      let outilPlanification = 'selection';
+      let blocsLocauxPrototype = [];
+      let blocLocalSelectionne = null;
+      let dateDebutPose = null;
+      let dateSurvolPose = null;
+      let poseEnCours = false;
 
       function activerVue(id) {
         vues.forEach((vue) => {
@@ -838,6 +846,22 @@ def script_onglets() -> str:
           bouton.classList.toggle('outil-actif', actif);
           bouton.setAttribute('aria-pressed', actif ? 'true' : 'false');
         });
+        deselectionnerPlanification();
+      }
+
+      function activerOutilPlanification(outil) {
+        outilPlanification = outil === 'poser' ? 'poser' : 'selection';
+        const interfacePlanification = document.querySelector('.interface-planification');
+        if (interfacePlanification) {
+          interfacePlanification.dataset.outilPlanification = outilPlanification;
+        }
+        boutonsOutils.forEach((bouton) => {
+          const actif = bouton.dataset.outilPlanification === outilPlanification;
+          bouton.classList.toggle('outil-actif', actif);
+          bouton.classList.toggle('outil-selection-actif', actif);
+          bouton.setAttribute('aria-pressed', actif ? 'true' : 'false');
+        });
+        nettoyerFantomeLocal();
         deselectionnerPlanification();
       }
 
@@ -995,6 +1019,24 @@ def script_onglets() -> str:
         cible.appendChild(fiche);
       }
 
+      function afficherCurseurPrototype(dateDebut, dateFin) {
+        const cible = document.getElementById('curseur-planification');
+        if (!cible) { return; }
+        const quantite = datesProjeteesEntre(dateDebut, dateFin).length;
+        cible.textContent = '';
+        const fiche = document.createElement('div');
+        fiche.className = 'fiche-selection fiche-curseur fiche-prototype';
+        const puce = document.createElement('span');
+        puce.className = 'puce-selection';
+        puce.textContent = 'prévisualisation locale';
+        fiche.appendChild(puce);
+        ajouterChampSelection(fiche, 'Période', periodeLisible(dateDebut, dateFin), false);
+        ajouterChampSelection(fiche, 'Quantité', quantite + ' j projeté(s)', false);
+        ajouterChampSelection(fiche, 'Compteur indicatif', 'à choisir plus tard', false);
+        ajouterChampSelection(fiche, 'Moteur', 'non recalculé par le moteur', false);
+        cible.appendChild(fiche);
+      }
+
       function viderCurseurPlanification() {
         const cible = document.getElementById('curseur-planification');
         if (!cible) { return; }
@@ -1008,6 +1050,7 @@ def script_onglets() -> str:
       function deselectionnerPlanification() {
         nettoyerSelectionVisuelle();
         reinitialiserCyclesSelection();
+        blocLocalSelectionne = null;
         const cible = document.getElementById('selection-planification');
         if (cible) {
           cible.textContent = '';
@@ -1016,6 +1059,193 @@ def script_onglets() -> str:
           vide.textContent = 'aucune';
           cible.appendChild(vide);
         }
+      }
+
+      function normaliserPlageDates(dateA, dateB) {
+        return [dateA, dateB].sort();
+      }
+
+      function joursCalendrier() {
+        return Array.from(document.querySelectorAll('.jour-calendrier[data-date-iso]'));
+      }
+
+      function datesProjeteesEntre(dateA, dateB) {
+        const bornes = normaliserPlageDates(dateA, dateB);
+        return joursCalendrier()
+          .map((jour) => jour.dataset.dateIso)
+          .filter((dateIso) => dateIso >= bornes[0] && dateIso <= bornes[1]);
+      }
+
+      function periodeLisible(dateA, dateB) {
+        const dates = datesProjeteesEntre(dateA, dateB);
+        if (!dates.length) {
+          return dateA;
+        }
+        if (dates[0] === dates[dates.length - 1]) {
+          return dates[0];
+        }
+        return dates[0] + ' → ' + dates[dates.length - 1];
+      }
+
+      function nettoyerFantomeLocal() {
+        document.querySelectorAll('.bloc-fantome-local').forEach((jour) => {
+          jour.classList.remove('bloc-fantome-local', 'bloc-fantome-debut', 'bloc-fantome-fin');
+        });
+      }
+
+      function afficherFantomeLocal(dateA, dateB) {
+        nettoyerFantomeLocal();
+        const dates = datesProjeteesEntre(dateA, dateB);
+        dates.forEach((dateIso, index) => {
+          const jour = document.querySelector('.jour-calendrier[data-date-iso="' + dateIso + '"]');
+          if (!jour) { return; }
+          jour.classList.add('bloc-fantome-local');
+          if (index === 0) { jour.classList.add('bloc-fantome-debut'); }
+          if (index === dates.length - 1) { jour.classList.add('bloc-fantome-fin'); }
+        });
+        afficherCurseurPrototype(dateA, dateB);
+      }
+
+      function lireBlocsLocauxPrototype() {
+        try {
+          const texte = localStorage.getItem(CLE_STOCKAGE_PROTO);
+          const donnees = texte ? JSON.parse(texte) : [];
+          return Array.isArray(donnees) ? donnees.filter((bloc) => bloc && bloc.type === 'absence_locale_prototype') : [];
+        } catch (_erreur) {
+          return [];
+        }
+      }
+
+      function sauvegarderBlocsLocauxPrototype() {
+        localStorage.setItem(CLE_STOCKAGE_PROTO, JSON.stringify(blocsLocauxPrototype));
+      }
+
+      function creerBlocLocalPrototype(dateA, dateB) {
+        const dates = datesProjeteesEntre(dateA, dateB);
+        if (!dates.length) { return; }
+        const bloc = {
+          id: 'bloc_local_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+          type: 'absence_locale_prototype',
+          date_debut: dates[0],
+          date_fin: dates[dates.length - 1],
+          compteur_indicatif: 'à choisir plus tard',
+          quantite_jours: dates.length,
+          cree_le: new Date().toISOString()
+        };
+        blocsLocauxPrototype.push(bloc);
+        sauvegarderBlocsLocauxPrototype();
+        nettoyerFantomeLocal();
+        rendreBlocsLocauxPrototype();
+        afficherSelectionBlocLocal(bloc);
+      }
+
+      function datesBlocLocal(bloc) {
+        return datesProjeteesEntre(bloc.date_debut, bloc.date_fin);
+      }
+
+      function libelleBlocLocal(bloc) {
+        return bloc.date_debut === bloc.date_fin ? bloc.date_debut : bloc.date_debut + ' → ' + bloc.date_fin;
+      }
+
+      function nettoyerRenduBlocsLocaux() {
+        document.querySelectorAll('.bloc-local-calendrier, .bloc-local-frise').forEach((element) => {
+          element.remove();
+        });
+        document.querySelectorAll('.jour-avec-bloc-local').forEach((jour) => {
+          jour.classList.remove('jour-avec-bloc-local');
+        });
+      }
+
+      function rendreBlocsLocauxCalendrier() {
+        blocsLocauxPrototype.forEach((bloc) => {
+          datesBlocLocal(bloc).forEach((dateIso) => {
+            const jour = document.querySelector('.jour-calendrier[data-date-iso="' + dateIso + '"]');
+            if (!jour) { return; }
+            jour.classList.add('jour-avec-bloc-local');
+            const marqueur = document.createElement('span');
+            marqueur.className = 'bloc-local-calendrier element-bloc-local';
+            marqueur.dataset.blocLocalId = bloc.id;
+            marqueur.title = 'Bloc local prototype ' + libelleBlocLocal(bloc);
+            jour.appendChild(marqueur);
+          });
+        });
+      }
+
+      function xFrisePourDate(svg, dateIso) {
+        const debut = new Date(svg.dataset.friseDebut + 'T00:00:00');
+        const fin = new Date(svg.dataset.friseFin + 'T00:00:00');
+        const courant = new Date(dateIso + 'T00:00:00');
+        const gauche = Number(svg.dataset.friseGauche || '58');
+        const droite = Number(svg.dataset.friseDroite || '1092');
+        const duree = Math.max(1, (fin - debut) / 86400000);
+        return gauche + (((courant - debut) / 86400000) / duree) * (droite - gauche);
+      }
+
+      function rendreBlocsLocauxFrise() {
+        document.querySelectorAll('.courbe-reste-agrege').forEach((svg) => {
+          const groupe = svg.querySelector('.ligne-blocs-locaux');
+          if (!groupe) { return; }
+          blocsLocauxPrototype.forEach((bloc) => {
+            const x1 = xFrisePourDate(svg, bloc.date_debut);
+            const x2 = xFrisePourDate(svg, bloc.date_fin);
+            const rect = document.createElementNS(svg.namespaceURI, 'rect');
+            rect.setAttribute('class', 'bloc-local-frise element-bloc-local');
+            rect.setAttribute('x', String(x1));
+            rect.setAttribute('y', '60');
+            rect.setAttribute('width', String(Math.max(10, x2 - x1 + 8)));
+            rect.setAttribute('height', '14');
+            rect.setAttribute('rx', '5');
+            rect.dataset.blocLocalId = bloc.id;
+            const titre = document.createElementNS(svg.namespaceURI, 'title');
+            titre.textContent = 'Bloc local prototype ' + libelleBlocLocal(bloc);
+            rect.appendChild(titre);
+            groupe.appendChild(rect);
+          });
+        });
+      }
+
+      function rendreBlocsLocauxPrototype() {
+        nettoyerRenduBlocsLocaux();
+        rendreBlocsLocauxCalendrier();
+        rendreBlocsLocauxFrise();
+      }
+
+      function blocLocalParId(id) {
+        return blocsLocauxPrototype.find((bloc) => bloc.id === id);
+      }
+
+      function afficherSelectionBlocLocal(bloc) {
+        if (!bloc) { return; }
+        blocLocalSelectionne = bloc.id;
+        nettoyerSelectionVisuelle();
+        document.querySelectorAll('[data-bloc-local-id="' + bloc.id + '"]').forEach((element) => {
+          element.classList.add('selection-active', 'bloc-local-selectionne');
+        });
+        const cible = document.getElementById('selection-planification');
+        if (!cible) { return; }
+        cible.textContent = '';
+        const fiche = document.createElement('div');
+        fiche.className = 'fiche-selection fiche-prototype';
+        const puce = document.createElement('span');
+        puce.className = 'puce-selection';
+        puce.textContent = 'bloc local prototype';
+        fiche.appendChild(puce);
+        ajouterChampSelection(fiche, 'Période', libelleBlocLocal(bloc), false);
+        ajouterChampSelection(fiche, 'Quantité', bloc.quantite_jours + ' j', false);
+        ajouterChampSelection(fiche, 'Compteur indicatif', bloc.compteur_indicatif, false);
+        ajouterChampSelection(fiche, 'Source', 'localStorage prototype', false);
+        ajouterChampSelection(fiche, 'Instruction', 'Suppr pour supprimer', false);
+        ajouterChampSelection(fiche, 'Identifiant', bloc.id, true);
+        cible.appendChild(fiche);
+      }
+
+      function supprimerBlocLocalSelectionne() {
+        if (!blocLocalSelectionne) { return; }
+        blocsLocauxPrototype = blocsLocauxPrototype.filter((bloc) => bloc.id !== blocLocalSelectionne);
+        blocLocalSelectionne = null;
+        sauvegarderBlocsLocauxPrototype();
+        rendreBlocsLocauxPrototype();
+        deselectionnerPlanification();
       }
 
       function activerSelectionPlanification(element) {
@@ -1092,10 +1322,22 @@ def script_onglets() -> str:
         });
       });
 
+      boutonsOutils.forEach((bouton) => {
+        bouton.addEventListener('click', function () {
+          activerOutilPlanification(bouton.dataset.outilPlanification);
+        });
+      });
+
       document.querySelectorAll('.element-selectionnable').forEach((element) => {
         element.addEventListener('click', function (event) {
+          if (event.target.closest('.element-bloc-local')) {
+            return;
+          }
           event.preventDefault();
           event.stopPropagation();
+          if (outilPlanification === 'poser') {
+            return;
+          }
           activerSelectionPlanification(element);
         });
         element.addEventListener('dblclick', function (event) {
@@ -1110,9 +1352,47 @@ def script_onglets() -> str:
         });
       });
 
+      joursCalendrier().forEach((jour) => {
+        jour.addEventListener('mouseenter', function () {
+          if (outilPlanification !== 'poser') { return; }
+          const dateIso = jour.dataset.dateIso;
+          if (!dateIso) { return; }
+          dateSurvolPose = dateIso;
+          afficherFantomeLocal(dateDebutPose || dateIso, dateIso);
+        });
+        jour.addEventListener('mousedown', function (event) {
+          if (outilPlanification !== 'poser') { return; }
+          event.preventDefault();
+          event.stopPropagation();
+          dateDebutPose = jour.dataset.dateIso;
+          dateSurvolPose = dateDebutPose;
+          poseEnCours = true;
+          if (dateDebutPose) {
+            afficherFantomeLocal(dateDebutPose, dateDebutPose);
+          }
+        });
+        jour.addEventListener('mouseup', function (event) {
+          if (outilPlanification !== 'poser' || !poseEnCours || !dateDebutPose) { return; }
+          event.preventDefault();
+          event.stopPropagation();
+          creerBlocLocalPrototype(dateDebutPose, jour.dataset.dateIso || dateDebutPose);
+          dateDebutPose = null;
+          dateSurvolPose = null;
+          poseEnCours = false;
+        });
+      });
+
+      document.addEventListener('click', function (event) {
+        const elementLocal = event.target.closest('.element-bloc-local');
+        if (!elementLocal || outilPlanification !== 'selection') { return; }
+        event.preventDefault();
+        event.stopPropagation();
+        afficherSelectionBlocLocal(blocLocalParId(elementLocal.dataset.blocLocalId));
+      });
+
       document.querySelectorAll('.zone-centrale-planification').forEach((zone) => {
         zone.addEventListener('click', function (event) {
-          if (!event.target.closest('.element-selectionnable, .bouton-sous-vue, [data-mode-planification]')) {
+          if (!event.target.closest('.element-selectionnable, .element-bloc-local, .bouton-sous-vue, [data-mode-planification], [data-outil-planification]')) {
             deselectionnerPlanification();
           }
         });
@@ -1124,12 +1404,17 @@ def script_onglets() -> str:
       document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
           deselectionnerPlanification();
+        } else if (event.key === 'Delete' || event.key === 'Suppr') {
+          supprimerBlocLocalSelectionne();
         }
       });
 
       activerVue('vue-ensemble');
       activerSousVue('calendrier');
       activerModePlanification('general');
+      activerOutilPlanification('selection');
+      blocsLocauxPrototype = lireBlocsLocauxPrototype();
+      rendreBlocsLocauxPrototype();
       initialiserCurseursFrise();
     }());
     </script>
@@ -1376,7 +1661,8 @@ def barre_outils_gauche() -> str:
     return """
     <aside class="barre-outils-gauche" aria-label="Barre d’outils de planification">
       <h3>Outils</h3>
-      <button type="button" class="outil-passif outil-desactive" disabled>Poser des jours</button>
+      <button type="button" class="outil-passif outil-actif outil-selection-actif" data-outil-planification="selection" aria-pressed="true">Sélection</button>
+      <button type="button" class="outil-passif" data-outil-planification="poser" aria-pressed="false">Poser des jours</button>
       <button type="button" class="outil-passif outil-desactive" disabled>Scinder</button>
       <button type="button" class="outil-passif outil-desactive" disabled>Fusionner</button>
       <h3>Affichage</h3>
@@ -1904,6 +2190,7 @@ def courbe_reste_agrege(points: list[dict[str, Any]], demi_journees: list[Any], 
         "<g class=\"ligne-blocs-temporels\">"
         f"{blocs}"
         "</g>"
+        "<g class=\"ligne-blocs-locaux\"></g>"
         "<g class=\"axe-vertical\">"
         f"{''.join(lignes_reste)}"
         "</g>"
@@ -2580,6 +2867,7 @@ def feuille_style() -> str:
       width: 100%;
     }
     .jour-calendrier {
+      position: relative;
       min-height: 26px;
       display: inline-flex;
       align-items: center;
@@ -2614,6 +2902,35 @@ def feuille_style() -> str:
     .jour-avec-alerte {
       box-shadow: inset 0 0 0 2px rgba(177, 59, 46, 0.5);
     }
+    .bloc-fantome-local {
+      background: rgba(155, 107, 0, 0.18);
+      box-shadow: inset 0 0 0 2px rgba(155, 107, 0, 0.55);
+    }
+    .bloc-fantome-debut {
+      border-left-width: 3px;
+    }
+    .bloc-fantome-fin {
+      border-right-width: 3px;
+    }
+    .bloc-local-calendrier {
+      position: absolute;
+      left: 4px;
+      right: 4px;
+      bottom: 3px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--confirmation);
+      pointer-events: auto;
+    }
+    .bloc-local-calendrier {
+      cursor: pointer;
+      z-index: 2;
+    }
+    .bloc-local-calendrier.selection-active,
+    .bloc-local-calendrier.bloc-local-selectionne {
+      height: 7px;
+      background: var(--alerte);
+    }
     .niveau-reste-agrege {
       padding-top: 4px;
     }
@@ -2632,6 +2949,18 @@ def feuille_style() -> str:
     }
     .bloc-temporel-projete.selection-active,
     .bloc-selectionne {
+      fill: var(--alerte);
+      stroke: #5f1d16;
+      stroke-width: 3;
+    }
+    .bloc-local-frise {
+      fill: rgba(155, 107, 0, 0.76);
+      stroke: #654400;
+      stroke-width: 1;
+      cursor: pointer;
+    }
+    .bloc-local-frise.selection-active,
+    .bloc-local-frise.bloc-local-selectionne {
       fill: var(--alerte);
       stroke: #5f1d16;
       stroke-width: 3;
