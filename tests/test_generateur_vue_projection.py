@@ -540,6 +540,47 @@ class TestGenerateurVueProjection(unittest.TestCase):
     def test_tests_sans_donnees_locales(self) -> None:
         self.assertNotIn("donnees_locales", str(self._chemin_exemple()))
 
+
+    def test_generation_html_modes_general_detaille_planification(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn('data-mode-planification="general"', html)
+        self.assertIn('data-mode-planification="detaille"', html)
+        self.assertIn("mode-affichage-actif", html)
+        self.assertIn("modePlanification === 'general'", html)
+        self.assertIn("selectionType === 'sous-bloc'", html)
+
+    def test_generation_html_mise_en_valeur_plage_selection(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn("selection-plage", html)
+        self.assertIn("selection-plage-debut", html)
+        self.assertIn("selection-plage-fin", html)
+        self.assertIn("selection-jour-courant", html)
+        self.assertIn("data-date-iso", html)
+
+    def test_generation_html_barre_droite_stable_et_zid(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn("barre-infos-droite-stable", html)
+        self.assertIn("bloc-info-selection", html)
+        self.assertIn("curseur-planification", html)
+        self.assertIn("separateur-infos", html)
+        self.assertIn("height: calc(100vh", html)
+        self.assertIn("overflow-y: auto", html)
+        self.assertIn("overflow-x: hidden", html)
+
+    def test_generation_html_curseur_frise(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn("ligne-curseur-frise", html)
+        self.assertIn("point-curseur-frise", html)
+        self.assertIn("mousemove", html)
+        self.assertIn("mouseleave", html)
+        self.assertIn("afficherCurseurPlanification", html)
+
+    def test_generation_html_anti_selection_texte_planification(self) -> None:
+        html = generer_html(self._charger_exemple())
+        self.assertIn("user-select: none", html)
+        self.assertIn("dblclick", html)
+        self.assertIn("event.preventDefault()", html)
+
     def _chemin_exemple(self) -> Path:
         return Path("donnees/exemples/projection_demi_journees.exemple.json")
 

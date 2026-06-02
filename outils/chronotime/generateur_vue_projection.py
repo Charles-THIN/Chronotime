@@ -799,6 +799,9 @@ def script_onglets() -> str:
       const vues = Array.from(document.querySelectorAll('.vue-tableau-de-bord'));
       const boutonsSousVues = Array.from(document.querySelectorAll('.bouton-sous-vue'));
       const sousVues = Array.from(document.querySelectorAll('.sous-vue-planification'));
+      const boutonsMode = Array.from(document.querySelectorAll('[data-mode-planification]'));
+      let modePlanification = 'general';
+
       function activerVue(id) {
         vues.forEach((vue) => {
           const active = vue.dataset.vue === id;
@@ -810,6 +813,7 @@ def script_onglets() -> str:
           bouton.setAttribute('aria-selected', active ? 'true' : 'false');
         });
       }
+
       function activerSousVue(id) {
         sousVues.forEach((vue) => {
           const active = vue.dataset.sousVue === id;
@@ -821,6 +825,22 @@ def script_onglets() -> str:
           bouton.setAttribute('aria-selected', active ? 'true' : 'false');
         });
       }
+
+      function activerModePlanification(mode) {
+        modePlanification = mode === 'detaille' ? 'detaille' : 'general';
+        const interfacePlanification = document.querySelector('.interface-planification');
+        if (interfacePlanification) {
+          interfacePlanification.dataset.modePlanification = modePlanification;
+        }
+        boutonsMode.forEach((bouton) => {
+          const actif = bouton.dataset.modePlanification === modePlanification;
+          bouton.classList.toggle('mode-affichage-actif', actif);
+          bouton.classList.toggle('outil-actif', actif);
+          bouton.setAttribute('aria-pressed', actif ? 'true' : 'false');
+        });
+        deselectionnerPlanification();
+      }
+
       function libelleSelection(type) {
         if (type === 'jour') { return 'jour calendrier'; }
         if (type === 'bloc') { return 'bloc projeté'; }
@@ -828,6 +848,7 @@ def script_onglets() -> str:
         if (type === 'reste') { return 'reste agrégé provisoire'; }
         return type || 'élément';
       }
+
       function ajouterChampSelection(conteneur, libelle, valeur, long) {
         const champ = document.createElement('div');
         champ.className = 'champ-selection';
@@ -841,8 +862,22 @@ def script_onglets() -> str:
         champ.appendChild(contenu);
         conteneur.appendChild(champ);
       }
-      function lireSelection(element) {
+
+      function niveauxDisponibles(element) {
         const niveaux = Array.from(element.querySelectorAll('.selection-niveaux .niveau-selection'));
+        if (!niveaux.length) {
+          return [element];
+        }
+        return niveaux.filter((niveau) => {
+          if (modePlanification === 'general' && niveau.dataset.selectionType === 'sous-bloc') {
+            return false;
+          }
+          return true;
+        });
+      }
+
+      function lireSelection(element) {
+        const niveaux = niveauxDisponibles(element);
         if (!niveaux.length) {
           return element.dataset;
         }
@@ -851,11 +886,67 @@ def script_onglets() -> str:
         element.dataset.selectionIndex = String(index);
         return niveaux[index].dataset;
       }
+
       function reinitialiserCyclesSelection() {
         document.querySelectorAll('.element-selectionnable[data-selection-index]').forEach((element) => {
           delete element.dataset.selectionIndex;
         });
       }
+
+      function nettoyerSelectionVisuelle() {
+        document.querySelectorAll(
+          '.selection-active, .selection-plage, .selection-plage-debut, .selection-plage-fin, .selection-plage-sous-bloc, .selection-jour-courant'
+        ).forEach((element) => {
+          element.classList.remove(
+            'selection-active',
+            'selection-plage',
+            'selection-plage-debut',
+            'selection-plage-fin',
+            'selection-plage-sous-bloc',
+            'selection-jour-courant'
+          );
+        });
+      }
+
+      function appliquerSelectionCalendrier(element, donnees) {
+        if (donnees.selectionType !== 'bloc' && donnees.selectionType !== 'sous-bloc') {
+          element.classList.add('selection-active', 'selection-jour-courant');
+          return;
+        }
+
+        const identifiant = donnees.selectionIdentifiant || donnees.selectionParent || '';
+        const compteur = donnees.selectionCompteur || '';
+        const dateDebut = donnees.selectionDateDebut || '';
+        const dateFin = donnees.selectionDateFin || '';
+
+        document.querySelectorAll('.jour-calendrier .niveau-selection').forEach((niveau) => {
+          const memeBloc = (niveau.dataset.selectionIdentifiant || niveau.dataset.selectionParent || '') === identifiant;
+          const memeType = niveau.dataset.selectionType === donnees.selectionType;
+          const memeCompteur = donnees.selectionType !== 'sous-bloc' || niveau.dataset.selectionCompteur === compteur;
+          if (!memeBloc || !memeType || !memeCompteur) {
+            return;
+          }
+
+          const jour = niveau.closest('.jour-calendrier');
+          if (!jour) {
+            return;
+          }
+
+          jour.classList.add('selection-plage');
+          if (donnees.selectionType === 'sous-bloc') {
+            jour.classList.add('selection-plage-sous-bloc');
+          }
+          if (jour.dataset.dateIso === dateDebut) {
+            jour.classList.add('selection-plage-debut');
+          }
+          if (jour.dataset.dateIso === dateFin) {
+            jour.classList.add('selection-plage-fin');
+          }
+        });
+
+        element.classList.add('selection-active', 'selection-jour-courant');
+      }
+
       function afficherSelectionPlanification(donnees) {
         const cible = document.getElementById('selection-planification');
         if (!cible) { return; }
@@ -866,6 +957,7 @@ def script_onglets() -> str:
         puce.className = 'puce-selection';
         puce.textContent = libelleSelection(donnees.selectionType);
         fiche.appendChild(puce);
+
         if (donnees.selectionType === 'jour') {
           ajouterChampSelection(fiche, 'Date', donnees.selectionDate, false);
           ajouterChampSelection(fiche, 'Consommation', donnees.selectionConsommation, false);
@@ -887,12 +979,34 @@ def script_onglets() -> str:
           ajouterChampSelection(fiche, 'Portion', donnees.selectionPortion, false);
           ajouterChampSelection(fiche, 'Niveau', donnees.selectionNiveau, false);
         }
+
         cible.appendChild(fiche);
       }
+
+      function afficherCurseurPlanification(donnees) {
+        const cible = document.getElementById('curseur-planification');
+        if (!cible) { return; }
+        cible.textContent = '';
+        const fiche = document.createElement('div');
+        fiche.className = 'fiche-selection fiche-curseur';
+        ajouterChampSelection(fiche, 'Date', donnees.selectionDate, false);
+        ajouterChampSelection(fiche, 'Portion', donnees.selectionPortion, false);
+        ajouterChampSelection(fiche, 'Niveau', donnees.selectionNiveau, false);
+        cible.appendChild(fiche);
+      }
+
+      function viderCurseurPlanification() {
+        const cible = document.getElementById('curseur-planification');
+        if (!cible) { return; }
+        cible.textContent = '';
+        const vide = document.createElement('p');
+        vide.className = 'info-compacte';
+        vide.textContent = 'aucun';
+        cible.appendChild(vide);
+      }
+
       function deselectionnerPlanification() {
-        document.querySelectorAll('.selection-active').forEach((selection) => {
-          selection.classList.remove('selection-active');
-        });
+        nettoyerSelectionVisuelle();
         reinitialiserCyclesSelection();
         const cible = document.getElementById('selection-planification');
         if (cible) {
@@ -903,31 +1017,90 @@ def script_onglets() -> str:
           cible.appendChild(vide);
         }
       }
+
       function activerSelectionPlanification(element) {
-        if (!element.classList.contains('selection-active')) {
+        if (!element.classList.contains('selection-active') && !element.classList.contains('selection-jour-courant')) {
           reinitialiserCyclesSelection();
         }
         const donnees = lireSelection(element);
-        document.querySelectorAll('.selection-active').forEach((selection) => {
-          selection.classList.remove('selection-active');
-        });
-        element.classList.add('selection-active');
+        nettoyerSelectionVisuelle();
+        if (element.classList.contains('jour-calendrier')) {
+          appliquerSelectionCalendrier(element, donnees);
+        } else {
+          element.classList.add('selection-active');
+        }
         afficherSelectionPlanification(donnees);
       }
+
+      function coordonneeSvg(svg, event) {
+        const rectangle = svg.getBoundingClientRect();
+        const vue = svg.viewBox.baseVal;
+        return {
+          x: ((event.clientX - rectangle.left) / rectangle.width) * vue.width + vue.x,
+          y: ((event.clientY - rectangle.top) / rectangle.height) * vue.height + vue.y
+        };
+      }
+
+      function initialiserCurseursFrise() {
+        document.querySelectorAll('.courbe-reste-agrege').forEach((svg) => {
+          const ligne = svg.querySelector('.ligne-curseur-frise');
+          const points = Array.from(svg.querySelectorAll('.point-curseur-frise')).map((point) => ({
+            x: Number(point.dataset.x || '0'),
+            donnees: point.dataset
+          }));
+          if (!ligne || !points.length) {
+            return;
+          }
+          svg.addEventListener('mousemove', function (event) {
+            const position = coordonneeSvg(svg, event);
+            let meilleur = points[0];
+            let distance = Math.abs(position.x - meilleur.x);
+            points.forEach((point) => {
+              const candidate = Math.abs(position.x - point.x);
+              if (candidate < distance) {
+                meilleur = point;
+                distance = candidate;
+              }
+            });
+            ligne.setAttribute('x1', String(meilleur.x));
+            ligne.setAttribute('x2', String(meilleur.x));
+            ligne.style.display = 'block';
+            afficherCurseurPlanification(meilleur.donnees);
+          });
+          svg.addEventListener('mouseleave', function () {
+            ligne.style.display = 'none';
+            viderCurseurPlanification();
+          });
+        });
+      }
+
       boutons.forEach((bouton) => {
         bouton.addEventListener('click', function () {
           activerVue(bouton.dataset.cible);
         });
       });
+
       boutonsSousVues.forEach((bouton) => {
         bouton.addEventListener('click', function () {
           activerSousVue(bouton.dataset.sousVueCible);
         });
       });
+
+      boutonsMode.forEach((bouton) => {
+        bouton.addEventListener('click', function () {
+          activerModePlanification(bouton.dataset.modePlanification);
+        });
+      });
+
       document.querySelectorAll('.element-selectionnable').forEach((element) => {
         element.addEventListener('click', function (event) {
+          event.preventDefault();
           event.stopPropagation();
           activerSelectionPlanification(element);
+        });
+        element.addEventListener('dblclick', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
         });
         element.addEventListener('keydown', function (event) {
           if (event.key === 'Enter' || event.key === ' ') {
@@ -936,23 +1109,32 @@ def script_onglets() -> str:
           }
         });
       });
+
       document.querySelectorAll('.zone-centrale-planification').forEach((zone) => {
         zone.addEventListener('click', function (event) {
-          if (!event.target.closest('.element-selectionnable, .bouton-sous-vue')) {
+          if (!event.target.closest('.element-selectionnable, .bouton-sous-vue, [data-mode-planification]')) {
             deselectionnerPlanification();
           }
         });
+        zone.addEventListener('dblclick', function (event) {
+          event.preventDefault();
+        });
       });
+
       document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
           deselectionnerPlanification();
         }
       });
+
       activerVue('vue-ensemble');
       activerSousVue('calendrier');
+      activerModePlanification('general');
+      initialiserCurseursFrise();
     }());
     </script>
     """
+
 
 
 def vue_ensemble(periode: dict[str, Any], resume: dict[str, Any], projection: dict[str, Any]) -> str:
@@ -1198,10 +1380,11 @@ def barre_outils_gauche() -> str:
       <button type="button" class="outil-passif outil-desactive" disabled>Scinder</button>
       <button type="button" class="outil-passif outil-desactive" disabled>Fusionner</button>
       <h3>Affichage</h3>
-      <button type="button" class="outil-passif outil-actif" aria-pressed="true">Général</button>
-      <button type="button" class="outil-passif" aria-pressed="false">Détaillé</button>
+      <button type="button" class="outil-passif outil-actif mode-affichage-actif" data-mode-planification="general" aria-pressed="true">Général</button>
+      <button type="button" class="outil-passif" data-mode-planification="detaille" aria-pressed="false">Détaillé</button>
     </aside>
     """
+
 
 
 def liste_compteurs_compacte(soldes: dict[str, Any], inclure_tous: bool = False) -> str:
@@ -1222,22 +1405,34 @@ def barre_infos_droite(projection: dict[str, Any], demi_journees: list[Any]) -> 
     total_restant = somme_soldes_numeriques(soldes_finaux)
     total_restant_texte = formater_quantite_jour(total_restant) if total_restant is not None else "Niveau non disponible"
     return f"""
-    <aside class="barre-infos-droite" aria-label="Barre d’informations de planification">
-      <h3>Total restant</h3>
-      <p class="valeur-info">{escape(total_restant_texte)}</p>
-      <p class="note">reste agrégé provisoire en fin de projection</p>
-      <h3>Cette année</h3>
-      <p class="info-compacte">non calculé</p>
-      <h3>Compteurs</h3>
-      <ul class="liste-compteurs-compacte">{liste_compteurs_compacte(soldes_finaux)}</ul>
-      <h3>Expiration</h3>
-      <p class="info-compacte">non calculée</p>
-      <h3>Sélection</h3>
-      <div id="selection-planification" class="selection-planification">
-        <p class="info-compacte">aucune</p>
-      </div>
+    <aside class="barre-infos-droite barre-infos-droite-stable" aria-label="Barre d’informations de planification">
+      <section class="bloc-info-fixe">
+        <h3>Total restant</h3>
+        <p class="valeur-info">{escape(total_restant_texte)}</p>
+        <p class="note">reste agrégé provisoire en fin de projection</p>
+        <h3>Cette année</h3>
+        <p class="info-compacte">non calculé</p>
+        <h3>Compteurs</h3>
+        <ul class="liste-compteurs-compacte">{liste_compteurs_compacte(soldes_finaux)}</ul>
+        <h3>Expiration</h3>
+        <p class="info-compacte">non calculée</p>
+      </section>
+      <section class="bloc-info-selection">
+        <h3>Sélection</h3>
+        <div id="selection-planification" class="selection-planification">
+          <p class="info-compacte">aucune</p>
+        </div>
+      </section>
+      <div class="separateur-infos" aria-hidden="true"></div>
+      <section class="bloc-info-curseur">
+        <h3>Curseur</h3>
+        <div id="curseur-planification" class="curseur-planification">
+          <p class="info-compacte">aucun</p>
+        </div>
+      </section>
     </aside>
     """
+
 
 
 def date_infos_calendrier(demi_journees: list[Any]) -> dict[str, dict[str, Any]]:
@@ -1378,26 +1573,39 @@ def attributs_niveau_selection(type_selection: str, donnees: dict[str, Any], inf
             ]
         )
     elif type_selection == "bloc":
+        date_debut = str(donnees.get("date_debut"))
+        date_fin = str(donnees.get("date_fin"))
+        identifiant = str(donnees.get("identifiant") or "")
         attributs.extend(
             [
-                f"data-selection-periode=\"{escape(formater_periode_francaise(str(donnees.get('date_debut')), str(donnees.get('date_fin'))))}\"",
-                f"data-selection-identifiant=\"{escape(str(donnees.get('identifiant') or ''))}\"",
-                f"data-selection-libelle=\"{escape(str(donnees.get('identifiant') or ''))}\"",
+                f"data-selection-date-debut=\"{escape(date_debut)}\"",
+                f"data-selection-date-fin=\"{escape(date_fin)}\"",
+                f"data-selection-periode=\"{escape(formater_periode_francaise(date_debut, date_fin))}\"",
+                f"data-selection-identifiant=\"{escape(identifiant)}\"",
+                f"data-selection-libelle=\"{escape(identifiant)}\"",
                 f"data-selection-quantite=\"{escape(formater_quantite_jour(donnees.get('quantite')))}\"",
                 f"data-selection-compteurs=\"{escape(resume_compteurs_selection(donnees.get('compteurs')))}\"",
                 f"data-selection-alertes=\"{escape('présente' if donnees.get('alertes') else 'aucune')}\"",
             ]
         )
     elif type_selection == "sous-bloc":
+        date_debut = str(donnees.get("date_debut"))
+        date_fin = str(donnees.get("date_fin"))
+        identifiant = str(donnees.get("identifiant") or "")
+        compteur = str(donnees.get("compteur") or "")
         attributs.extend(
             [
-                f"data-selection-periode=\"{escape(formater_periode_francaise(str(donnees.get('date_debut')), str(donnees.get('date_fin'))))}\"",
-                f"data-selection-compteur=\"{escape(str(donnees.get('compteur') or ''))}\"",
+                f"data-selection-date-debut=\"{escape(date_debut)}\"",
+                f"data-selection-date-fin=\"{escape(date_fin)}\"",
+                f"data-selection-identifiant=\"{escape(identifiant)}\"",
+                f"data-selection-periode=\"{escape(formater_periode_francaise(date_debut, date_fin))}\"",
+                f"data-selection-compteur=\"{escape(compteur)}\"",
                 f"data-selection-quantite=\"{escape(formater_quantite_jour(donnees.get('quantite')))}\"",
-                f"data-selection-parent=\"{escape(str(donnees.get('identifiant') or ''))}\"",
+                f"data-selection-parent=\"{escape(identifiant)}\"",
             ]
         )
     return " ".join(attributs)
+
 
 
 def niveaux_selection_jour(info: dict[str, Any]) -> str:
@@ -1439,6 +1647,7 @@ def vue_calendrier_passif(demi_journees: list[Any]) -> str:
                 f"<span class=\"{' '.join(classes)}\" title=\"{escape(titre_jour_calendrier(date_iso, info))}\" "
                 "role=\"button\" tabindex=\"0\" "
                 "data-selection-cyclique=\"true\" "
+                f"data-date-iso=\"{escape(date_iso)}\" "
                 "data-selection-type=\"jour\" "
                 f"data-selection-date=\"{escape(formater_date_francaise(date_iso))}\" "
                 f"data-selection-consommation=\"{escape(resume_consommation_jour(info))}\" "
@@ -1624,7 +1833,7 @@ def courbe_reste_agrege(points: list[dict[str, Any]], demi_journees: list[Any], 
         mois_svg.append(
             f"<g class=\"repere-mois\">"
             f"<line x1=\"{x:.2f}\" y1=\"{graphe_haut - 18}\" x2=\"{x:.2f}\" y2=\"{graphe_bas + 14}\" />"
-            f"<text x=\"{x:.2f}\" y=\"{hauteur - 34}\" text-anchor=\"middle\">{escape(MOIS_FRANCAIS[mois.month])}</text>"
+            f"<text x=\"{x:.2f}\" y=\"{hauteur - 14}\" text-anchor=\"middle\">{escape(MOIS_FRANCAIS[mois.month])}</text>"
             "</g>"
         )
 
@@ -1634,7 +1843,7 @@ def courbe_reste_agrege(points: list[dict[str, Any]], demi_journees: list[Any], 
         jours_svg.append(
             f"<g class=\"repere-jour\">"
             f"<line x1=\"{x:.2f}\" y1=\"{graphe_bas}\" x2=\"{x:.2f}\" y2=\"{graphe_bas + 7}\" />"
-            f"<text x=\"{x:.2f}\" y=\"{hauteur - 14}\" text-anchor=\"middle\">{jour.day:02d}</text>"
+            f"<text x=\"{x:.2f}\" y=\"{hauteur - 34}\" text-anchor=\"middle\">{jour.day:02d}</text>"
             "</g>"
         )
 
@@ -1655,10 +1864,24 @@ def courbe_reste_agrege(points: list[dict[str, Any]], demi_journees: list[Any], 
             f"data-selection-niveau=\"{escape(formater_quantite_jour(point.get('niveau')))}\">"
             f"<title>{escape(titre)}</title></circle>"
         )
+    points_curseur_svg = []
+    for x, _y, point in coordonnees:
+        points_curseur_svg.append(
+            f"<circle class=\"point-curseur-frise\" data-x=\"{x:.2f}\" "
+            f"data-selection-date=\"{escape(formater_date_francaise(str(point.get('date'))))}\" "
+            f"data-selection-portion=\"{escape(str(point.get('portion') or TIRET))}\" "
+            f"data-selection-niveau=\"{escape(formater_quantite_jour(point.get('niveau')))}\" r=\"0\"></circle>"
+        )
+
     blocs = blocs_frise_svg(demi_journees, alertes, debut, fin, marge_gauche, largeur - marge_droite)
     return (
         f"<svg class=\"courbe-reste-agrege\" viewBox=\"0 0 {largeur} {hauteur}\" role=\"img\" "
         "aria-label=\"Courbe du reste agrégé provisoire\">"
+        f"<line class=\"ligne-curseur-frise\" x1=\"{marge_gauche}\" y1=\"{graphe_haut - 20}\" "
+        f"x2=\"{marge_gauche}\" y2=\"{graphe_bas + 12}\" style=\"display:none\" />"
+        "<g class=\"donnees-curseur-frise\" hidden>"
+        f"{''.join(points_curseur_svg)}"
+        "</g>"
         "<g class=\"ligne-blocs-temporels\">"
         f"{blocs}"
         "</g>"
@@ -2188,9 +2411,12 @@ def feuille_style() -> str:
       display: grid;
       width: 100%;
       max-width: none;
-      grid-template-columns: minmax(150px, 180px) minmax(0, 1fr) minmax(210px, 260px);
+      height: calc(100vh - 150px);
+      min-height: 560px;
+      overflow: hidden;
+      grid-template-columns: minmax(150px, 180px) minmax(0, 1fr) minmax(220px, 280px);
       gap: 16px;
-      align-items: start;
+      align-items: stretch;
     }
     .barre-outils-gauche,
     .barre-infos-droite,
@@ -2212,11 +2438,26 @@ def feuille_style() -> str:
     }
     .zone-centrale-planification {
       min-width: 0;
+      min-height: 0;
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
     }
     .barre-outils-gauche,
     .barre-infos-droite {
-      position: sticky;
-      top: 128px;
+      position: static;
+      height: 100%;
+      min-height: 0;
+    }
+    .barre-outils-gauche {
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .barre-infos-droite {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
     .outil-passif {
       display: block;
@@ -2465,6 +2706,81 @@ def feuille_style() -> str:
       cursor: pointer;
       color: var(--accent-fort);
       font-weight: 700;
+    }
+    .vue-calendrier-passif,
+    .vue-frise-niveau,
+    .jour-calendrier,
+    .element-selectionnable,
+    .courbe-reste-agrege {
+      user-select: none;
+    }
+    .bloc-info-fixe {
+      flex: 0 0 auto;
+    }
+    .bloc-info-selection {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .selection-planification {
+      min-height: 160px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 2px;
+    }
+    .separateur-infos {
+      flex: 0 0 auto;
+      margin: 12px 0;
+      border-top: 1px solid rgba(216, 201, 174, 0.95);
+    }
+    .bloc-info-curseur {
+      flex: 0 0 auto;
+      min-height: 118px;
+    }
+    .curseur-planification {
+      min-height: 78px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .selection-plage {
+      box-shadow: inset 0 0 0 3px var(--accent-fort);
+      color: var(--accent-fort);
+      font-weight: 700;
+    }
+    .selection-plage-debut {
+      border-left-width: 3px;
+      border-top-left-radius: 12px;
+      border-bottom-left-radius: 12px;
+    }
+    .selection-plage-fin {
+      border-right-width: 3px;
+      border-top-right-radius: 12px;
+      border-bottom-right-radius: 12px;
+    }
+    .selection-plage-sous-bloc {
+      box-shadow: inset 0 0 0 3px var(--confirmation);
+    }
+    .selection-jour-courant {
+      outline: 3px solid rgba(20, 107, 95, 0.35);
+      outline-offset: 2px;
+    }
+    .mode-affichage-actif {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent-fort);
+    }
+    .ligne-curseur-frise {
+      stroke: var(--alerte);
+      stroke-width: 1.5;
+      stroke-dasharray: 4 4;
+      pointer-events: none;
+    }
+    .point-curseur-frise {
+      display: none;
+    }
+    .fiche-curseur .champ-selection {
+      padding: 6px 8px;
     }
     @media (max-width: 860px) {
       .hero {

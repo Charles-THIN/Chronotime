@@ -396,6 +396,24 @@ Note sur les crédits futurs :
 
 La frise ne montre pas encore de remontée liée aux crédits futurs, par exemple `JRTT`, car ces crédits ne sont pas encore modélisés dans la projection ou la chronologie de soldes. La GUI devra les afficher lorsque le moteur produira des événements de crédit ou une chronologie enrichie. Elle ne doit pas inventer ces remontées côté interface.
 
+## V0.4.4 Stabilisation de la sélection et du curseur de frise
+
+La version `V0.4.4` stabilise l’ergonomie de la vue `Planification` sans ajouter d’édition.
+
+Corrections apportées :
+
+- le mode `Général` limite le cycle de sélection à `bloc complet` puis `jour` ;
+- le mode `Détaillé` permet le cycle `bloc complet`, `sous-bloc monotype` puis `jour` ;
+- la sélection visuelle s’étend au bloc ou au sous-bloc sélectionné, et pas seulement au jour cliqué ;
+- la sélection de texte involontaire dans la zone de planification est réduite ;
+- la vue `Planification` est traitée comme une coquille d’application : barres latérales stables et zone centrale défilante ;
+- la zone d’informations détaillées dispose d’un défilement interne si son contenu devient long ;
+- une zone `Curseur` est séparée de la zone `Sélection` dans la barre droite ;
+- la frise affiche un curseur vertical de lecture au survol, avec date, portion et reste agrégé provisoire ;
+- les jours de l’axe horizontal de la frise sont placés au-dessus des libellés de mois.
+
+Ces corrections restent passives. Elles ne créent aucun bloc, ne modifient aucun scénario, ne recalculent aucune projection côté navigateur et ne sauvegardent rien.
+
 ## Vue future des soldes dans le temps
 
 Une future vue `Soldes dans le temps` devra représenter :
