@@ -21,3 +21,5 @@ données locales Chronotime
 ```
 
 `projection.demi_journees`, `mouvements.soldes` et `chronologie.soldes` sont des sorties dérivées. Elles ne sont pas des sources éditables.
+
+Les futures vues dynamiques devront traduire les gestes utilisateur en commandes d’intention, laisser le moteur accepter ou refuser ces commandes, puis refléter l’état central recalculé et les diagnostics produits. Cette règle ne rend pas les sorties dérivées éditables.

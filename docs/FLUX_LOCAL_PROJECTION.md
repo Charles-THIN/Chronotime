@@ -2,6 +2,8 @@
 
 L’orchestrateur local assemble les fichiers JSON locaux et enchaîne les briques existantes.
 
+Ce document décrit le flux local actuel par fichiers et commandes. Il ne définit pas à lui seul l’architecture de la future GUI dynamique.
+
 ```text
 fichiers JSON locaux
 -> normalisation
@@ -102,3 +104,17 @@ Les valeurs `GCP=suivant`, `JRTT=-10` et les jours non décomptés sont des hypo
 L’orchestrateur reste local.
 
 Il ne se connecte pas à Chronotime, ne fait aucun appel HTTP, n’automatise pas de navigateur et ne modifie pas Chronotime.
+
+## Lien Avec La Future GUI Dynamique
+
+La future GUI dynamique pourra réutiliser les mêmes concepts :
+
+- sources événementielles ;
+- scénario local ;
+- projection recalculée ;
+- diagnostics ;
+- vues dérivées.
+
+Elle n’est pas obligée de lancer une commande shell à chaque interaction. Le point obligatoire est de conserver une séparation claire entre moteur, état central et rendu visuel.
+
+Un geste utilisateur devra devenir une commande d’intention, validée par le moteur, puis affichée à partir de l’état recalculé ou des diagnostics de refus.

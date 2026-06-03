@@ -67,6 +67,33 @@ Exemples :
 
 Après modification, le vecteur de demi-journées est recalculé.
 
+## Actions Dynamiques Et Diagnostics
+
+La cible GUI dynamique ne doit pas faire porter la logique métier aux vues.
+
+Flux cible :
+
+```text
+commande utilisateur
+-> validation moteur
+-> état accepté ou refusé
+-> projection recalculée ou état inchangé
+-> diagnostics
+-> vues dérivées
+```
+
+Une commande utilisateur représente une intention explicite, par exemple ajouter, supprimer, déplacer, redimensionner, scinder ou fusionner une absence.
+
+Les diagnostics produits par le moteur peuvent cibler :
+
+- un bloc ;
+- une date ;
+- un compteur ;
+- une action refusée ;
+- une alerte globale.
+
+Calendrier, frise, compteurs et alertes doivent afficher le même état central et les mêmes diagnostics. Ils ne doivent pas recalculer séparément les règles d’allocation, de solde ou de validation.
+
 ## Rôle Du Vecteur De Demi-Journées
 
 Le vecteur de demi-journées sert à :

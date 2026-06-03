@@ -2,6 +2,8 @@
 
 L’outil Chronotime s’appuie sur plusieurs vues synchronisées. Elles partagent le même scénario local, les mêmes blocs et la même projection des soldes.
 
+Les vues doivent rester des rendus dérivés d’un état central et de diagnostics produits par le moteur. Calendrier, frise, compteurs et alertes ne doivent pas maintenir chacun une logique métier séparée.
+
 ## Concept primaire
 
 La vue primaire ne doit pas être une vue par compteurs.
@@ -172,6 +174,8 @@ action non autorisée :
 - signalement, blocage ou prévisualisation comme impossible.
 
 Ces interactions modifient les blocs sources, puis déclenchent le recalcul de la projection.
+
+En cible dynamique, le geste est d’abord converti en commande d’intention. Le moteur accepte ou refuse la commande, produit un état central recalculé ou inchangé, puis les vues se rafraîchissent depuis cet état et les diagnostics structurés.
 
 ## Synchronisation
 

@@ -1,10 +1,30 @@
 # Passation avant interface graphique Chronotime
 
+## Statut du document
+
+Ce document a servi de passerelle entre la phase moteur et la première phase GUI.
+
+Il reste utile pour comprendre le point de départ, le flux local existant, les règles de confidentialité et les limites connues.
+
+La conception GUI active est désormais documentée dans [docs/CONCEPTION_GUI.md](./CONCEPTION_GUI.md).
+
+La première GUI statique décrite ici était une étape de démarrage. Elle ne doit pas figer l’architecture cible.
+
+La cible dynamique actuelle suit plutôt :
+
+```text
+geste utilisateur
+-> commande d’intention
+-> moteur / état central
+-> résultat accepté ou refusé
+-> état recalculé ou inchangé
+-> diagnostics structurés
+-> rendu dérivé des vues
+```
+
 ## Portée
 
-Ce document sert de point d’entrée pour la prochaine phase du projet Chronotime : l’interface graphique.
-
-Il doit être lu avant toute tâche d’interface.
+Ce document sert de point d’entrée historique pour la première phase d’interface graphique.
 
 Il résume l’état actuel du dépôt, les décisions d’architecture, les règles métier connues, les limites restantes et la première direction de développement pour la GUI.
 
@@ -117,9 +137,12 @@ La GUI doit donc respecter cette règle :
 
 ```text
 action utilisateur
--> modification d’un événement source ou d’un bloc source
--> recalcul de la projection
--> rafraîchissement des vues
+-> commande d’intention
+-> validation par le moteur
+-> modification acceptée d’un événement source ou d’un bloc source, ou refus explicite
+-> projection recalculée ou état inchangé
+-> diagnostics structurés
+-> rafraîchissement des vues dérivées
 ```
 
 La GUI ne doit pas éditer directement `projection.demi_journees` comme si c’était le modèle source.
@@ -131,7 +154,9 @@ Exemples :
 - désactiver un bloc modifie son statut ou son champ `actif` ;
 - supprimer un bloc doit probablement le désactiver ou le supprimer dans le scénario, pas supprimer des demi-journées projetées ;
 - cliquer sur une case vide peut créer un nouveau bloc source ;
-- après chaque modification, l’orchestrateur ou le projecteur doit produire une nouvelle projection.
+- après chaque modification acceptée, le moteur doit produire un état central cohérent et une projection recalculée.
+
+Le moteur est actuellement implémenté en Python pour le flux local par fichiers. La cible GUI dynamique n’impose pas ce choix technique : elle impose surtout un moteur identifiable, testé et séparé du rendu visuel.
 
 ## Vues cibles prévues
 
@@ -278,6 +303,8 @@ action non autorisée :
 Ces interactions modifient les blocs sources, puis déclenchent un recalcul de la projection.
 
 ## Première GUI recommandée
+
+Cette section décrit la recommandation initiale de démarrage. Elle a conduit au générateur HTML local et aux prototypes d’ergonomie. Elle ne remplace pas la conception active de [docs/CONCEPTION_GUI.md](./CONCEPTION_GUI.md).
 
 Ne pas commencer par une interface complète avec glisser-déposer.
 
@@ -679,3 +706,5 @@ But de cette première étape :
 - vérifier que la projection est lisible visuellement ;
 - vérifier que les couleurs et les alertes “parlent” ;
 - préparer ensuite une interface éditable.
+
+Pour la suite dynamique, calendrier, frise, compteurs et alertes devront lire le même état central et les mêmes diagnostics moteur. Ils ne doivent pas devenir des vues qui recalculent chacune leur propre logique métier.

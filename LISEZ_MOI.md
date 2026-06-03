@@ -18,4 +18,5 @@ Pour reprendre le projet depuis zéro :
 5. `docs/FORMAT_DONNÉES_NORMALISÉES.md`
 6. `docs/PROJECTION_DEMI_JOURNÉES.md`
 7. `docs/MODÈLE_ÉVÉNEMENTS_COMPTEURS.md`
-8. `docs/PASSATION_UI.md`
+8. `docs/CONCEPTION_GUI.md`
+9. `docs/PASSATION_UI.md`

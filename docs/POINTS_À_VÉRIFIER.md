@@ -48,6 +48,16 @@ Ce document liste les points encore ouverts avant de figer un moteur de calcul p
 - Définir le comportement exact de scission et de fusion des blocs dans la future GUI.
 - Définir la forme exacte de la courbe ou du niveau de reste agrégé dans la vue frise.
 
+## Architecture GUI dynamique
+
+- Choisir la technique du moteur dynamique : Python local, JavaScript/TypeScript ou autre.
+- Définir le contrat exact des commandes moteur.
+- Définir le format des diagnostics structurés.
+- Définir la frontière entre état moteur et état transitoire d’interface.
+- Remplacer `localStorage` prototype par une source de scénario locale ou un état moteur persistant.
+- Définir la stratégie de prévalidation pendant le glisser-déposer.
+- Définir comment calendrier, frise, compteurs et alertes consomment un même état central sans logique métier dupliquée.
+
 ## Événements de compteur
 
 - Existe-t-il une preuve exacte d’une acquisition mensuelle de `JRTT` ?

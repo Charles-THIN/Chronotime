@@ -2,11 +2,15 @@
 
 ## Portée
 
-Cette première étape ajoute une visualisation locale statique et en lecture seule d’une projection `projection.demi_journees`.
+Ce document est la référence active de conception GUI du projet Chronotime.
 
-Elle sert à vérifier que la projection demi-journalière est exploitable pour une future interface graphique.
+Il distingue :
 
-Elle ne crée pas encore d’interface éditable.
+- la cible d’architecture GUI ;
+- les règles stables à respecter ;
+- l’historique du prototype HTML local `V0.x`.
+
+Les sections `V0.1` à `V0.5.0` décrivent les étapes du prototype local. Elles restent utiles pour comprendre l’ergonomie explorée, mais elles ne définissent pas à elles seules l’architecture cible.
 
 ## Règle d’architecture
 
@@ -21,6 +25,82 @@ modèle événementiel source
 La projection demi-journalière ne doit pas devenir une source de vérité éditable.
 
 Les futures actions utilisateur devront modifier les événements sources ou les blocs de scénario, puis recalculer la projection.
+
+## Architecture cible : état central, commandes et vues dérivées
+
+La cible GUI repose sur un état central piloté par un moteur identifiable, séparé du rendu visuel.
+
+Flux d’une interaction :
+
+```text
+geste utilisateur
+-> commande d’intention
+-> moteur / modèle central
+-> résultat accepté ou refusé
+-> état recalculé ou inchangé
+-> diagnostics structurés
+-> rendu dérivé des vues
+```
+
+Le moteur contient ou orchestre :
+
+- les sources événementielles ;
+- le scénario local ;
+- les règles de validation ;
+- la projection recalculée ;
+- les diagnostics ;
+- l’état central de planification.
+
+Les commandes utilisateur sont des intentions nommées, par exemple :
+
+- `ajouter_absence` ;
+- `supprimer_absence` ;
+- `deplacer_absence` ;
+- `redimensionner_absence` ;
+- `scinder_absence` ;
+- `fusionner_absences` ;
+- `changer_type_absence` ;
+- `prevalider_action`.
+
+Chaque commande doit produire un résultat explicite :
+
+- acceptée, avec état central recalculé ;
+- refusée, avec état inchangé ;
+- acceptée partiellement seulement si ce cas est modélisé explicitement.
+
+Les diagnostics structurés expliquent le résultat. Ils peuvent cibler :
+
+- un bloc ;
+- une date ;
+- un compteur ;
+- une action refusée ;
+- une alerte globale.
+
+Les vues `calendrier`, `frise`, `compteurs`, `alertes`, `sélection` et `curseur` sont des rendus dérivés de cet état central et de ces diagnostics. Elles ne doivent pas embarquer chacune leur propre logique métier de validation ou d’allocation.
+
+L’interface garde seulement un état transitoire de manipulation :
+
+- survol ;
+- sélection ;
+- fantôme de glisser-déposer ;
+- mode d’outil actif.
+
+Cet état transitoire peut aider à prévisualiser un geste, mais il ne devient pas une source métier durable.
+
+Le moteur est actuellement implémenté en Python pour le flux local par fichiers. La cible d’architecture n’impose pas que le moteur GUI dynamique reste en Python. Ce qui est obligatoire : un moteur identifiable, testé et séparé du rendu visuel.
+
+Formulation à conserver :
+
+```text
+interdit :
+  écrire directement un congé manuel dans projection.demi_journees déjà calculée
+
+cible :
+  ajouter ou modifier un bloc source
+  appeler le moteur
+  recalculer la projection ou refuser la commande
+  réafficher les vues depuis l’état central et les diagnostics
+```
 
 ## Concept primaire
 
@@ -168,6 +248,8 @@ Points encore ouverts à documenter côté moteur et GUI :
 ## Générateur statique V0
 
 Le générateur local lit un fichier JSON déjà produit par l’orchestrateur local, puis écrit une page HTML autonome.
+
+Ce générateur reste un outil local utile de vérification et de prototype. Il ne doit pas être lu comme l’architecture dynamique cible.
 
 Commande avec données locales privées :
 
@@ -472,7 +554,7 @@ Limites explicites :
 - aucune sauvegarde de scénario ;
 - aucune écriture Chronotime.
 
-La cible future reste un scénario local explicite, versionnable et recalculé par le moteur Python. Le stockage `localStorage` devra donc être remplacé par une source événementielle locale propre avant toute utilisation métier durable.
+La cible future reste un scénario local explicite, versionnable et recalculé par un moteur séparé du rendu. Le stockage `localStorage` devra donc être remplacé par une source événementielle locale propre avant toute utilisation métier durable.
 
 ## V0.4.8 Absences utilisateur dans le modèle commun de sélection
 
@@ -499,7 +581,7 @@ Le mode `Poser des jours` reste volontairement prudent :
 - il ne recalcule aucun solde réel ;
 - il ne modifie pas `projection.demi_journees`.
 
-Cette version prépare le futur remplacement par un scénario local explicite puis un recalcul Python. Elle ne constitue pas encore une sauvegarde métier durable.
+Cette version prépare le futur remplacement par un scénario local explicite puis un recalcul par le moteur. Elle ne constitue pas encore une sauvegarde métier durable.
 
 ## V0.4.9 Stabilisation visuelle de la pose utilisateur
 
@@ -517,7 +599,7 @@ Les jours ajoutés par l'utilisateur utilisent un style plat, sans point décora
 
 Le cliquer-déplacer multi-jours est corrigé : la finalisation utilise la dernière date réellement survolée ou la position du pointeur, et non seulement le jour de départ capturé par l'événement.
 
-La frise conserve un rendu dynamique des blocs utilisateur avec un style plat. Dette restante : le calendrier et la frise ne sont pas encore alimentés par un modèle de planification commun complet. La cible suivante reste un scénario local explicite, puis un recalcul Python qui produira à nouveau les sorties dérivées.
+La frise conserve un rendu dynamique des blocs utilisateur avec un style plat. Dette restante : le calendrier et la frise ne sont pas encore alimentés par un modèle de planification commun complet. La cible suivante reste un scénario local explicite, puis un recalcul par le moteur qui produira à nouveau les sorties dérivées.
 
 ## V0.5.0 Grammaire visuelle du calendrier
 
@@ -540,7 +622,7 @@ Couleurs préparées :
 
 Les jours affichent aussi le libellé court du jour de semaine sous la case (`lun`, `mar`, `mer`, `jeu`, `ven`, `sam`, `dim`). Le dimanche est typographiquement renforcé.
 
-Les absences ajoutées par l'utilisateur restent des prototypes locaux persistés via `localStorage`. Elles ne recalculent aucun compteur réel, ne modifient pas `projection.demi_journees` et devront être remplacées plus tard par un scénario local explicite puis un recalcul Python.
+Les absences ajoutées par l'utilisateur restent des prototypes locaux persistés via `localStorage`. Elles ne recalculent aucun compteur réel, ne modifient pas `projection.demi_journees` et devront être remplacées plus tard par un scénario local explicite puis un recalcul par le moteur.
 
 La frise reste une dette connue : elle ne bloque pas cette clarification et devra être réalimentée plus tard par un modèle de planification commun au calendrier et à la frise.
 
