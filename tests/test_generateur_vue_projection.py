@@ -538,8 +538,50 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertNotIn(".jour-avec-bloc-utilisateur::after", html)
         self.assertNotIn("background: linear-gradient(180deg, rgba(255, 250, 240, 0.95), rgba(230, 244, 240, 0.92));", html)
         self.assertNotIn("bloc-utilisateur-selectionne {\n      fill: var(--alerte)", html)
-        self.assertIn("afficherCurseurPrototype(dateA, dateB, true);\n          return;", html)
+        self.assertIn("afficherCurseurPrototype(dateA, dateB, true)", html)
         self.assertNotIn("bloc-local-calendrier", html)
+
+    def test_generation_html_moteur_gui_prototype_centralise(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        for marqueur in (
+            "function traiterCommandeMoteurGui",
+            "function construireEtatCentralGui",
+            "function afficherEtatCentralGui",
+            "etatTransitoireInterface",
+            "afficherEtatTransitoireInterface",
+            "fantome_calendrier",
+            "fantome_frise",
+            "version_contrat",
+            "blocs_affichables",
+            "diagnostics",
+            "ajouter_absence",
+            "supprimer_absence",
+            "previsualiser",
+            "appliquer",
+            "plage_deja_occupee",
+            "date_hors_projection",
+            "bloc_non_modifiable",
+            "bloc_introuvable",
+            "diagnostics-planification",
+            "bloc_absence_affichable",
+            "prototype_interface",
+        ):
+            self.assertIn(marqueur, html)
+
+    def test_generation_html_etat_transitoire_separe_du_central(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("localStorage = persistance prototype", html)
+        self.assertIn("etatCentralGui = état central courant de la page", html)
+        self.assertIn("etatTransitoireInterface = manipulation en cours, non durable", html)
+        self.assertIn("bloc-fantome-local", html)
+        self.assertIn("bloc-fantome-frise", html)
+        self.assertIn("dernier_resultat_previsualisation", html)
+        self.assertIn("traiterCommandeMoteurGui(etatCentralGui, commande)", html)
+        self.assertIn("afficherEtatCentralGui(etatCentralGui)", html)
+        self.assertIn("non recalculé par le moteur", html)
+        self.assertNotIn("etatTransitoireFrise", html)
 
     def test_generation_html_planification_non_regression_vues_et_outils(self) -> None:
         html = generer_html(self._charger_exemple())

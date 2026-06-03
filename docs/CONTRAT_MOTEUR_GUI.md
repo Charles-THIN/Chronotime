@@ -30,6 +30,24 @@ Le moteur actuel local est en Python. Le contrat GUI cible doit être indépenda
 - Les actions utilisateur modifient des sources ou un scénario local, jamais directement une projection déjà calculée.
 - La GUI ne calcule pas elle-même l’allocation des compteurs, les soldes, les expirations, les reports ou la validité métier d’un déplacement.
 
+## Première tranche prototype V0.5.1
+
+La première implémentation concrète dans la page HTML locale ne stabilise pas tout le contrat.
+
+Elle couvre seulement :
+
+- `ajouter_absence` ;
+- `supprimer_absence` ;
+- prévisualisation de pose ;
+- diagnostics minimaux de refus ;
+- état transitoire d’interface pour les fantômes de manipulation.
+
+Les fantômes ne font pas partie de l’état central durable. Ils appartiennent à l’état transitoire d’interface et ne doivent pas être persistés comme des blocs réels.
+
+Les sous-vues `Calendrier` et `Frise` peuvent être exclusives visuellement. Elles doivent toutefois consommer le même état transitoire quand elles rendent une prévisualisation, sans porter deux logiques métier concurrentes.
+
+Cette tranche conserve `localStorage` comme persistance de prototype. Cette persistance ne devient pas une source métier durable.
+
 ## État central
 
 `etat_central` est l’objet conceptuel que les vues consomment.

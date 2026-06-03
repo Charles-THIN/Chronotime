@@ -10,7 +10,7 @@ Il distingue :
 - les règles stables à respecter ;
 - l’historique du prototype HTML local `V0.x`.
 
-Les sections `V0.1` à `V0.5.0` décrivent les étapes du prototype local. Elles restent utiles pour comprendre l’ergonomie explorée, mais elles ne définissent pas à elles seules l’architecture cible.
+Les sections `V0.1` à `V0.5.1` décrivent les étapes du prototype local. Elles restent utiles pour comprendre l’ergonomie explorée, mais elles ne définissent pas à elles seules l’architecture cible.
 
 ## Règle d’architecture
 
@@ -627,6 +627,37 @@ Les jours affichent aussi le libellé court du jour de semaine sous la case (`lu
 Les absences ajoutées par l'utilisateur restent des prototypes locaux persistés via `localStorage`. Elles ne recalculent aucun compteur réel, ne modifient pas `projection.demi_journees` et devront être remplacées plus tard par un scénario local explicite puis un recalcul par le moteur.
 
 La frise reste une dette connue : elle ne bloque pas cette clarification et devra être réalimentée plus tard par un modèle de planification commun au calendrier et à la frise.
+
+## V0.5.1 Tranche verticale moteur GUI prototype
+
+La version `V0.5.1` introduit une première tranche concrète de l'architecture cible `état central / commandes / diagnostics / vues dérivées`.
+
+Dans le prototype HTML local, la pose et la suppression de blocs utilisateur ne modifient plus directement le tableau local d'affichage. Elles passent par un moteur GUI prototype centralisé qui traite des commandes :
+
+- `ajouter_absence` en prévisualisation ;
+- `ajouter_absence` en application ;
+- `supprimer_absence` en application.
+
+Ce moteur produit un résultat structuré :
+
+- statut de commande ;
+- état central partiel ;
+- diagnostics ;
+- sélection suggérée.
+
+Le rendu des blocs utilisateur devient dérivé de `etatCentralGui.blocs_affichables`.
+
+Les fantômes de manipulation restent dans `etatTransitoireInterface`. Ils ne sont pas persistés, ne deviennent pas des blocs réels et disparaissent si la commande n'est pas acceptée.
+
+Les sous-vues `Calendrier` et `Frise` restent aujourd'hui exclusives. Elles doivent consommer le même état transitoire lorsqu'elles sont actives, chacune avec sa grammaire propre. Le calendrier reste prioritaire pour cette tranche ; la frise reçoit seulement une préparation de rendu du même fantôme transitoire.
+
+Limites maintenues :
+
+- aucun recalcul réel des soldes ;
+- aucune allocation métier de compteur ;
+- aucun recalcul de `projection.demi_journees` ;
+- les blocs projetés issus de la projection ne sont pas encore convertis intégralement en `blocs_affichables` ;
+- `localStorage` reste une persistance prototype, pas une source métier durable.
 
 ## Vue future des soldes dans le temps
 

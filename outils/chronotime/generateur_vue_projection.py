@@ -810,6 +810,20 @@ def script_onglets() -> str:
       let dateDebutPose = null;
       let dateSurvolPose = null;
       let poseEnCours = false;
+      let etatCentralGui = null;
+      // localStorage = persistance prototype ; etatCentralGui = état central courant de la page.
+      // etatTransitoireInterface = manipulation en cours, non durable.
+      let etatTransitoireInterface = {
+        outil_actif: 'selection',
+        pose_en_cours: false,
+        date_debut_pose: null,
+        date_survol_pose: null,
+        plage_en_cours: null,
+        fantome_calendrier: null,
+        fantome_frise: null,
+        dernier_resultat_previsualisation: null,
+        message_temporaire: null
+      };
 
       function activerVue(id) {
         vues.forEach((vue) => {
@@ -833,6 +847,9 @@ def script_onglets() -> str:
           bouton.classList.toggle('sous-vue-active', active);
           bouton.setAttribute('aria-selected', active ? 'true' : 'false');
         });
+        if (etatTransitoireInterface && etatTransitoireInterface.plage_en_cours) {
+          afficherEtatTransitoireInterface();
+        }
       }
 
       function activerModePlanification(mode) {
@@ -852,6 +869,7 @@ def script_onglets() -> str:
 
       function activerOutilPlanification(outil) {
         outilPlanification = outil === 'poser' ? 'poser' : 'selection';
+        etatTransitoireInterface.outil_actif = outilPlanification;
         const interfacePlanification = document.querySelector('.interface-planification');
         if (interfacePlanification) {
           interfacePlanification.dataset.outilPlanification = outilPlanification;
@@ -1130,14 +1148,41 @@ def script_onglets() -> str:
         document.querySelectorAll('.bloc-fantome-local').forEach((jour) => {
           jour.classList.remove('bloc-fantome-local', 'bloc-fantome-impossible', 'bloc-fantome-debut', 'bloc-fantome-fin');
         });
+        document.querySelectorAll('.bloc-fantome-frise').forEach((element) => {
+          element.remove();
+        });
       }
 
-      function afficherFantomeLocal(dateA, dateB) {
+      function afficherFantomeFrise(dateA, dateB) {
+        document.querySelectorAll('.courbe-reste-agrege').forEach((svg) => {
+          const groupe = svg.querySelector('.ligne-blocs-locaux');
+          if (!groupe) { return; }
+          const x1 = xFrisePourDate(svg, dateA);
+          const x2 = xFrisePourDate(svg, dateB);
+          if (x1 === null || x2 === null) { return; }
+          const rect = document.createElementNS(svg.namespaceURI, 'rect');
+          rect.setAttribute('class', 'bloc-fantome-frise');
+          rect.setAttribute('x', String(Math.min(x1, x2)));
+          rect.setAttribute('y', '78');
+          rect.setAttribute('width', String(Math.max(8, Math.abs(x2 - x1) + 8)));
+          rect.setAttribute('height', '10');
+          rect.setAttribute('rx', '4');
+          groupe.appendChild(rect);
+        });
+      }
+
+      function afficherEtatTransitoireInterface() {
         nettoyerFantomeLocal();
+        const plage = etatTransitoireInterface.plage_en_cours;
+        if (!plage || !plage.date_debut || !plage.date_fin) { return; }
+        const dateA = plage.date_debut;
+        const dateB = plage.date_fin;
         const dates = datesProjeteesEntre(dateA, dateB);
-        const impossible = !plageLibrePourPose(dateA, dateB);
+        const resultatPrevisualisation = etatTransitoireInterface.dernier_resultat_previsualisation || { diagnostics: [] };
+        const impossible = (resultatPrevisualisation.diagnostics || []).some((diagnostic) => diagnostic.niveau === 'bloquant' || diagnostic.niveau === 'erreur');
         if (impossible) {
           afficherCurseurPrototype(dateA, dateB, true);
+          afficherDiagnosticsGui(resultatPrevisualisation.diagnostics || []);
           return;
         }
         dates.forEach((dateIso, index) => {
@@ -1147,7 +1192,31 @@ def script_onglets() -> str:
           if (index === 0) { jour.classList.add('bloc-fantome-debut'); }
           if (index === dates.length - 1) { jour.classList.add('bloc-fantome-fin'); }
         });
+        afficherFantomeFrise(dateA, dateB);
         afficherCurseurPrototype(dateA, dateB, false);
+        afficherDiagnosticsGui(resultatPrevisualisation.diagnostics || []);
+      }
+
+      function afficherFantomeLocal(dateA, dateB) {
+        const dates = datesProjeteesEntre(dateA, dateB);
+        const commande = {
+          type: 'ajouter_absence',
+          identifiant_commande: 'commande_previsualiser_' + Date.now(),
+          cible: { type: 'scenario_local', identifiant: 'prototype_interface' },
+          parametres: {
+            date_debut: dates[0] || dateA,
+            date_fin: dates[dates.length - 1] || dateB,
+            compteur_indicatif: 'non_recalcule'
+          },
+          mode: 'previsualiser'
+        };
+        const resultat = traiterCommandeMoteurGui(etatCentralGui, commande);
+        etatTransitoireInterface.plage_en_cours = { date_debut: dateA, date_fin: dateB };
+        etatTransitoireInterface.fantome_calendrier = { date_debut: dateA, date_fin: dateB };
+        etatTransitoireInterface.fantome_frise = { date_debut: dateA, date_fin: dateB };
+        etatTransitoireInterface.dernier_resultat_previsualisation = resultat;
+        etatTransitoireInterface.message_temporaire = resultat.diagnostics.length ? 'pose impossible' : 'prévisualisation locale';
+        afficherEtatTransitoireInterface();
       }
 
       function lireBlocsLocauxPrototype() {
@@ -1184,29 +1253,270 @@ def script_onglets() -> str:
         };
       }
 
+      function copierBlocsLocauxPrototype(blocs) {
+        return Array.isArray(blocs) ? blocs.map(normaliserBlocLocalPrototype) : [];
+      }
+
+      function blocPrototypeVersBlocAffichable(bloc) {
+        const blocNormalise = normaliserBlocLocalPrototype(bloc);
+        return {
+          type: 'bloc_absence_affichable',
+          identifiant: blocNormalise.id,
+          date_debut: blocNormalise.date_debut,
+          date_fin: blocNormalise.date_fin,
+          origine: 'prototype_interface',
+          statut: 'simule',
+          compteur: blocNormalise.compteur_indicatif || 'non_recalcule',
+          quantite_jours: blocNormalise.quantite_jours,
+          diagnostics: []
+        };
+      }
+
+      function construireEtatCentralGui(blocsLocaux, diagnostics) {
+        const blocsScenario = copierBlocsLocauxPrototype(blocsLocaux);
+        return {
+          version_contrat: '0.1',
+          sources: {
+            scenario_local: {
+              blocs_absence: blocsScenario
+            }
+          },
+          blocs_affichables: blocsScenario.map(blocPrototypeVersBlocAffichable),
+          diagnostics: Array.isArray(diagnostics) ? diagnostics : []
+        };
+      }
+
+      function blocsScenarioDepuisEtat(etat) {
+        const scenario = etat && etat.sources && etat.sources.scenario_local;
+        return copierBlocsLocauxPrototype(scenario && Array.isArray(scenario.blocs_absence) ? scenario.blocs_absence : []);
+      }
+
+      function synchroniserBlocsLocauxDepuisEtatCentral(etat) {
+        blocsLocauxPrototype = blocsScenarioDepuisEtat(etat);
+      }
+
+      function diagnosticMoteurGui(niveau, code, message, cibles, details) {
+        return {
+          niveau: niveau,
+          code: code,
+          message: message,
+          cibles: Array.isArray(cibles) ? cibles : [],
+          details: details || {}
+        };
+      }
+
+      function resultatCommandeMoteurGui(commande, statut, etat, diagnostics, selectionSuggeree) {
+        return {
+          identifiant_commande: commande.identifiant_commande || 'commande_' + Date.now(),
+          statut: statut,
+          etat_central: etat,
+          diagnostics: Array.isArray(diagnostics) ? diagnostics : [],
+          selection_suggeree: selectionSuggeree || null
+        };
+      }
+
+      function blocLocalOccupeDate(bloc, dateIso) {
+        return datesBlocLocal(bloc).includes(dateIso);
+      }
+
+      function datesOccupeesPourCommande(etat, dates) {
+        const blocs = blocsScenarioDepuisEtat(etat);
+        return dates.filter((dateIso) => {
+          const jour = document.querySelector('.jour-calendrier[data-date-iso="' + dateIso + '"]');
+          const occupeProjection = Boolean(jour && Array.from(jour.querySelectorAll('.niveau-selection')).some((niveau) => {
+            return niveau.dataset.selectionType === 'bloc' && niveau.dataset.selectionOrigine !== 'ajoute_par_utilisateur';
+          }));
+          const occupeLocal = blocs.some((bloc) => blocLocalOccupeDate(bloc, dateIso));
+          return occupeProjection || occupeLocal;
+        });
+      }
+
+      function traiterCommandeMoteurGui(etat, commande) {
+        const etatCourant = etat || construireEtatCentralGui([], []);
+        const typeCommande = commande && commande.type;
+        const modeCommande = commande && commande.mode;
+        if (typeCommande === 'ajouter_absence') {
+          const parametres = commande.parametres || {};
+          const dates = datesProjeteesEntre(parametres.date_debut, parametres.date_fin);
+          if (!dates.length) {
+            return resultatCommandeMoteurGui(
+              commande,
+              'refusee',
+              etatCourant,
+              [
+                diagnosticMoteurGui(
+                  'bloquant',
+                  'date_hors_projection',
+                  'Pose impossible : la plage ne correspond à aucune date projetée.',
+                  [{ type: 'commande', identifiant: commande.identifiant_commande || '' }],
+                  {}
+                )
+              ],
+              null
+            );
+          }
+          const datesOccupees = datesOccupeesPourCommande(etatCourant, dates);
+          if (datesOccupees.length) {
+            return resultatCommandeMoteurGui(
+              commande,
+              'refusee',
+              etatCourant,
+              [
+                diagnosticMoteurGui(
+                  'bloquant',
+                  'plage_deja_occupee',
+                  'Pose impossible : la plage contient déjà une absence.',
+                  datesOccupees.map((dateIso) => ({ type: 'date', date: dateIso })),
+                  {}
+                )
+              ],
+              null
+            );
+          }
+          if (modeCommande === 'previsualiser') {
+            return resultatCommandeMoteurGui(commande, 'inchangee', etatCourant, [], null);
+          }
+          if (modeCommande === 'appliquer') {
+            const blocs = blocsScenarioDepuisEtat(etatCourant);
+            const bloc = normaliserBlocLocalPrototype({
+              id: parametres.id || 'bloc_utilisateur_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+              type: 'absence_locale_prototype',
+              date_debut: dates[0],
+              date_fin: dates[dates.length - 1],
+              origine: 'ajoute_par_utilisateur',
+              statut: 'scenario_local_prototype',
+              compteur_indicatif: parametres.compteur_indicatif || 'non_recalcule',
+              quantite_jours: dates.length,
+              cree_le: new Date().toISOString()
+            });
+            const nouvelEtat = construireEtatCentralGui(blocs.concat([bloc]), []);
+            return resultatCommandeMoteurGui(
+              commande,
+              'acceptee',
+              nouvelEtat,
+              [],
+              { type: 'bloc_absence', identifiant: bloc.id }
+            );
+          }
+        }
+        if (typeCommande === 'supprimer_absence' && modeCommande === 'appliquer') {
+          const cible = commande.cible || {};
+          const identifiant = cible.identifiant;
+          const blocs = blocsScenarioDepuisEtat(etatCourant);
+          const bloc = blocs.find((blocLocal) => blocLocal.id === identifiant);
+          if (!bloc) {
+            return resultatCommandeMoteurGui(
+              commande,
+              'refusee',
+              etatCourant,
+              [
+                diagnosticMoteurGui(
+                  'bloquant',
+                  'bloc_introuvable',
+                  'Suppression impossible : le bloc prototype est introuvable.',
+                  [{ type: 'bloc_absence', identifiant: identifiant || '' }],
+                  {}
+                )
+              ],
+              null
+            );
+          }
+          if (bloc.origine !== 'ajoute_par_utilisateur' || bloc.statut !== 'scenario_local_prototype') {
+            return resultatCommandeMoteurGui(
+              commande,
+              'refusee',
+              etatCourant,
+              [
+                diagnosticMoteurGui(
+                  'bloquant',
+                  'bloc_non_modifiable',
+                  'Suppression impossible : seul un bloc utilisateur prototype peut être supprimé.',
+                  [{ type: 'bloc_absence', identifiant: identifiant || '' }],
+                  {}
+                )
+              ],
+              null
+            );
+          }
+          const nouvelEtat = construireEtatCentralGui(
+            blocs.filter((blocLocal) => blocLocal.id !== identifiant),
+            []
+          );
+          return resultatCommandeMoteurGui(commande, 'acceptee', nouvelEtat, [], null);
+        }
+        return resultatCommandeMoteurGui(
+          commande || {},
+          'erreur',
+          etatCourant,
+          [
+            diagnosticMoteurGui(
+              'erreur',
+              'commande_non_prise_en_charge',
+              'Commande non prise en charge par le moteur GUI prototype.',
+              [{ type: 'commande', identifiant: (commande && commande.identifiant_commande) || '' }],
+              {}
+            )
+          ],
+          null
+        );
+      }
+
+      function afficherDiagnosticsGui(diagnostics) {
+        const cible = document.getElementById('diagnostics-planification');
+        if (!cible) { return; }
+        cible.textContent = '';
+        const diagnosticsAffiches = Array.isArray(diagnostics) ? diagnostics : [];
+        if (!diagnosticsAffiches.length) {
+          const vide = document.createElement('p');
+          vide.className = 'info-compacte';
+          vide.textContent = 'aucun';
+          cible.appendChild(vide);
+          return;
+        }
+        const liste = document.createElement('ul');
+        liste.className = 'liste-diagnostics-planification';
+        diagnosticsAffiches.forEach((diagnostic) => {
+          const element = document.createElement('li');
+          element.className = 'diagnostic-planification diagnostic-' + (diagnostic.niveau || 'information');
+          element.textContent = (diagnostic.niveau || 'information') + ' · ' + (diagnostic.code || 'diagnostic') + ' · ' + (diagnostic.message || '');
+          liste.appendChild(element);
+        });
+        cible.appendChild(liste);
+      }
+
+      function appliquerResultatCommandeMoteurGui(resultat, options) {
+        afficherDiagnosticsGui(resultat.diagnostics || []);
+        if (resultat.statut !== 'acceptee') {
+          return;
+        }
+        etatCentralGui = resultat.etat_central || etatCentralGui;
+        synchroniserBlocsLocauxDepuisEtatCentral(etatCentralGui);
+        sauvegarderBlocsLocauxPrototype();
+        afficherEtatCentralGui(etatCentralGui);
+        if (options && options.selectionner && resultat.selection_suggeree) {
+          afficherSelectionBlocLocal(blocLocalParId(resultat.selection_suggeree.identifiant));
+        } else if (options && options.deselectionner) {
+          deselectionnerPlanification();
+        }
+      }
+
       function creerBlocLocalPrototype(dateA, dateB) {
         const dates = datesProjeteesEntre(dateA, dateB);
         if (!dates.length) { return; }
-        if (!plageLibrePourPose(dateA, dateB)) {
-          afficherFantomeLocal(dateA, dateB);
-          return;
-        }
-        const bloc = {
-          id: 'bloc_utilisateur_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-          type: 'absence_locale_prototype',
-          date_debut: dates[0],
-          date_fin: dates[dates.length - 1],
-          origine: 'ajoute_par_utilisateur',
-          statut: 'scenario_local_prototype',
-          compteur_indicatif: 'non_recalcule',
-          quantite_jours: dates.length,
-          cree_le: new Date().toISOString()
+        const commande = {
+          type: 'ajouter_absence',
+          identifiant_commande: 'commande_ajouter_' + Date.now(),
+          cible: { type: 'scenario_local', identifiant: 'prototype_interface' },
+          parametres: {
+            date_debut: dates[0],
+            date_fin: dates[dates.length - 1],
+            compteur_indicatif: 'non_recalcule'
+          },
+          mode: 'appliquer'
         };
-        blocsLocauxPrototype.push(bloc);
-        sauvegarderBlocsLocauxPrototype();
+        const resultat = traiterCommandeMoteurGui(etatCentralGui, commande);
         nettoyerFantomeLocal();
-        rendreBlocsLocauxPrototype();
-        afficherSelectionBlocLocal(bloc);
+        appliquerResultatCommandeMoteurGui(resultat, { selectionner: true });
       }
 
       function datesBlocLocal(bloc) {
@@ -1272,8 +1582,22 @@ def script_onglets() -> str:
         return niveau;
       }
 
-      function rendreBlocsLocauxCalendrier() {
-        blocsLocauxPrototype.forEach((bloc) => {
+      function blocAffichableVersBlocPrototype(blocAffichable) {
+        return normaliserBlocLocalPrototype({
+          id: blocAffichable.identifiant,
+          type: 'absence_locale_prototype',
+          date_debut: blocAffichable.date_debut,
+          date_fin: blocAffichable.date_fin,
+          origine: 'ajoute_par_utilisateur',
+          statut: 'scenario_local_prototype',
+          compteur_indicatif: blocAffichable.compteur || 'non_recalcule',
+          quantite_jours: blocAffichable.quantite_jours
+        });
+      }
+
+      function rendreBlocsAffichablesCalendrier(blocsAffichables) {
+        (blocsAffichables || []).forEach((blocAffichable) => {
+          const bloc = blocAffichableVersBlocPrototype(blocAffichable);
           datesBlocLocal(bloc).forEach((dateIso) => {
             const jour = document.querySelector('.jour-calendrier[data-date-iso="' + dateIso + '"]');
             if (!jour) { return; }
@@ -1292,6 +1616,10 @@ def script_onglets() -> str:
         });
       }
 
+      function rendreBlocsLocauxCalendrier() {
+        rendreBlocsAffichablesCalendrier(etatCentralGui && Array.isArray(etatCentralGui.blocs_affichables) ? etatCentralGui.blocs_affichables : []);
+      }
+
       function xFrisePourDate(svg, dateIso) {
         const debut = new Date(svg.dataset.friseDebut + 'T00:00:00');
         const fin = new Date(svg.dataset.friseFin + 'T00:00:00');
@@ -1302,11 +1630,12 @@ def script_onglets() -> str:
         return gauche + (((courant - debut) / 86400000) / duree) * (droite - gauche);
       }
 
-      function rendreBlocsLocauxFrise() {
+      function rendreBlocsAffichablesFrise(blocsAffichables) {
         document.querySelectorAll('.courbe-reste-agrege').forEach((svg) => {
           const groupe = svg.querySelector('.ligne-blocs-locaux');
           if (!groupe) { return; }
-          blocsLocauxPrototype.forEach((bloc) => {
+          (blocsAffichables || []).forEach((blocAffichable) => {
+            const bloc = blocAffichableVersBlocPrototype(blocAffichable);
             const x1 = xFrisePourDate(svg, bloc.date_debut);
             const x2 = xFrisePourDate(svg, bloc.date_fin);
             const rect = document.createElementNS(svg.namespaceURI, 'rect');
@@ -1337,10 +1666,25 @@ def script_onglets() -> str:
         });
       }
 
-      function rendreBlocsLocauxPrototype() {
+      function rendreBlocsLocauxFrise() {
+        rendreBlocsAffichablesFrise(etatCentralGui && Array.isArray(etatCentralGui.blocs_affichables) ? etatCentralGui.blocs_affichables : []);
+      }
+
+      function rendreBlocsAffichablesPrototype(blocsAffichables) {
         nettoyerRenduBlocsLocaux();
-        rendreBlocsLocauxCalendrier();
-        rendreBlocsLocauxFrise();
+        rendreBlocsAffichablesCalendrier(blocsAffichables || []);
+        rendreBlocsAffichablesFrise(blocsAffichables || []);
+      }
+
+      function afficherEtatCentralGui(etat) {
+        etatCentralGui = etat || construireEtatCentralGui([], []);
+        synchroniserBlocsLocauxDepuisEtatCentral(etatCentralGui);
+        rendreBlocsAffichablesPrototype(etatCentralGui.blocs_affichables || []);
+        afficherDiagnosticsGui(etatCentralGui.diagnostics || []);
+      }
+
+      function rendreBlocsLocauxPrototype() {
+        afficherEtatCentralGui(etatCentralGui || construireEtatCentralGui(blocsLocauxPrototype, []));
       }
 
       function blocLocalParId(id) {
@@ -1393,11 +1737,19 @@ def script_onglets() -> str:
 
       function supprimerBlocLocalSelectionne() {
         if (!blocLocalSelectionne) { return; }
-        blocsLocauxPrototype = blocsLocauxPrototype.filter((bloc) => bloc.id !== blocLocalSelectionne);
-        blocLocalSelectionne = null;
-        sauvegarderBlocsLocauxPrototype();
-        rendreBlocsLocauxPrototype();
-        deselectionnerPlanification();
+        const identifiantSelectionne = blocLocalSelectionne;
+        const commande = {
+          type: 'supprimer_absence',
+          identifiant_commande: 'commande_supprimer_' + Date.now(),
+          cible: { type: 'bloc_absence', identifiant: identifiantSelectionne },
+          parametres: {},
+          mode: 'appliquer'
+        };
+        const resultat = traiterCommandeMoteurGui(etatCentralGui, commande);
+        if (resultat.statut === 'acceptee') {
+          blocLocalSelectionne = null;
+        }
+        appliquerResultatCommandeMoteurGui(resultat, { deselectionner: true });
       }
 
       function activerSelectionPlanification(element) {
@@ -1485,20 +1837,30 @@ def script_onglets() -> str:
         dateDebutPose = null;
         dateSurvolPose = null;
         poseEnCours = false;
+        etatTransitoireInterface.pose_en_cours = false;
+        etatTransitoireInterface.date_debut_pose = null;
+        etatTransitoireInterface.date_survol_pose = null;
+        etatTransitoireInterface.plage_en_cours = null;
+        etatTransitoireInterface.fantome_calendrier = null;
+        etatTransitoireInterface.fantome_frise = null;
+        etatTransitoireInterface.dernier_resultat_previsualisation = null;
+        etatTransitoireInterface.message_temporaire = null;
         nettoyerFantomeLocal();
       }
 
       function finaliserPoseLocalePrototype(dateFin) {
         if (!poseEnCours || !dateDebutPose) { return; }
         const fin = dateFin || dateSurvolPose || dateDebutPose;
-        if (plageLibrePourPose(dateDebutPose, fin)) {
-          creerBlocLocalPrototype(dateDebutPose, fin);
-        } else {
-          afficherFantomeLocal(dateDebutPose, fin);
-        }
+        creerBlocLocalPrototype(dateDebutPose, fin);
         dateDebutPose = null;
         dateSurvolPose = null;
         poseEnCours = false;
+        etatTransitoireInterface.pose_en_cours = false;
+        etatTransitoireInterface.date_debut_pose = null;
+        etatTransitoireInterface.date_survol_pose = null;
+        etatTransitoireInterface.plage_en_cours = null;
+        etatTransitoireInterface.fantome_calendrier = null;
+        etatTransitoireInterface.fantome_frise = null;
       }
 
       boutons.forEach((bouton) => {
@@ -1534,6 +1896,7 @@ def script_onglets() -> str:
           const dateIso = jour.dataset.dateIso;
           if (!dateIso) { return; }
           dateSurvolPose = dateIso;
+          etatTransitoireInterface.date_survol_pose = dateSurvolPose;
           afficherFantomeLocal(dateDebutPose || dateIso, dateIso);
         });
         jour.addEventListener('mouseleave', function () {
@@ -1550,6 +1913,9 @@ def script_onglets() -> str:
           dateDebutPose = jour.dataset.dateIso;
           dateSurvolPose = dateDebutPose;
           poseEnCours = true;
+          etatTransitoireInterface.pose_en_cours = true;
+          etatTransitoireInterface.date_debut_pose = dateDebutPose;
+          etatTransitoireInterface.date_survol_pose = dateSurvolPose;
           if (jour.setPointerCapture) {
             try { jour.setPointerCapture(event.pointerId); } catch (_erreur) {}
           }
@@ -1562,6 +1928,7 @@ def script_onglets() -> str:
           const dateIso = jour.dataset.dateIso;
           if (!dateIso) { return; }
           dateSurvolPose = dateIso;
+          etatTransitoireInterface.date_survol_pose = dateSurvolPose;
           afficherFantomeLocal(dateDebutPose || dateIso, dateIso);
         });
       });
@@ -1600,6 +1967,7 @@ def script_onglets() -> str:
         const jour = element && element.closest ? element.closest('.jour-calendrier[data-date-iso]') : null;
         if (!jour || !jour.dataset.dateIso || jour.dataset.dateIso === dateSurvolPose) { return; }
         dateSurvolPose = jour.dataset.dateIso;
+        etatTransitoireInterface.date_survol_pose = dateSurvolPose;
         afficherFantomeLocal(dateDebutPose, dateSurvolPose);
       });
 
@@ -1614,7 +1982,8 @@ def script_onglets() -> str:
       activerModePlanification('general');
       activerOutilPlanification('selection');
       blocsLocauxPrototype = lireBlocsLocauxPrototype();
-      rendreBlocsLocauxPrototype();
+      etatCentralGui = construireEtatCentralGui(blocsLocauxPrototype, []);
+      afficherEtatCentralGui(etatCentralGui);
       initialiserCurseursFrise();
     }());
     </script>
@@ -1926,6 +2295,12 @@ def barre_infos_droite(projection: dict[str, Any], demi_journees: list[Any]) -> 
         <h3>Sélection</h3>
         <div id="selection-planification" class="selection-planification">
           <p class="info-compacte">aucune</p>
+        </div>
+        <div class="zone-diagnostics-planification">
+          <h3>Diagnostics</h3>
+          <div id="diagnostics-planification" class="diagnostics-planification">
+            <p class="info-compacte">aucun</p>
+          </div>
         </div>
       </section>
       <div class="separateur-infos" aria-hidden="true"></div>
@@ -3263,6 +3638,13 @@ def feuille_style() -> str:
     .bloc-fantome-fin {
       border-right-width: 3px;
     }
+    .bloc-fantome-frise {
+      fill: rgba(155, 107, 0, 0.2);
+      stroke: rgba(155, 107, 0, 0.7);
+      stroke-width: 1.5;
+      stroke-dasharray: 4 3;
+      pointer-events: none;
+    }
     .niveau-reste-agrege {
       padding-top: 4px;
     }
@@ -3344,6 +3726,37 @@ def feuille_style() -> str:
     .selection-planification {
       min-height: 44px;
     }
+    .zone-diagnostics-planification {
+      margin-top: 10px;
+      border-top: 1px dashed rgba(216, 201, 174, 0.85);
+      padding-top: 8px;
+    }
+    .diagnostics-planification {
+      max-height: 86px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .liste-diagnostics-planification {
+      display: grid;
+      gap: 5px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .diagnostic-planification {
+      padding: 5px 7px;
+      border-left: 3px solid var(--accent);
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.34);
+      font-size: 0.76rem;
+      line-height: 1.2;
+    }
+    .diagnostic-bloquant,
+    .diagnostic-erreur {
+      border-left-color: var(--alerte);
+    }
     .fiche-selection {
       display: grid;
       gap: 8px;
@@ -3404,7 +3817,7 @@ def feuille_style() -> str:
       min-height: 0;
       overflow: hidden;
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr) auto;
     }
     .selection-planification {
       min-height: 0;
@@ -3667,7 +4080,7 @@ def feuille_style() -> str:
       min-height: 0;
       overflow: hidden;
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr) auto;
     }
     .selection-planification {
       min-height: 0;
