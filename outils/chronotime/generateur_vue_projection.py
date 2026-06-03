@@ -1153,7 +1153,7 @@ def script_onglets() -> str:
         });
       }
 
-      function afficherFantomeFrise(dateA, dateB) {
+      function afficherFantomeFrise(dateA, dateB, impossible) {
         document.querySelectorAll('.courbe-reste-agrege').forEach((svg) => {
           const groupe = svg.querySelector('.ligne-blocs-locaux');
           if (!groupe) { return; }
@@ -1161,7 +1161,7 @@ def script_onglets() -> str:
           const x2 = xFrisePourDate(svg, dateB);
           if (x1 === null || x2 === null) { return; }
           const rect = document.createElementNS(svg.namespaceURI, 'rect');
-          rect.setAttribute('class', 'bloc-fantome-frise');
+          rect.setAttribute('class', impossible ? 'bloc-fantome-frise bloc-fantome-frise-impossible' : 'bloc-fantome-frise');
           rect.setAttribute('x', String(Math.min(x1, x2)));
           rect.setAttribute('y', '78');
           rect.setAttribute('width', String(Math.max(8, Math.abs(x2 - x1) + 8)));
@@ -1180,20 +1180,16 @@ def script_onglets() -> str:
         const dates = datesProjeteesEntre(dateA, dateB);
         const resultatPrevisualisation = etatTransitoireInterface.dernier_resultat_previsualisation || { diagnostics: [] };
         const impossible = (resultatPrevisualisation.diagnostics || []).some((diagnostic) => diagnostic.niveau === 'bloquant' || diagnostic.niveau === 'erreur');
-        if (impossible) {
-          afficherCurseurPrototype(dateA, dateB, true);
-          afficherDiagnosticsGui(resultatPrevisualisation.diagnostics || []);
-          return;
-        }
         dates.forEach((dateIso, index) => {
           const jour = document.querySelector('.jour-calendrier[data-date-iso="' + dateIso + '"]');
           if (!jour) { return; }
           jour.classList.add('bloc-fantome-local');
+          if (impossible) { jour.classList.add('bloc-fantome-impossible'); }
           if (index === 0) { jour.classList.add('bloc-fantome-debut'); }
           if (index === dates.length - 1) { jour.classList.add('bloc-fantome-fin'); }
         });
-        afficherFantomeFrise(dateA, dateB);
-        afficherCurseurPrototype(dateA, dateB, false);
+        afficherFantomeFrise(dateA, dateB, impossible);
+        afficherCurseurPrototype(dateA, dateB, impossible);
         afficherDiagnosticsGui(resultatPrevisualisation.diagnostics || []);
       }
 
@@ -3628,9 +3624,11 @@ def feuille_style() -> str:
       background: rgba(155, 107, 0, 0.18);
       box-shadow: inset 0 0 0 2px rgba(155, 107, 0, 0.55);
     }
-    .bloc-fantome-impossible {
+    .bloc-fantome-local.bloc-fantome-impossible {
       background: rgba(177, 59, 46, 0.14);
       box-shadow: inset 0 0 0 2px rgba(177, 59, 46, 0.55);
+      border-style: dashed;
+      opacity: 0.84;
     }
     .bloc-fantome-debut {
       border-left-width: 3px;
@@ -3644,6 +3642,12 @@ def feuille_style() -> str:
       stroke-width: 1.5;
       stroke-dasharray: 4 3;
       pointer-events: none;
+    }
+    .bloc-fantome-frise.bloc-fantome-frise-impossible {
+      fill: rgba(177, 59, 46, 0.14);
+      stroke: rgba(177, 59, 46, 0.72);
+      stroke-dasharray: 2 4;
+      opacity: 0.86;
     }
     .niveau-reste-agrege {
       padding-top: 4px;

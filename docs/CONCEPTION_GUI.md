@@ -649,6 +649,8 @@ Le rendu des blocs utilisateur devient dérivé de `etatCentralGui.blocs_afficha
 
 Les fantômes de manipulation restent dans `etatTransitoireInterface`. Ils ne sont pas persistés, ne deviennent pas des blocs réels et disparaissent si la commande n'est pas acceptée.
 
+Le fantôme de pose reste visible même lorsque la prévisualisation moteur refuse la plage. Le refus est rendu par une variante visuelle du fantôme, par exemple rouge, transparente et pointillée, et non par sa disparition. Ce fantôme impossible reste transitoire et non persistant.
+
 Les sous-vues `Calendrier` et `Frise` restent aujourd'hui exclusives. Elles doivent consommer le même état transitoire lorsqu'elles sont actives, chacune avec sa grammaire propre. Le calendrier reste prioritaire pour cette tranche ; la frise reçoit seulement une préparation de rendu du même fantôme transitoire.
 
 Limites maintenues :

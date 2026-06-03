@@ -538,7 +538,7 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertNotIn(".jour-avec-bloc-utilisateur::after", html)
         self.assertNotIn("background: linear-gradient(180deg, rgba(255, 250, 240, 0.95), rgba(230, 244, 240, 0.92));", html)
         self.assertNotIn("bloc-utilisateur-selectionne {\n      fill: var(--alerte)", html)
-        self.assertIn("afficherCurseurPrototype(dateA, dateB, true)", html)
+        self.assertIn("afficherCurseurPrototype(dateA, dateB, impossible)", html)
         self.assertNotIn("bloc-local-calendrier", html)
 
     def test_generation_html_moteur_gui_prototype_centralise(self) -> None:
@@ -582,6 +582,21 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("afficherEtatCentralGui(etatCentralGui)", html)
         self.assertIn("non recalculé par le moteur", html)
         self.assertNotIn("etatTransitoireFrise", html)
+
+    def test_generation_html_fantome_refuse_reste_visible(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("bloc-fantome-impossible", html)
+        self.assertIn(".bloc-fantome-local.bloc-fantome-impossible", html)
+        self.assertIn("jour.classList.add('bloc-fantome-local')", html)
+        self.assertIn("if (impossible) { jour.classList.add('bloc-fantome-impossible'); }", html)
+        self.assertIn("afficherFantomeFrise(dateA, dateB, impossible)", html)
+        self.assertIn("bloc-fantome-frise-impossible", html)
+        self.assertIn("afficherCurseurPrototype(dateA, dateB, impossible)", html)
+        self.assertIn("plage_deja_occupee", html)
+        self.assertIn("diagnostics-planification", html)
+        self.assertNotIn("localStorage.setItem(CLE_STOCKAGE_PROTO, JSON.stringify(etatTransitoireInterface", html)
+        self.assertNotIn("localStorage.setItem(CLE_STOCKAGE_PROTO, JSON.stringify(resultatPrevisualisation", html)
 
     def test_generation_html_planification_non_regression_vues_et_outils(self) -> None:
         html = generer_html(self._charger_exemple())
