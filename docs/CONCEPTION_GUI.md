@@ -30,6 +30,8 @@ Les futures actions utilisateur devront modifier les événements sources ou les
 
 La cible GUI repose sur un état central piloté par un moteur identifiable, séparé du rendu visuel.
 
+Le contrat minimal d’échange entre interface et moteur est défini dans [docs/CONTRAT_MOTEUR_GUI.md](./CONTRAT_MOTEUR_GUI.md). Cette section en donne seulement le cadrage conceptuel.
+
 Flux d’une interaction :
 
 ```text

@@ -19,4 +19,5 @@ Pour reprendre le projet depuis zéro :
 6. `docs/PROJECTION_DEMI_JOURNÉES.md`
 7. `docs/MODÈLE_ÉVÉNEMENTS_COMPTEURS.md`
 8. `docs/CONCEPTION_GUI.md`
-9. `docs/PASSATION_UI.md`
+9. `docs/CONTRAT_MOTEUR_GUI.md`
+10. `docs/PASSATION_UI.md`

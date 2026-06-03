@@ -51,8 +51,8 @@ Ce document liste les points encore ouverts avant de figer un moteur de calcul p
 ## Architecture GUI dynamique
 
 - Choisir la technique du moteur dynamique : Python local, JavaScript/TypeScript ou autre.
-- Définir le contrat exact des commandes moteur.
-- Définir le format des diagnostics structurés.
+- Stabiliser le contrat V0.1 des commandes moteur après premier prototype.
+- Stabiliser le format V0.1 des diagnostics structurés après premier prototype.
 - Définir la frontière entre état moteur et état transitoire d’interface.
 - Remplacer `localStorage` prototype par une source de scénario locale ou un état moteur persistant.
 - Définir la stratégie de prévalidation pendant le glisser-déposer.

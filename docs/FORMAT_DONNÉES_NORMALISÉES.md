@@ -649,3 +649,15 @@ L’orchestrateur local enchaîne les formats normalisés existants.
 Il lit des fichiers locaux séparés pour les soldes, l’agenda, les obligations et le scénario, puis produit directement une sortie `projection.demi_journees`.
 
 Il n’écrit pas de fichier intermédiaire et reste limité à des données locales.
+
+## Contrat Moteur GUI
+
+Le contrat moteur GUI est documenté dans [docs/CONTRAT_MOTEUR_GUI.md](./CONTRAT_MOTEUR_GUI.md).
+
+Il s’agit d’un format conceptuel d’échange entre la couche interface et le moteur dynamique. Il est distinct :
+
+- des formats normalisés Chronotime ;
+- des scénarios locaux normalisés ;
+- des sorties dérivées `projection.demi_journees`, `mouvements.soldes` et `chronologie.soldes`.
+
+Ce contrat ne rend pas ces sorties dérivées éditables. Il décrit comment une commande d’intention doit produire un état central, des diagnostics et des vues dérivées.
