@@ -1,0 +1,200 @@
+{
+  "source": "projection.demi_journees.entrees",
+  "soldes": {
+    "source": "chronotime.soldeabs",
+    "compteurs": [
+      {
+        "code": "GCP",
+        "libelle": "Compteur artificiel GCP",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "10j00",
+              "unite": "jour",
+              "valeur": 10.0
+            }
+          }
+        }
+      },
+      {
+        "code": "JRTT",
+        "libelle": "Compteur artificiel JRTT",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "10j00",
+              "unite": "jour",
+              "valeur": 10.0
+            }
+          }
+        }
+      },
+      {
+        "code": "CANC",
+        "libelle": "Compteur artificiel CANC",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "10j00",
+              "unite": "jour",
+              "valeur": 10.0
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scenario": {
+    "source": "simulation.locale",
+    "scenario": {
+      "identifiant": "scenario_comparaison_unites",
+      "libelle": "Scénario artificiel unités",
+      "periode": {
+        "debut": "2026-03-02",
+        "fin": "2026-03-15"
+      },
+      "dates_cibles": [],
+      "preferences": {},
+      "blocs": [
+        {
+          "identifiant_local": "bloc_jours_ouvres",
+          "libelle": "Bloc jours ouvrés",
+          "type": "absence",
+          "source": "simulation.locale",
+          "date_debut": "2026-03-02",
+          "date_fin": "2026-03-04",
+          "unite": "jours_ouvres",
+          "fraction_jour": 1.0,
+          "compteur_souhaite": "GCP",
+          "compteur_reellement_consomme": null,
+          "statut": "actif",
+          "verrouillage": false,
+          "priorite": 50,
+          "date_limite": null,
+          "notes_locales": "Exemple artificiel.",
+          "actif": true,
+          "duree": {
+            "unite": "jours_ouvres",
+            "valeur": 2.0,
+            "methode": "exemple_artificiel"
+          }
+        },
+        {
+          "identifiant_local": "bloc_jours_ouvrables",
+          "libelle": "Bloc jours ouvrables",
+          "type": "absence",
+          "source": "simulation.locale",
+          "date_debut": "2026-03-07",
+          "date_fin": "2026-03-09",
+          "unite": "jours_ouvrables",
+          "fraction_jour": 1.0,
+          "compteur_souhaite": "JRTT",
+          "compteur_reellement_consomme": null,
+          "statut": "actif",
+          "verrouillage": false,
+          "priorite": 50,
+          "date_limite": null,
+          "notes_locales": "Exemple artificiel.",
+          "actif": true,
+          "duree": {
+            "unite": "jours_ouvrables",
+            "valeur": 2.0,
+            "methode": "exemple_artificiel"
+          }
+        },
+        {
+          "identifiant_local": "bloc_jours_calendaires",
+          "libelle": "Bloc jours calendaires",
+          "type": "absence",
+          "source": "simulation.locale",
+          "date_debut": "2026-03-14",
+          "date_fin": "2026-03-15",
+          "unite": "jours_calendaires",
+          "fraction_jour": 1.0,
+          "compteur_souhaite": "CANC",
+          "compteur_reellement_consomme": null,
+          "statut": "actif",
+          "verrouillage": false,
+          "priorite": 50,
+          "date_limite": null,
+          "notes_locales": "Exemple artificiel.",
+          "actif": true,
+          "duree": {
+            "unite": "jours_calendaires",
+            "valeur": 1.0,
+            "methode": "exemple_artificiel"
+          }
+        },
+        {
+          "identifiant_local": "bloc_demi_journee",
+          "libelle": "Bloc demi-journée",
+          "type": "absence",
+          "source": "simulation.locale",
+          "date_debut": "2026-03-05",
+          "date_fin": "2026-03-05",
+          "unite": "demi_journee",
+          "fraction_jour": 0.5,
+          "compteur_souhaite": "GCP",
+          "compteur_reellement_consomme": null,
+          "statut": "actif",
+          "verrouillage": false,
+          "priorite": 50,
+          "date_limite": null,
+          "notes_locales": "Exemple artificiel.",
+          "actif": true,
+          "duree": {
+            "unite": "demi_journee",
+            "valeur": 0.5,
+            "methode": "exemple_artificiel"
+          }
+        },
+        {
+          "identifiant_local": "bloc_heures",
+          "libelle": "Bloc heures",
+          "type": "absence",
+          "source": "simulation.locale",
+          "date_debut": "2026-03-06",
+          "date_fin": "2026-03-06",
+          "unite": "heures",
+          "fraction_jour": 1.0,
+          "compteur_souhaite": "JRTT",
+          "compteur_reellement_consomme": null,
+          "statut": "actif",
+          "verrouillage": false,
+          "priorite": 50,
+          "date_limite": null,
+          "notes_locales": "Exemple artificiel.",
+          "actif": true,
+          "duree": {
+            "unite": "heures",
+            "valeur": 2.0,
+            "methode": "exemple_artificiel"
+          }
+        }
+      ]
+    },
+    "resume": {
+      "nombre_blocs": 5,
+      "nombre_blocs_actifs": 5,
+      "nombre_blocs_inactifs": 0
+    }
+  },
+  "verification_obligations": {
+    "source": "verification.obligations",
+    "obligations": [],
+    "resume": {}
+  },
+  "parametres_projection": {
+    "periode_compteurs": "courant",
+    "date_depart": "2026-03-02",
+    "date_fin": "2026-03-15",
+    "dates_cibles": [],
+    "jours_non_decomptes": ["2026-03-03", "2026-03-07"],
+    "ordre_compteurs_sans_preference": ["CANC", "JRTT", "GCP"],
+    "soldes_minimums_par_code": {
+      "GCP": 0.0,
+      "JRTT": 0.0,
+      "CANC": 0.0
+    }
+  }
+}

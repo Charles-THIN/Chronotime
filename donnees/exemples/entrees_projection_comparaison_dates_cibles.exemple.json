@@ -1,0 +1,113 @@
+{
+  "source": "projection.demi_journees.entrees",
+  "soldes": {
+    "source": "chronotime.soldeabs",
+    "compteurs": [
+      {
+        "code": "GCP",
+        "libelle": "Compteur artificiel GCP",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "3j00",
+              "unite": "jour",
+              "valeur": 3.0
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scenario": {
+    "source": "simulation.locale",
+    "scenario": {
+      "identifiant": "scenario_comparaison_dates_cibles",
+      "libelle": "Scénario artificiel dates cibles",
+      "periode": {
+        "debut": "2026-07-06",
+        "fin": "2026-07-10"
+      },
+      "dates_cibles": [],
+      "preferences": {},
+      "blocs": [
+        {
+          "identifiant_local": "bloc_hors_periode",
+          "libelle": "Bloc hors période",
+          "type": "absence",
+          "source": "simulation.locale",
+          "date_debut": "2026-07-13",
+          "date_fin": "2026-07-13",
+          "unite": "jours_ouvres",
+          "fraction_jour": 1.0,
+          "compteur_souhaite": "GCP",
+          "compteur_reellement_consomme": null,
+          "statut": "actif",
+          "verrouillage": false,
+          "priorite": 50,
+          "date_limite": null,
+          "notes_locales": "Exemple artificiel.",
+          "actif": true,
+          "duree": {
+            "unite": "jours_ouvres",
+            "valeur": 1.0,
+            "methode": "exemple_artificiel"
+          }
+        },
+        {
+          "identifiant_local": "bloc_dans_periode",
+          "libelle": "Bloc dans période",
+          "type": "absence",
+          "source": "simulation.locale",
+          "date_debut": "2026-07-06",
+          "date_fin": "2026-07-06",
+          "unite": "jours_ouvres",
+          "fraction_jour": 1.0,
+          "compteur_souhaite": "GCP",
+          "compteur_reellement_consomme": null,
+          "statut": "actif",
+          "verrouillage": false,
+          "priorite": 50,
+          "date_limite": null,
+          "notes_locales": "Exemple artificiel.",
+          "actif": true,
+          "duree": {
+            "unite": "jours_ouvres",
+            "valeur": 1.0,
+            "methode": "exemple_artificiel"
+          }
+        }
+      ]
+    },
+    "resume": {
+      "nombre_blocs": 2,
+      "nombre_blocs_actifs": 2,
+      "nombre_blocs_inactifs": 0
+    }
+  },
+  "verification_obligations": {
+    "source": "verification.obligations",
+    "obligations": [],
+    "resume": {}
+  },
+  "parametres_projection": {
+    "periode_compteurs": "courant",
+    "date_depart": "2026-07-06",
+    "date_fin": "2026-07-10",
+    "dates_cibles": [
+      {
+        "identifiant": "dans",
+        "libelle": "Dans période",
+        "date": "2026-07-06"
+      },
+      {
+        "identifiant": "hors",
+        "libelle": "Hors période",
+        "date": "2026-07-13"
+      }
+    ],
+    "ordre_compteurs_sans_preference": ["GCP"],
+    "soldes_minimums_par_code": {
+      "GCP": 0.0
+    }
+  }
+}

@@ -10,7 +10,7 @@ from typing import Any
 import unittest
 
 
-ENTREE_COMPARAISON = Path("donnees/exemples/entrees_projection_comparaison.exemple.json")
+REPERTOIRE_EXEMPLES = Path("donnees/exemples")
 
 
 def canoniser_json(objet: Any) -> Any:
@@ -49,41 +49,46 @@ def premiere_difference(gauche: Any, droite: Any, chemin: str = "$") -> str | No
 
 @unittest.skipIf(shutil.which("node") is None, "Node.js est absent.")
 class TestProjecteurJsComparaison(unittest.TestCase):
-    def test_projection_js_identique_projection_python(self) -> None:
+    def test_projection_js_identique_projection_python_sur_corpus(self) -> None:
+        fichiers_entree = sorted(REPERTOIRE_EXEMPLES.glob("entrees_projection_comparaison*.exemple.json"))
+        self.assertGreaterEqual(len(fichiers_entree), 2)
+
         with tempfile.TemporaryDirectory() as repertoire_temporaire:
-            sortie_python = Path(repertoire_temporaire) / "projection_python.json"
-            sortie_js = Path(repertoire_temporaire) / "projection_js.json"
+            for entree in fichiers_entree:
+                with self.subTest(entree=entree.name):
+                    sortie_python = Path(repertoire_temporaire) / f"{entree.stem}_python.json"
+                    sortie_js = Path(repertoire_temporaire) / f"{entree.stem}_js.json"
 
-            subprocess.run(
-                [
-                    sys.executable,
-                    "outils/chronotime/projecteur_demi_journees.py",
-                    str(ENTREE_COMPARAISON),
-                    "--sortie",
-                    str(sortie_python),
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            subprocess.run(
-                [
-                    "node",
-                    "outils/chronotime/js/cli_projecteur_demi_journees.js",
-                    str(ENTREE_COMPARAISON),
-                    "--sortie",
-                    str(sortie_js),
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
+                    subprocess.run(
+                        [
+                            sys.executable,
+                            "outils/chronotime/projecteur_demi_journees.py",
+                            str(entree),
+                            "--sortie",
+                            str(sortie_python),
+                        ],
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                    )
+                    subprocess.run(
+                        [
+                            "node",
+                            "outils/chronotime/js/cli_projecteur_demi_journees.js",
+                            str(entree),
+                            "--sortie",
+                            str(sortie_js),
+                        ],
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                    )
 
-            projection_python = canoniser_json(json.loads(sortie_python.read_text(encoding="utf-8")))
-            projection_js = canoniser_json(json.loads(sortie_js.read_text(encoding="utf-8")))
-            difference = premiere_difference(projection_js, projection_python)
+                    projection_python = canoniser_json(json.loads(sortie_python.read_text(encoding="utf-8")))
+                    projection_js = canoniser_json(json.loads(sortie_js.read_text(encoding="utf-8")))
+                    difference = premiere_difference(projection_js, projection_python)
 
-            self.assertIsNone(difference, difference)
+                    self.assertIsNone(difference, f"{entree.name}: {difference}")
 
 
 if __name__ == "__main__":

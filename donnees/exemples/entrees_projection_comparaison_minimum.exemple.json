@@ -1,0 +1,79 @@
+{
+  "source": "projection.demi_journees.entrees",
+  "soldes": {
+    "source": "chronotime.soldeabs",
+    "compteurs": [
+      {
+        "code": "GCP",
+        "libelle": "Compteur artificiel GCP",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "2j00",
+              "unite": "jour",
+              "valeur": 2.0
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scenario": {
+    "source": "simulation.locale",
+    "scenario": {
+      "identifiant": "scenario_comparaison_minimum",
+      "libelle": "Scénario artificiel minimum",
+      "periode": {
+        "debut": "2026-02-02",
+        "fin": "2026-02-04"
+      },
+      "dates_cibles": [],
+      "preferences": {},
+      "blocs": []
+    },
+    "resume": {
+      "nombre_blocs": 0,
+      "nombre_blocs_actifs": 0,
+      "nombre_blocs_inactifs": 0
+    }
+  },
+  "verification_obligations": {
+    "source": "verification.obligations",
+    "obligations": [
+      {
+        "identifiant": "obligation_minimum",
+        "libelle": "Obligation artificielle minimum",
+        "date_debut": "2026-02-02",
+        "date_fin": "2026-02-02",
+        "unite": "jours_ouvres",
+        "compteur_prefere": "GCP",
+        "priorite": 100,
+        "statut_obligation": "a_poser",
+        "quantite_requise": 1.0,
+        "quantite_satisfaite": 0.0,
+        "quantite_restante": 1.0,
+        "compteurs_autorises": ["GCP"],
+        "evenements_compatibles": []
+      }
+    ],
+    "resume": {
+      "nombre_obligations": 1,
+      "nombre_satisfaites": 0,
+      "nombre_partielles": 0,
+      "nombre_a_poser": 1,
+      "quantite_totale_requise": 1.0,
+      "quantite_totale_satisfaite": 0.0,
+      "quantite_totale_restante": 1.0
+    }
+  },
+  "parametres_projection": {
+    "periode_compteurs": "courant",
+    "date_depart": "2026-02-02",
+    "date_fin": "2026-02-04",
+    "dates_cibles": [],
+    "ordre_compteurs_sans_preference": ["GCP"],
+    "soldes_minimums_par_code": {
+      "GCP": 0.0
+    }
+  }
+}

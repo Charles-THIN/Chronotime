@@ -1,0 +1,102 @@
+{
+  "source": "projection.demi_journees.entrees",
+  "soldes": {
+    "source": "chronotime.soldeabs",
+    "compteurs": [
+      {
+        "code": "GCP",
+        "libelle": "Compteur artificiel GCP",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "0j50",
+              "unite": "jour",
+              "valeur": 0.5
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scenario": {
+    "source": "simulation.locale",
+    "scenario": {
+      "identifiant": "scenario_comparaison_priorites",
+      "libelle": "Scénario artificiel priorités",
+      "periode": {
+        "debut": "2026-06-01",
+        "fin": "2026-06-01"
+      },
+      "dates_cibles": [],
+      "preferences": {},
+      "blocs": [
+        {
+          "identifiant_local": "bloc_priorite_basse",
+          "libelle": "Bloc priorité basse",
+          "type": "absence",
+          "source": "simulation.locale",
+          "date_debut": "2026-06-01",
+          "date_fin": "2026-06-01",
+          "unite": "demi_journee",
+          "fraction_jour": 0.5,
+          "compteur_souhaite": "GCP",
+          "compteur_reellement_consomme": null,
+          "statut": "actif",
+          "verrouillage": false,
+          "priorite": 10,
+          "date_limite": null,
+          "notes_locales": "Exemple artificiel.",
+          "actif": true,
+          "duree": {
+            "unite": "demi_journee",
+            "valeur": 0.5,
+            "methode": "exemple_artificiel"
+          }
+        },
+        {
+          "identifiant_local": "bloc_priorite_haute",
+          "libelle": "Bloc priorité haute",
+          "type": "absence",
+          "source": "simulation.locale",
+          "date_debut": "2026-06-01",
+          "date_fin": "2026-06-01",
+          "unite": "demi_journee",
+          "fraction_jour": 0.5,
+          "compteur_souhaite": "GCP",
+          "compteur_reellement_consomme": null,
+          "statut": "actif",
+          "verrouillage": false,
+          "priorite": 100,
+          "date_limite": null,
+          "notes_locales": "Exemple artificiel.",
+          "actif": true,
+          "duree": {
+            "unite": "demi_journee",
+            "valeur": 0.5,
+            "methode": "exemple_artificiel"
+          }
+        }
+      ]
+    },
+    "resume": {
+      "nombre_blocs": 2,
+      "nombre_blocs_actifs": 2,
+      "nombre_blocs_inactifs": 0
+    }
+  },
+  "verification_obligations": {
+    "source": "verification.obligations",
+    "obligations": [],
+    "resume": {}
+  },
+  "parametres_projection": {
+    "periode_compteurs": "courant",
+    "date_depart": "2026-06-01",
+    "date_fin": "2026-06-01",
+    "dates_cibles": [],
+    "ordre_compteurs_sans_preference": ["GCP"],
+    "soldes_minimums_par_code": {
+      "GCP": 0.0
+    }
+  }
+}

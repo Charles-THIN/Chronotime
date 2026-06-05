@@ -132,18 +132,27 @@ Les dates, compteurs, minimums, périodes de compteurs et jours non décomptés 
 
 Un port JavaScript expérimental du projecteur demi-journalier existe pour préparer un futur recalcul navigateur.
 
-Le moteur Python reste la référence. Les deux commandes suivantes permettent de comparer les sorties sur la même entrée artificielle :
+Le moteur Python reste la référence. La parité est testée sur un corpus artificiel de fichiers `donnees/exemples/entrees_projection_comparaison*.exemple.json`.
+
+Commandes de test :
+
+```powershell
+python -m unittest tests.test_projecteur_js_comparaison
+node --test tests_js/test_projecteur_demi_journees.mjs
+```
+
+Les deux commandes suivantes permettent aussi de comparer manuellement les sorties sur une entrée artificielle :
 
 ```powershell
 python outils/chronotime/projecteur_demi_journees.py `
-  donnees/exemples/entrees_projection_comparaison.exemple.json `
-  --sortie donnees_locales/projection_python_comparaison.json
+  donnees/exemples/entrees_projection_comparaison_unites.exemple.json `
+  --sortie donnees_locales/projection_python_unites.json
 ```
 
 ```powershell
 node outils/chronotime/js/cli_projecteur_demi_journees.js `
-  donnees/exemples/entrees_projection_comparaison.exemple.json `
-  --sortie donnees_locales/projection_js_comparaison.json
+  donnees/exemples/entrees_projection_comparaison_unites.exemple.json `
+  --sortie donnees_locales/projection_js_unites.json
 ```
 
 Les fichiers générés sous `donnees_locales/` sont des sorties de validation locale et ne doivent pas être committés.

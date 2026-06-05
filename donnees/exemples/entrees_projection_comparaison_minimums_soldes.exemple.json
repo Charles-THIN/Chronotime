@@ -1,0 +1,190 @@
+{
+  "source": "projection.demi_journees.entrees",
+  "soldes": {
+    "source": "chronotime.soldeabs",
+    "compteurs": [
+      {
+        "code": "OK",
+        "libelle": "Compteur artificiel OK",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "2j00",
+              "unite": "jour",
+              "valeur": 2.0
+            }
+          }
+        }
+      },
+      {
+        "code": "PART",
+        "libelle": "Compteur artificiel partiel",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "0j25",
+              "unite": "jour",
+              "valeur": 0.25
+            }
+          }
+        }
+      },
+      {
+        "code": "VIDE",
+        "libelle": "Compteur artificiel vide",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "0j00",
+              "unite": "jour",
+              "valeur": 0.0
+            }
+          }
+        }
+      },
+      {
+        "code": "NEG",
+        "libelle": "Compteur artificiel négatif",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "0j50",
+              "unite": "jour",
+              "valeur": 0.5
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scenario": {
+    "source": "simulation.locale",
+    "scenario": {
+      "identifiant": "scenario_comparaison_minimums_soldes",
+      "libelle": "Scénario artificiel soldes et minimums",
+      "periode": {
+        "debut": "2026-04-06",
+        "fin": "2026-04-09"
+      },
+      "dates_cibles": [],
+      "preferences": {},
+      "blocs": [
+        {
+          "identifiant_local": "bloc_ok",
+          "libelle": "Bloc appliqué entièrement",
+          "type": "absence",
+          "source": "simulation.locale",
+          "date_debut": "2026-04-06",
+          "date_fin": "2026-04-06",
+          "unite": "jours_ouvres",
+          "fraction_jour": 1.0,
+          "compteur_souhaite": "OK",
+          "compteur_reellement_consomme": null,
+          "statut": "actif",
+          "verrouillage": false,
+          "priorite": 50,
+          "date_limite": null,
+          "notes_locales": "Exemple artificiel.",
+          "actif": true,
+          "duree": {
+            "unite": "jours_ouvres",
+            "valeur": 1.0,
+            "methode": "exemple_artificiel"
+          }
+        },
+        {
+          "identifiant_local": "bloc_partiel",
+          "libelle": "Bloc partiellement appliqué",
+          "type": "absence",
+          "source": "simulation.locale",
+          "date_debut": "2026-04-07",
+          "date_fin": "2026-04-07",
+          "unite": "jours_ouvres",
+          "fraction_jour": 1.0,
+          "compteur_souhaite": "PART",
+          "compteur_reellement_consomme": null,
+          "statut": "actif",
+          "verrouillage": false,
+          "priorite": 50,
+          "date_limite": null,
+          "notes_locales": "Exemple artificiel.",
+          "actif": true,
+          "duree": {
+            "unite": "jours_ouvres",
+            "valeur": 1.0,
+            "methode": "exemple_artificiel"
+          }
+        },
+        {
+          "identifiant_local": "bloc_non_couvert",
+          "libelle": "Bloc non couvert",
+          "type": "absence",
+          "source": "simulation.locale",
+          "date_debut": "2026-04-08",
+          "date_fin": "2026-04-08",
+          "unite": "jours_ouvres",
+          "fraction_jour": 1.0,
+          "compteur_souhaite": "VIDE",
+          "compteur_reellement_consomme": null,
+          "statut": "actif",
+          "verrouillage": false,
+          "priorite": 50,
+          "date_limite": null,
+          "notes_locales": "Exemple artificiel.",
+          "actif": true,
+          "duree": {
+            "unite": "jours_ouvres",
+            "valeur": 1.0,
+            "methode": "exemple_artificiel"
+          }
+        },
+        {
+          "identifiant_local": "bloc_confirmation_negative",
+          "libelle": "Bloc négatif avec confirmation",
+          "type": "absence",
+          "source": "simulation.locale",
+          "date_debut": "2026-04-09",
+          "date_fin": "2026-04-09",
+          "unite": "jours_ouvres",
+          "fraction_jour": 1.0,
+          "compteur_souhaite": "NEG",
+          "compteur_reellement_consomme": null,
+          "statut": "actif",
+          "verrouillage": false,
+          "priorite": 50,
+          "date_limite": null,
+          "notes_locales": "Exemple artificiel.",
+          "actif": true,
+          "duree": {
+            "unite": "jours_ouvres",
+            "valeur": 1.0,
+            "methode": "exemple_artificiel"
+          }
+        }
+      ]
+    },
+    "resume": {
+      "nombre_blocs": 4,
+      "nombre_blocs_actifs": 4,
+      "nombre_blocs_inactifs": 0
+    }
+  },
+  "verification_obligations": {
+    "source": "verification.obligations",
+    "obligations": [],
+    "resume": {}
+  },
+  "parametres_projection": {
+    "periode_compteurs": "courant",
+    "date_depart": "2026-04-06",
+    "date_fin": "2026-04-09",
+    "dates_cibles": [],
+    "ordre_compteurs_sans_preference": ["OK", "PART", "VIDE", "NEG"],
+    "soldes_minimums_par_code": {
+      "OK": 0.0,
+      "PART": 0.0,
+      "VIDE": 0.0,
+      "NEG": -1.0
+    }
+  }
+}

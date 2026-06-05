@@ -1,0 +1,97 @@
+{
+  "source": "projection.demi_journees.entrees",
+  "soldes": {
+    "source": "chronotime.soldeabs",
+    "compteurs": [
+      {
+        "code": "GLOBAL",
+        "libelle": "Compteur période globale",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "1j00",
+              "unite": "jour",
+              "valeur": 1.0
+            }
+          },
+          "suivant": {
+            "solde": {
+              "brut": "5j00",
+              "unite": "jour",
+              "valeur": 5.0
+            }
+          }
+        }
+      },
+      {
+        "code": "SPEC",
+        "libelle": "Compteur période spécifique",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "2j00",
+              "unite": "jour",
+              "valeur": 2.0
+            }
+          },
+          "suivant": {
+            "solde": {
+              "brut": "7j00",
+              "unite": "jour",
+              "valeur": 7.0
+            }
+          }
+        }
+      },
+      {
+        "code": "ABSENT",
+        "libelle": "Compteur période absente",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "3j00",
+              "unite": "jour",
+              "valeur": 3.0
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scenario": {
+    "source": "simulation.locale",
+    "scenario": {
+      "identifiant": "scenario_comparaison_periodes",
+      "libelle": "Scénario artificiel périodes de compteurs",
+      "periode": {
+        "debut": "2026-05-04",
+        "fin": "2026-05-04"
+      },
+      "dates_cibles": [],
+      "preferences": {},
+      "blocs": []
+    },
+    "resume": {
+      "nombre_blocs": 0,
+      "nombre_blocs_actifs": 0,
+      "nombre_blocs_inactifs": 0
+    }
+  },
+  "verification_obligations": {
+    "source": "verification.obligations",
+    "obligations": [],
+    "resume": {}
+  },
+  "parametres_projection": {
+    "periode_compteurs": "suivant",
+    "periodes_compteurs_par_code": {
+      "SPEC": "courant",
+      "ABSENT": "suivant"
+    },
+    "date_depart": "2026-05-04",
+    "date_fin": "2026-05-04",
+    "dates_cibles": [],
+    "ordre_compteurs_sans_preference": ["GLOBAL", "SPEC", "ABSENT"],
+    "soldes_minimums_par_code": {}
+  }
+}

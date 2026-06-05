@@ -1,0 +1,126 @@
+{
+  "source": "projection.demi_journees.entrees",
+  "soldes": {
+    "source": "chronotime.soldeabs",
+    "compteurs": [
+      {
+        "code": "GCP",
+        "libelle": "Compteur artificiel GCP",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "3j00",
+              "unite": "jour",
+              "valeur": 3.0
+            }
+          }
+        }
+      },
+      {
+        "code": "CANC",
+        "libelle": "Compteur artificiel CANC",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "3j00",
+              "unite": "jour",
+              "valeur": 3.0
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scenario": {
+    "source": "simulation.locale",
+    "scenario": {
+      "identifiant": "scenario_comparaison_choix_compteur",
+      "libelle": "Scénario artificiel choix compteur",
+      "periode": {
+        "debut": "2026-08-03",
+        "fin": "2026-08-05"
+      },
+      "dates_cibles": [],
+      "preferences": {},
+      "blocs": [
+        {
+          "identifiant_local": "bloc_manuel_canc",
+          "libelle": "Bloc choix manuel CANC",
+          "type": "absence",
+          "source": "simulation.locale",
+          "origine_bloc": "utilisateur",
+          "date_debut": "2026-08-03",
+          "date_fin": "2026-08-03",
+          "unite": "jours_ouvres",
+          "fraction_jour": 1.0,
+          "choix_compteur": {
+            "mode": "manuel",
+            "compteur": "CANC"
+          },
+          "compteur_souhaite": null,
+          "compteur_reellement_consomme": null,
+          "statut": "actif",
+          "verrouillage": false,
+          "priorite": 50,
+          "date_limite": null,
+          "notes_locales": "Exemple artificiel.",
+          "actif": true,
+          "duree": {
+            "unite": "jours_ouvres",
+            "valeur": 1.0,
+            "methode": "exemple_artificiel"
+          }
+        },
+        {
+          "identifiant_local": "bloc_auto",
+          "libelle": "Bloc choix automatique",
+          "type": "absence",
+          "source": "simulation.locale",
+          "origine_bloc": "utilisateur",
+          "date_debut": "2026-08-04",
+          "date_fin": "2026-08-04",
+          "unite": "jours_ouvres",
+          "fraction_jour": 1.0,
+          "choix_compteur": {
+            "mode": "auto",
+            "compteur": null
+          },
+          "compteur_souhaite": null,
+          "compteur_reellement_consomme": null,
+          "statut": "actif",
+          "verrouillage": false,
+          "priorite": 50,
+          "date_limite": null,
+          "notes_locales": "Exemple artificiel.",
+          "actif": true,
+          "duree": {
+            "unite": "jours_ouvres",
+            "valeur": 1.0,
+            "methode": "exemple_artificiel"
+          }
+        }
+      ]
+    },
+    "resume": {
+      "nombre_blocs": 2,
+      "nombre_blocs_actifs": 2,
+      "nombre_blocs_inactifs": 0
+    }
+  },
+  "verification_obligations": {
+    "source": "verification.obligations",
+    "obligations": [],
+    "resume": {}
+  },
+  "parametres_projection": {
+    "periode_compteurs": "courant",
+    "date_depart": "2026-08-03",
+    "date_fin": "2026-08-05",
+    "dates_cibles": [],
+    "ordre_compteurs_sans_preference": ["CANC", "GCP"],
+    "soldes_minimums_par_code": {
+      "GCP": 0.0,
+      "CANC": 0.0
+    }
+  }
+}
