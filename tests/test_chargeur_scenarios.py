@@ -88,6 +88,64 @@ class TestChargeurScenarios(unittest.TestCase):
         self.assertEqual(bloc["duree"]["valeur"], 1.0)
         self.assertEqual(bloc["duree"]["methode"], "jours_lundi_a_vendredi")
 
+    def test_choix_compteur_auto_normalise(self) -> None:
+        donnees = self._scenario_avec_bloc(
+            {
+                "identifiant_local": "auto",
+                "date_debut": "2026-01-05",
+                "date_fin": "2026-01-05",
+                "unite": "jours_ouvres",
+                "choix_compteur": {"mode": "auto"},
+                "origine_bloc": "utilisateur",
+            }
+        )
+        bloc = normaliser_scenario(donnees)["scenario"]["blocs"][0]
+
+        self.assertEqual(bloc["choix_compteur"], {"mode": "auto", "compteur": None})
+        self.assertEqual(bloc["origine_bloc"], "utilisateur")
+
+    def test_choix_compteur_manuel_normalise(self) -> None:
+        donnees = self._scenario_avec_bloc(
+            {
+                "identifiant_local": "manuel",
+                "date_debut": "2026-01-05",
+                "date_fin": "2026-01-05",
+                "unite": "jours_ouvres",
+                "choix_compteur": {"mode": "manuel", "compteur": "CANC"},
+            }
+        )
+        bloc = normaliser_scenario(donnees)["scenario"]["blocs"][0]
+
+        self.assertEqual(bloc["choix_compteur"], {"mode": "manuel", "compteur": "CANC"})
+
+    def test_ancien_compteur_souhaite_devient_choix_manuel(self) -> None:
+        donnees = self._scenario_avec_bloc(
+            {
+                "identifiant_local": "ancien",
+                "date_debut": "2026-01-05",
+                "date_fin": "2026-01-05",
+                "unite": "jours_ouvres",
+                "compteur_souhaite": "GCP",
+            }
+        )
+        bloc = normaliser_scenario(donnees)["scenario"]["blocs"][0]
+
+        self.assertEqual(bloc["choix_compteur"], {"mode": "manuel", "compteur": "GCP"})
+        self.assertEqual(bloc["compteur_souhaite"], "GCP")
+
+    def test_scenario_existant_reste_compatible_sans_choix_compteur(self) -> None:
+        donnees = self._scenario_avec_bloc(
+            {
+                "identifiant_local": "sans_choix",
+                "date_debut": "2026-01-05",
+                "date_fin": "2026-01-05",
+                "unite": "jours_ouvres",
+            }
+        )
+        bloc = normaliser_scenario(donnees)["scenario"]["blocs"][0]
+
+        self.assertIsNone(bloc["choix_compteur"])
+
     def test_script_sans_sortie(self) -> None:
         chemin_exemple = Path("donnees/exemples/scenario_simulation.exemple.json")
         resultat = subprocess.run(
@@ -122,6 +180,16 @@ class TestChargeurScenarios(unittest.TestCase):
         chemin_exemple = Path("donnees/exemples/scenario_simulation.exemple.json")
         donnees_brutes = json.loads(chemin_exemple.read_text(encoding="utf-8"))
         return normaliser_scenario(donnees_brutes)
+
+    def _scenario_avec_bloc(self, bloc: dict[str, object]) -> dict[str, object]:
+        return {
+            "source": SOURCE_PAR_DEFAUT,
+            "scenario": {
+                "identifiant": "test",
+                "periode": {"debut": "2026-01-01", "fin": "2026-01-31"},
+                "blocs": [bloc],
+            },
+        }
 
     def _bloc(self, identifiant_local: str) -> dict[str, object]:
         donnees = self._charger_exemple_normalise()

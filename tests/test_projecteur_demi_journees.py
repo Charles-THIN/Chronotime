@@ -158,6 +158,64 @@ class TestProjecteurDemiJournees(unittest.TestCase):
         self.assertIn("bloc_scenario_gcp", identifiants)
         self.assertNotIn("bloc_scenario_desactive", identifiants)
 
+    def test_choix_compteur_manuel_scenario_produit_evenement(self) -> None:
+        donnees = self._donnees_projection_minimum("CANC", 5.0, 0.0)
+        donnees["verification_obligations"]["obligations"] = []
+        donnees["scenario"]["scenario"]["blocs"] = [
+            {
+                "identifiant_local": "bloc_manuel_canc",
+                "libelle": "Bloc manuel CANC",
+                "type": "absence",
+                "origine_bloc": "utilisateur",
+                "date_debut": "2026-05-20",
+                "date_fin": "2026-05-20",
+                "unite": "jours_ouvres",
+                "fraction_jour": 1.0,
+                "choix_compteur": {"mode": "manuel", "compteur": "CANC"},
+                "statut": "actif",
+                "actif": True,
+                "duree": {"unite": "jours_ouvres", "valeur": 1.0},
+            }
+        ]
+
+        projection = projeter_demi_journees(donnees)
+        evenement = projection["evenements_sources"][0]
+        detail = projection["demi_journees"][0]["consommations_detaillees"][0]
+
+        self.assertEqual(evenement["compteur"], "CANC")
+        self.assertEqual(evenement["source_decision_compteur"], "utilisateur")
+        self.assertEqual(evenement["justification_decision_compteur"], "Compteur demandé explicitement par l’utilisateur.")
+        self.assertEqual(detail["source_decision_compteur"], "utilisateur")
+        self.assertEqual(detail["justification_decision_compteur"], "Compteur demandé explicitement par l’utilisateur.")
+
+    def test_choix_compteur_auto_signale_a_resoudre(self) -> None:
+        donnees = self._donnees_projection_minimum("CANC", 5.0, 0.0)
+        donnees["verification_obligations"]["obligations"] = []
+        donnees["scenario"]["scenario"]["blocs"] = [
+            {
+                "identifiant_local": "bloc_auto",
+                "libelle": "Bloc auto",
+                "type": "absence",
+                "origine_bloc": "utilisateur",
+                "date_debut": "2026-05-20",
+                "date_fin": "2026-05-20",
+                "unite": "jours_ouvres",
+                "fraction_jour": 1.0,
+                "choix_compteur": {"mode": "auto", "compteur": None},
+                "statut": "actif",
+                "actif": True,
+                "duree": {"unite": "jours_ouvres", "valeur": 1.0},
+            }
+        ]
+
+        projection = projeter_demi_journees(donnees)
+        alertes = [alerte for alerte in projection["alertes"] if alerte["type"] == "choix_compteur_auto_a_resoudre"]
+
+        self.assertEqual(projection["evenements_sources"], [])
+        self.assertEqual(len(alertes), 1)
+        self.assertEqual(alertes[0]["severite"], "information")
+        self.assertEqual(alertes[0]["identifiant_evenement"], "bloc_auto")
+
     def test_consommation_solde_suffisant(self) -> None:
         projection = self._projeter_exemple()
         self.assertEqual(projection["resume"]["nombre_alertes"], 0)

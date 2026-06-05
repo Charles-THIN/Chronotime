@@ -99,6 +99,35 @@ Si `--date-depart` et `--date-fin` ne sont pas fournis, l’orchestrateur utilis
 
 Les valeurs `GCP=suivant`, `JRTT=-10` et les jours non décomptés sont des hypothèses opérationnelles à vérifier.
 
+## Scénario Exporté Depuis La GUI
+
+La vue HTML de planification peut exporter un scénario local de prototype, par exemple `scenario_gui_chronotime.json`.
+
+Ce fichier reste une source locale à vérifier manuellement. Il peut contenir des blocs ajoutés dans la GUI avec un choix de compteur explicite ou automatique :
+
+- `choix_compteur.mode: "manuel"` pour un compteur demandé par l’utilisateur ;
+- `choix_compteur.mode: "auto"` pour laisser le futur moteur résoudre le compteur.
+
+Le recalcul reste une opération locale explicite. Exemple :
+
+```powershell
+python outils/chronotime/orchestrateur_projection.py `
+  --soldes donnees_locales/soldes_absences_chronotime.json `
+  --agenda donnees_locales/agenda_chronotime.json `
+  --obligations donnees_locales/obligations_conges_2026.json `
+  --scenario donnees_locales/scenario_gui_chronotime.json `
+  --evenements-compteurs donnees_locales/evenements_compteurs.json `
+  --date-depart 2026-05-20 `
+  --date-fin 2026-12-31 `
+  --periode-compteurs courant `
+  --periodes-compteurs-par-code GCP=suivant,JRTT=courant,CANC=courant `
+  --soldes-minimums-par-code JRTT=-10,GCP=0,CANC=0 `
+  --jours-non-decomptes 2026-12-25,2026-07-14,2026-08-15 `
+  --sortie donnees_locales/projection_gui_recalculee.json
+```
+
+Les dates, compteurs, minimums, périodes de compteurs et jours non décomptés ci-dessus sont des hypothèses locales à vérifier. La GUI ne lance pas cette commande automatiquement depuis le navigateur.
+
 ## Limites
 
 L’orchestrateur reste local.

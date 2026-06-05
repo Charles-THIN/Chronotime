@@ -172,6 +172,51 @@ Forme générale :
 
 Les durées sont des estimations locales provisoires. Elles ne tiennent pas encore compte des jours fériés, des calendriers entreprise, des fermetures ou des règles Chronotime exactes.
 
+### Choix De Compteur Dans Un Bloc De Scénario
+
+Un bloc de scénario peut porter une intention explicite de choix de compteur.
+
+Choix manuel :
+
+```json
+{
+  "choix_compteur": {
+    "mode": "manuel",
+    "compteur": "CANC"
+  }
+}
+```
+
+Choix automatique :
+
+```json
+{
+  "choix_compteur": {
+    "mode": "auto",
+    "compteur": null
+  }
+}
+```
+
+Règles :
+
+- `mode: "manuel"` indique un compteur demandé explicitement par l’utilisateur ;
+- `mode: "auto"` indique que le choix est laissé au moteur ;
+- `compteur_souhaite` reste conservé pour compatibilité avec les scénarios existants ;
+- `choix_compteur` devient le champ source à privilégier pour les nouveaux scénarios.
+
+Les sorties dérivées peuvent ensuite exposer le résultat effectivement résolu :
+
+```json
+{
+  "compteur": "CANC",
+  "source_decision_compteur": "utilisateur",
+  "justification_decision_compteur": "Compteur demandé explicitement par l’utilisateur."
+}
+```
+
+Pour un choix automatique non encore résolu, la projection peut produire un diagnostic informatif plutôt que d’inventer une allocation.
+
 ## Obligations Locales Normalisées
 
 Le chargeur d’obligations transforme un fichier local d’obligations de congés en contraintes normalisées.

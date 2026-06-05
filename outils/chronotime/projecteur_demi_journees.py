@@ -206,7 +206,32 @@ def construire_evenements_obligations(donnees: dict[str, Any], ordre_sans_prefer
     return evenements
 
 
-def construire_evenements_scenario(donnees: dict[str, Any]) -> list[dict[str, Any]]:
+def resoudre_choix_compteur_auto(_bloc: dict[str, Any]) -> str | None:
+    return None
+
+
+def choix_compteur_bloc(bloc: dict[str, Any]) -> dict[str, Any] | None:
+    choix = bloc.get("choix_compteur")
+    return choix if isinstance(choix, dict) else None
+
+
+def ajouter_alerte_choix_compteur_auto(
+    alertes: list[dict[str, Any]] | None,
+    bloc: dict[str, Any],
+) -> None:
+    if alertes is None:
+        return
+    alertes.append(
+        {
+            "type": "choix_compteur_auto_a_resoudre",
+            "severite": "information",
+            "identifiant_evenement": str(bloc.get("identifiant_local", "")),
+            "message": "Le choix automatique du compteur est une intention utilisateur qui devra être résolue par le moteur d’optimisation.",
+        }
+    )
+
+
+def construire_evenements_scenario(donnees: dict[str, Any], alertes: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
     donnees_scenario = donnees.get("scenario", {})
     scenario = donnees_scenario.get("scenario", {}) if isinstance(donnees_scenario, dict) else {}
     blocs = scenario.get("blocs", []) if isinstance(scenario, dict) else []
@@ -217,7 +242,20 @@ def construire_evenements_scenario(donnees: dict[str, Any]) -> list[dict[str, An
             continue
         if bloc.get("actif") is False or bloc.get("statut") == "desactive":
             continue
+        choix_compteur = choix_compteur_bloc(bloc)
         compteur = bloc.get("compteur_souhaite")
+        source_decision_compteur = "utilisateur"
+        justification_decision_compteur = "Compteur demandé explicitement par l’utilisateur."
+        if choix_compteur and choix_compteur.get("mode") == "auto":
+            compteur_auto = resoudre_choix_compteur_auto(bloc)
+            if not compteur_auto:
+                ajouter_alerte_choix_compteur_auto(alertes, bloc)
+                continue
+            compteur = compteur_auto
+            source_decision_compteur = "moteur"
+            justification_decision_compteur = "Compteur résolu automatiquement par le moteur."
+        elif choix_compteur and choix_compteur.get("mode") == "manuel":
+            compteur = choix_compteur.get("compteur")
         if not compteur:
             continue
         duree = bloc.get("duree") if isinstance(bloc.get("duree"), dict) else {}
@@ -235,15 +273,23 @@ def construire_evenements_scenario(donnees: dict[str, Any]) -> list[dict[str, An
                 "quantite": float(quantite),
                 "compteur": str(compteur),
                 "priorite": int(bloc.get("priorite", 50)),
+                "origine_bloc": str(bloc.get("origine_bloc", "")),
+                "choix_compteur": choix_compteur,
+                "source_decision_compteur": source_decision_compteur,
+                "justification_decision_compteur": justification_decision_compteur,
             }
         )
     return evenements
 
 
-def construire_evenements_sources(donnees: dict[str, Any], parametres: dict[str, Any]) -> list[dict[str, Any]]:
+def construire_evenements_sources(
+    donnees: dict[str, Any],
+    parametres: dict[str, Any],
+    alertes: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
     ordre_sans_preference = parametres.get("ordre_compteurs_sans_preference", [])
     evenements = construire_evenements_obligations(donnees, ordre_sans_preference)
-    evenements.extend(construire_evenements_scenario(donnees))
+    evenements.extend(construire_evenements_scenario(donnees, alertes))
     return sorted(evenements, key=lambda evenement: (evenement["date_debut"], evenement["priorite"], evenement["identifiant"]))
 
 
@@ -260,13 +306,17 @@ def jour_est_projectable(jour: date, unite: str, jours_non_decomptes: set[str] |
 
 
 def resumer_evenement(evenement: dict[str, Any], quantite_projectee: float) -> dict[str, Any]:
-    return {
+    resume = {
         "source": evenement["source"],
         "identifiant": evenement["identifiant"],
         "libelle": evenement["libelle"],
         "compteur": evenement["compteur"],
         "quantite_projectee": arrondir_quantite(quantite_projectee),
     }
+    for champ in ("origine_bloc", "choix_compteur", "source_decision_compteur", "justification_decision_compteur"):
+        if champ in evenement:
+            resume[champ] = evenement[champ]
+    return resume
 
 
 def ajouter_consommation(demi_journee: dict[str, Any], evenement: dict[str, Any], quantite: float) -> None:
@@ -285,6 +335,10 @@ def ajouter_consommation(demi_journee: dict[str, Any], evenement: dict[str, Any]
             "priorite": evenement["priorite"],
         }
     )
+    detail = demi_journee["consommations_detaillees"][-1]
+    for champ in ("choix_compteur", "source_decision_compteur", "justification_decision_compteur"):
+        if champ in evenement:
+            detail[champ] = evenement[champ]
 
 
 def ajouter_alerte_quantite_non_projectee(
@@ -540,7 +594,7 @@ def projeter_demi_journees(donnees: dict[str, Any]) -> dict[str, Any]:
     evenements_compteurs = extraire_evenements_compteurs(donnees)
     soldes_initiaux = extraire_soldes_initiaux(donnees, periode_compteurs, periodes_compteurs_par_code, alertes)
     demi_journees = creer_vecteur_demi_journees(date_depart, date_fin)
-    evenements_sources = construire_evenements_sources(donnees, parametres)
+    evenements_sources = construire_evenements_sources(donnees, parametres, alertes)
 
     projeter_evenements(evenements_sources, demi_journees, alertes, date_depart, date_fin, set(jours_non_decomptes))
     propager_soldes(demi_journees, soldes_initiaux, alertes, soldes_minimums_par_code)

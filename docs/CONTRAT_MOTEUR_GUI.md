@@ -48,6 +48,51 @@ Les sous-vues `Calendrier` et `Frise` peuvent être exclusives visuellement. Ell
 
 Cette tranche conserve `localStorage` comme persistance de prototype. Cette persistance ne devient pas une source métier durable.
 
+## Choix de compteur
+
+Une commande portant sur un bloc d’absence peut transporter une intention de choix de compteur.
+
+Forme minimale :
+
+```json
+{
+  "choix_compteur": {
+    "mode": "manuel",
+    "compteur": "CANC"
+  }
+}
+```
+
+ou :
+
+```json
+{
+  "choix_compteur": {
+    "mode": "auto",
+    "compteur": null
+  }
+}
+```
+
+Règles :
+
+- `mode: "manuel"` signifie que l’utilisateur demande explicitement un compteur ;
+- `mode: "auto"` signifie que l’utilisateur laisse le choix au moteur ;
+- `auto` n’est pas un compteur final ;
+- l’état transitoire d’interface ne porte pas la vérité métier du compteur final.
+
+Dans les sorties dérivées, le moteur expose le compteur effectivement affecté, la source de décision du compteur et, si utile, une justification :
+
+```json
+{
+  "compteur": "CANC",
+  "source_decision_compteur": "utilisateur",
+  "justification_decision_compteur": "Compteur demandé explicitement par l’utilisateur."
+}
+```
+
+La première implémentation GUI transporte cette intention et diagnostique les choix automatiques non encore résolus. Elle ne stabilise pas encore l’optimisation complète des compteurs.
+
 ## État central
 
 `etat_central` est l’objet conceptuel que les vues consomment.

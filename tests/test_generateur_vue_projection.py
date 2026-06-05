@@ -498,6 +498,7 @@ class TestGenerateurVueProjection(unittest.TestCase):
     def test_generation_html_sans_reseau_ni_acces_fichier_navigateur(self) -> None:
         html = generer_html(self._charger_exemple())
         self.assertNotIn("fetch(", html)
+        self.assertNotIn("XMLHttpRequest", html)
         self.assertNotIn("indexedDB", html)
         self.assertNotIn("FileSystem", html)
 
@@ -597,6 +598,52 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("diagnostics-planification", html)
         self.assertNotIn("localStorage.setItem(CLE_STOCKAGE_PROTO, JSON.stringify(etatTransitoireInterface", html)
         self.assertNotIn("localStorage.setItem(CLE_STOCKAGE_PROTO, JSON.stringify(resultatPrevisualisation", html)
+
+    def test_generation_html_choix_compteur_gui(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        for marqueur in (
+            "choix-compteur-planification",
+            "Choix du compteur",
+            "Auto",
+            "choix_compteur",
+            "mode: 'auto'",
+            "mode: 'manuel'",
+            "obtenirOptionsCompteurMoteurGui",
+            "source_decision_compteur",
+            "justification_decision_compteur",
+            "Compteur connu dans la projection ; règle de priorité non déterminée dans cette vue.",
+            "moteur_gui_prototype",
+            "Origine du bloc",
+            "Choix du compteur",
+            "Source de décision du compteur",
+        ):
+            self.assertIn(marqueur, html)
+
+    def test_generation_html_export_scenario_local(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        for marqueur in (
+            "exporter-scenario-local",
+            "Exporter scénario local",
+            "scenario_gui_chronotime.json",
+            "simulation.locale",
+            "scenario_gui_chronotime",
+            "prototype_gui",
+            "jours_ouvres",
+            "orchestrateur_projection.py",
+            "--scenario donnees_locales/scenario_gui_chronotime.json",
+            "construireScenarioLocalExportable",
+            "exporterScenarioLocalGui",
+            "compteur_souhaite",
+            "compteur_reellement_consomme",
+        ):
+            self.assertIn(marqueur, html)
+
+        self.assertNotIn("fetch(", html)
+        self.assertNotIn("XMLHttpRequest", html)
+        self.assertNotIn("http://", html)
+        self.assertNotIn("https://", html)
 
     def test_generation_html_planification_non_regression_vues_et_outils(self) -> None:
         html = generer_html(self._charger_exemple())

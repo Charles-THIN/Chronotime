@@ -802,6 +802,8 @@ def script_onglets() -> str:
       const sousVues = Array.from(document.querySelectorAll('.sous-vue-planification'));
       const boutonsMode = Array.from(document.querySelectorAll('[data-mode-planification]'));
       const boutonsOutils = Array.from(document.querySelectorAll('[data-outil-planification]'));
+      const selectChoixCompteur = document.getElementById('choix-compteur-planification');
+      const boutonExporterScenarioLocal = document.getElementById('exporter-scenario-local');
       const CLE_STOCKAGE_PROTO = 'chronotime.planification.prototype.v1';
       let modePlanification = 'general';
       let outilPlanification = 'selection';
@@ -882,6 +884,59 @@ def script_onglets() -> str:
         });
         nettoyerFantomeLocal();
         deselectionnerPlanification();
+      }
+
+      function obtenirOptionsCompteurMoteurGui(etat, contexte) {
+        const select = contexte && contexte.select ? contexte.select : selectChoixCompteur;
+        const compteurs = select && select.dataset.compteursConnus
+          ? select.dataset.compteursConnus.split(',').map((compteur) => compteur.trim()).filter(Boolean)
+          : [];
+        const options = [
+          {
+            mode: 'auto',
+            valeur: 'auto',
+            libelle: 'Auto',
+            commentaire: 'Laisser le moteur choisir selon les règles connues.',
+            source_commentaire: 'moteur_gui_prototype'
+          }
+        ];
+        compteurs.forEach((compteur) => {
+          options.push({
+            mode: 'manuel',
+            valeur: compteur,
+            libelle: compteur,
+            commentaire: 'Compteur connu dans la projection ; règle de priorité non déterminée dans cette vue.',
+            source_commentaire: 'moteur_gui_prototype'
+          });
+        });
+        return options;
+      }
+
+      function initialiserChoixCompteurPlanification() {
+        if (!selectChoixCompteur) { return; }
+        const valeurCourante = selectChoixCompteur.value || 'auto';
+        const options = obtenirOptionsCompteurMoteurGui(etatCentralGui, { select: selectChoixCompteur });
+        selectChoixCompteur.textContent = '';
+        options.forEach((optionCompteur) => {
+          const option = document.createElement('option');
+          option.value = optionCompteur.valeur;
+          option.dataset.modeCompteur = optionCompteur.mode;
+          option.dataset.commentaire = optionCompteur.commentaire;
+          option.dataset.sourceCommentaire = optionCompteur.source_commentaire;
+          option.textContent = optionCompteur.libelle + ' — ' + optionCompteur.commentaire;
+          selectChoixCompteur.appendChild(option);
+        });
+        if (Array.from(selectChoixCompteur.options).some((option) => option.value === valeurCourante)) {
+          selectChoixCompteur.value = valeurCourante;
+        }
+      }
+
+      function choixCompteurDepuisInterface() {
+        const valeur = selectChoixCompteur ? selectChoixCompteur.value : 'auto';
+        if (!valeur || valeur === 'auto') {
+          return { mode: 'auto', compteur: null, libelle: 'Auto' };
+        }
+        return { mode: 'manuel', compteur: valeur, libelle: valeur };
       }
 
       function libelleSelection(type) {
@@ -1023,9 +1078,13 @@ def script_onglets() -> str:
           ajouterChampSelection(fiche, 'Libellé', donnees.selectionLibelle, false);
           ajouterChampSelection(fiche, 'Quantité', donnees.selectionQuantite, false);
           if (donnees.selectionOrigine === 'ajoute_par_utilisateur') {
-            ajouterChampSelection(fiche, 'Compteur indicatif', donnees.selectionCompteurIndicatif, false);
+            ajouterChampSelection(fiche, 'Origine du bloc', donnees.selectionOrigineBloc || 'utilisateur', false);
+            ajouterChampSelection(fiche, 'Choix du compteur', donnees.selectionChoixCompteurLibelle || 'Auto', false);
+            ajouterChampSelection(fiche, 'Compteur demandé', donnees.selectionCompteurDemande || 'aucun', false);
+            ajouterChampSelection(fiche, 'Source de décision du compteur', donnees.selectionSourceDecisionCompteur || 'moteur', false);
+            ajouterChampSelection(fiche, 'Justification', donnees.selectionJustificationDecisionCompteur || 'Le moteur devra résoudre ce choix lors du recalcul.', false);
             ajouterChampSelection(fiche, 'Source', 'prototype local localStorage', false);
-            ajouterChampSelection(fiche, 'Moteur', 'non recalculé par le moteur', false);
+            ajouterChampSelection(fiche, 'Moteur', 'non recalculé par le moteur dans cette vue tant que la projection n’a pas été régénérée', false);
             ajouterChampSelection(fiche, 'Instruction', 'Suppr pour supprimer', false);
           } else {
             ajouterChampSelection(fiche, 'Compteurs', donnees.selectionCompteurs, false);
@@ -1202,7 +1261,8 @@ def script_onglets() -> str:
           parametres: {
             date_debut: dates[0] || dateA,
             date_fin: dates[dates.length - 1] || dateB,
-            compteur_indicatif: 'non_recalcule'
+            compteur_indicatif: 'non_recalcule',
+            choix_compteur: choixCompteurDepuisInterface()
           },
           mode: 'previsualiser'
         };
@@ -1235,7 +1295,32 @@ def script_onglets() -> str:
         }
       }
 
+      function normaliserChoixCompteurPrototype(bloc) {
+        const choix = bloc && bloc.choix_compteur && typeof bloc.choix_compteur === 'object'
+          ? bloc.choix_compteur
+          : null;
+        if (choix && choix.mode === 'manuel' && choix.compteur) {
+          return { mode: 'manuel', compteur: String(choix.compteur), libelle: choix.libelle || String(choix.compteur) };
+        }
+        if (choix && choix.mode === 'auto') {
+          return { mode: 'auto', compteur: null, libelle: choix.libelle || 'Auto' };
+        }
+        const compteurIndicatif = String((bloc && bloc.compteur_indicatif) || '').trim();
+        if (compteurIndicatif && compteurIndicatif !== 'non_recalcule') {
+          return { mode: 'manuel', compteur: compteurIndicatif, libelle: compteurIndicatif };
+        }
+        return { mode: 'auto', compteur: null, libelle: 'Auto', incomplet_ancien_prototype: true };
+      }
+
+      function compteurIndicatifDepuisChoix(choix, bloc) {
+        if (choix && choix.mode === 'manuel' && choix.compteur) {
+          return choix.compteur;
+        }
+        return bloc.compteur_indicatif || 'non_recalcule';
+      }
+
       function normaliserBlocLocalPrototype(bloc) {
+        const choixCompteur = normaliserChoixCompteurPrototype(bloc || {});
         return {
           id: bloc.id || 'bloc_utilisateur_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
           type: 'absence_locale_prototype',
@@ -1243,7 +1328,9 @@ def script_onglets() -> str:
           date_fin: bloc.date_fin,
           origine: bloc.origine || 'ajoute_par_utilisateur',
           statut: bloc.statut || 'scenario_local_prototype',
-          compteur_indicatif: bloc.compteur_indicatif || 'non_recalcule',
+          choix_compteur: choixCompteur,
+          choix_compteur_incomplet: Boolean(choixCompteur.incomplet_ancien_prototype),
+          compteur_indicatif: compteurIndicatifDepuisChoix(choixCompteur, bloc),
           quantite_jours: Number(bloc.quantite_jours || datesProjeteesEntre(bloc.date_debut, bloc.date_fin).length || 0),
           cree_le: bloc.cree_le || new Date().toISOString()
         };
@@ -1253,16 +1340,39 @@ def script_onglets() -> str:
         return Array.isArray(blocs) ? blocs.map(normaliserBlocLocalPrototype) : [];
       }
 
+      function compteurAfficheDepuisChoix(choix) {
+        if (choix && choix.mode === 'manuel' && choix.compteur) {
+          return choix.compteur;
+        }
+        return 'Auto';
+      }
+
+      function sourceDecisionCompteurDepuisChoix(choix) {
+        return choix && choix.mode === 'manuel' ? 'utilisateur' : 'moteur';
+      }
+
+      function justificationDecisionCompteurDepuisChoix(choix) {
+        if (choix && choix.mode === 'manuel') {
+          return 'Compteur demandé explicitement par l’utilisateur.';
+        }
+        return 'Le moteur devra résoudre ce choix lors du recalcul.';
+      }
+
       function blocPrototypeVersBlocAffichable(bloc) {
         const blocNormalise = normaliserBlocLocalPrototype(bloc);
+        const choix = blocNormalise.choix_compteur;
         return {
           type: 'bloc_absence_affichable',
           identifiant: blocNormalise.id,
           date_debut: blocNormalise.date_debut,
           date_fin: blocNormalise.date_fin,
           origine: 'prototype_interface',
+          origine_bloc: 'utilisateur',
           statut: 'simule',
-          compteur: blocNormalise.compteur_indicatif || 'non_recalcule',
+          choix_compteur: choix,
+          compteur: compteurAfficheDepuisChoix(choix),
+          source_decision_compteur: sourceDecisionCompteurDepuisChoix(choix),
+          justification_decision_compteur: justificationDecisionCompteurDepuisChoix(choix),
           quantite_jours: blocNormalise.quantite_jours,
           diagnostics: []
         };
@@ -1381,6 +1491,7 @@ def script_onglets() -> str:
               date_fin: dates[dates.length - 1],
               origine: 'ajoute_par_utilisateur',
               statut: 'scenario_local_prototype',
+              choix_compteur: parametres.choix_compteur || { mode: 'auto', compteur: null, libelle: 'Auto' },
               compteur_indicatif: parametres.compteur_indicatif || 'non_recalcule',
               quantite_jours: dates.length,
               cree_le: new Date().toISOString()
@@ -1496,6 +1607,77 @@ def script_onglets() -> str:
         }
       }
 
+      function periodeScenarioDepuisCalendrier() {
+        const dates = joursCalendrier().map((jour) => jour.dataset.dateIso).filter(Boolean).sort();
+        return {
+          debut: dates[0] || null,
+          fin: dates[dates.length - 1] || null
+        };
+      }
+
+      function blocPrototypeVersBlocScenarioExport(bloc) {
+        const blocNormalise = normaliserBlocLocalPrototype(bloc);
+        const choix = blocNormalise.choix_compteur || { mode: 'auto', compteur: null, libelle: 'Auto' };
+        const compteurSouhaite = choix.mode === 'manuel' ? choix.compteur : null;
+        return {
+          identifiant_local: blocNormalise.id,
+          libelle: 'Absence utilisateur',
+          type: 'absence',
+          source: 'prototype_gui',
+          origine_bloc: 'utilisateur',
+          date_debut: blocNormalise.date_debut,
+          date_fin: blocNormalise.date_fin,
+          unite: 'jours_ouvres',
+          fraction_jour: 1.0,
+          choix_compteur: {
+            mode: choix.mode === 'manuel' ? 'manuel' : 'auto',
+            compteur: compteurSouhaite
+          },
+          compteur_souhaite: compteurSouhaite,
+          compteur_reellement_consomme: null,
+          statut: 'actif',
+          verrouillage: false,
+          priorite: 50,
+          date_limite: null,
+          notes_locales: 'Exporté depuis la GUI locale ; règle métier à vérifier.'
+        };
+      }
+
+      function construireScenarioLocalExportable() {
+        const periode = periodeScenarioDepuisCalendrier();
+        const blocs = blocsScenarioDepuisEtat(etatCentralGui)
+          .filter((bloc) => !bloc.choix_compteur_incomplet)
+          .map(blocPrototypeVersBlocScenarioExport);
+        return {
+          source: 'simulation.locale',
+          scenario: {
+            identifiant: 'scenario_gui_chronotime',
+            libelle: 'Scénario exporté depuis la GUI Chronotime locale',
+            periode: periode,
+            dates_cibles: [],
+            preferences: {
+              origine: 'prototype_gui',
+              exporte_depuis: 'vue_projection_html'
+            },
+            blocs: blocs
+          }
+        };
+      }
+
+      function exporterScenarioLocalGui() {
+        const scenario = construireScenarioLocalExportable();
+        const contenu = JSON.stringify(scenario, null, 2);
+        const blob = new Blob([contenu], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const lien = document.createElement('a');
+        lien.href = url;
+        lien.download = 'scenario_gui_chronotime.json';
+        document.body.appendChild(lien);
+        lien.click();
+        lien.remove();
+        URL.revokeObjectURL(url);
+      }
+
       function creerBlocLocalPrototype(dateA, dateB) {
         const dates = datesProjeteesEntre(dateA, dateB);
         if (!dates.length) { return; }
@@ -1506,7 +1688,8 @@ def script_onglets() -> str:
           parametres: {
             date_debut: dates[0],
             date_fin: dates[dates.length - 1],
-            compteur_indicatif: 'non_recalcule'
+            compteur_indicatif: 'non_recalcule',
+            choix_compteur: choixCompteurDepuisInterface()
           },
           mode: 'appliquer'
         };
@@ -1562,11 +1745,13 @@ def script_onglets() -> str:
       }
 
       function niveauSelectionBlocUtilisateur(bloc) {
+        const choix = bloc.choix_compteur || { mode: 'auto', compteur: null, libelle: 'Auto' };
         const niveau = document.createElement('span');
         niveau.className = 'niveau-selection selection-type-bloc bloc-utilisateur-prototype';
         niveau.dataset.selectionNiveau = 'local';
         niveau.dataset.selectionType = 'bloc';
         niveau.dataset.selectionOrigine = 'ajoute_par_utilisateur';
+        niveau.dataset.selectionOrigineBloc = 'utilisateur';
         niveau.dataset.selectionDateDebut = bloc.date_debut;
         niveau.dataset.selectionDateFin = bloc.date_fin;
         niveau.dataset.selectionPeriode = periodeLisible(bloc.date_debut, bloc.date_fin);
@@ -1574,6 +1759,11 @@ def script_onglets() -> str:
         niveau.dataset.selectionLibelle = 'absence locale prototype';
         niveau.dataset.selectionQuantite = bloc.quantite_jours + ' j';
         niveau.dataset.selectionCompteurIndicatif = bloc.compteur_indicatif || 'non_recalcule';
+        niveau.dataset.selectionChoixCompteurMode = choix.mode || 'auto';
+        niveau.dataset.selectionChoixCompteurLibelle = choix.mode === 'manuel' ? 'Manuel' : 'Auto';
+        niveau.dataset.selectionCompteurDemande = choix.mode === 'manuel' ? choix.compteur : 'aucun';
+        niveau.dataset.selectionSourceDecisionCompteur = sourceDecisionCompteurDepuisChoix(choix);
+        niveau.dataset.selectionJustificationDecisionCompteur = justificationDecisionCompteurDepuisChoix(choix);
         niveau.dataset.selectionAlertes = 'aucune';
         return niveau;
       }
@@ -1586,7 +1776,8 @@ def script_onglets() -> str:
           date_fin: blocAffichable.date_fin,
           origine: 'ajoute_par_utilisateur',
           statut: 'scenario_local_prototype',
-          compteur_indicatif: blocAffichable.compteur || 'non_recalcule',
+          choix_compteur: blocAffichable.choix_compteur || { mode: 'auto', compteur: null, libelle: 'Auto' },
+          compteur_indicatif: blocAffichable.source_decision_compteur === 'utilisateur' ? blocAffichable.compteur : 'non_recalcule',
           quantite_jours: blocAffichable.quantite_jours
         });
       }
@@ -1632,6 +1823,7 @@ def script_onglets() -> str:
           if (!groupe) { return; }
           (blocsAffichables || []).forEach((blocAffichable) => {
             const bloc = blocAffichableVersBlocPrototype(blocAffichable);
+            const choix = bloc.choix_compteur || { mode: 'auto', compteur: null, libelle: 'Auto' };
             const x1 = xFrisePourDate(svg, bloc.date_debut);
             const x2 = xFrisePourDate(svg, bloc.date_fin);
             const rect = document.createElementNS(svg.namespaceURI, 'rect');
@@ -1645,6 +1837,7 @@ def script_onglets() -> str:
             rect.setAttribute('tabindex', '0');
             rect.dataset.selectionType = 'bloc';
             rect.dataset.selectionOrigine = 'ajoute_par_utilisateur';
+            rect.dataset.selectionOrigineBloc = 'utilisateur';
             rect.dataset.selectionDateDebut = bloc.date_debut;
             rect.dataset.selectionDateFin = bloc.date_fin;
             rect.dataset.selectionPeriode = libelleBlocLocal(bloc);
@@ -1652,6 +1845,11 @@ def script_onglets() -> str:
             rect.dataset.selectionLibelle = 'absence locale prototype';
             rect.dataset.selectionQuantite = bloc.quantite_jours + ' j';
             rect.dataset.selectionCompteurIndicatif = bloc.compteur_indicatif || 'non_recalcule';
+            rect.dataset.selectionChoixCompteurMode = choix.mode || 'auto';
+            rect.dataset.selectionChoixCompteurLibelle = choix.mode === 'manuel' ? 'Manuel' : 'Auto';
+            rect.dataset.selectionCompteurDemande = choix.mode === 'manuel' ? choix.compteur : 'aucun';
+            rect.dataset.selectionSourceDecisionCompteur = sourceDecisionCompteurDepuisChoix(choix);
+            rect.dataset.selectionJustificationDecisionCompteur = justificationDecisionCompteurDepuisChoix(choix);
             rect.dataset.selectionAlertes = 'aucune';
             const titre = document.createElementNS(svg.namespaceURI, 'title');
             titre.textContent = 'Bloc local prototype ' + libelleBlocLocal(bloc);
@@ -1721,11 +1919,16 @@ def script_onglets() -> str:
         puce.className = 'puce-selection';
         puce.textContent = 'bloc local prototype';
         fiche.appendChild(puce);
+        const choix = bloc.choix_compteur || { mode: 'auto', compteur: null, libelle: 'Auto' };
         ajouterChampSelection(fiche, 'Période', libelleBlocLocal(bloc), false);
         ajouterChampSelection(fiche, 'Quantité', bloc.quantite_jours + ' j', false);
-        ajouterChampSelection(fiche, 'Compteur indicatif', bloc.compteur_indicatif, false);
+        ajouterChampSelection(fiche, 'Origine du bloc', 'utilisateur', false);
+        ajouterChampSelection(fiche, 'Choix du compteur', choix.mode === 'manuel' ? 'Manuel' : 'Auto', false);
+        ajouterChampSelection(fiche, 'Compteur demandé', choix.mode === 'manuel' ? choix.compteur : 'aucun', false);
+        ajouterChampSelection(fiche, 'Source de décision du compteur', sourceDecisionCompteurDepuisChoix(choix), false);
+        ajouterChampSelection(fiche, 'Justification', justificationDecisionCompteurDepuisChoix(choix), false);
         ajouterChampSelection(fiche, 'Source', 'prototype local localStorage', false);
-        ajouterChampSelection(fiche, 'Moteur', 'non recalculé par le moteur', false);
+        ajouterChampSelection(fiche, 'Moteur', 'non recalculé par le moteur dans cette vue tant que la projection n’a pas été régénérée', false);
         ajouterChampSelection(fiche, 'Instruction', 'Suppr pour supprimer', false);
         ajouterChampSelection(fiche, 'Identifiant', bloc.id, true);
         cible.appendChild(fiche);
@@ -1883,6 +2086,12 @@ def script_onglets() -> str:
         });
       });
 
+      if (boutonExporterScenarioLocal) {
+        boutonExporterScenarioLocal.addEventListener('click', function () {
+          exporterScenarioLocalGui();
+        });
+      }
+
       document.querySelectorAll('.element-selectionnable').forEach(connecterElementSelectionnable);
 
       joursCalendrier().forEach((jour) => {
@@ -1979,6 +2188,7 @@ def script_onglets() -> str:
       activerOutilPlanification('selection');
       blocsLocauxPrototype = lireBlocsLocauxPrototype();
       etatCentralGui = construireEtatCentralGui(blocsLocauxPrototype, []);
+      initialiserChoixCompteurPlanification();
       afficherEtatCentralGui(etatCentralGui);
       initialiserCurseursFrise();
     }());
@@ -2222,14 +2432,43 @@ def compteurs_tries_pour_affichage(soldes: dict[str, Any], inclure_tous: bool = 
     return [(code, valeur) for _groupe, _cle, code, valeur in sorted(elements)]
 
 
-def barre_outils_gauche() -> str:
-    return """
+def compteurs_connus_projection(projection: dict[str, Any]) -> list[str]:
+    compteurs: set[str] = set()
+    soldes_initiaux = projection.get("soldes_initiaux")
+    if isinstance(soldes_initiaux, dict):
+        compteurs.update(str(compteur) for compteur in soldes_initiaux if str(compteur))
+    dates_cibles = projection.get("soldes_aux_dates_cibles")
+    if isinstance(dates_cibles, list):
+        for cible in dates_cibles:
+            soldes = cible.get("soldes") if isinstance(cible, dict) else None
+            if isinstance(soldes, dict):
+                compteurs.update(str(compteur) for compteur in soldes if str(compteur))
+    return sorted(compteurs)
+
+
+def barre_outils_gauche(projection: dict[str, Any]) -> str:
+    compteurs_connus = ",".join(compteurs_connus_projection(projection))
+    return f"""
     <aside class="barre-outils-gauche" aria-label="Barre d’outils de planification">
       <h3>Outils</h3>
       <button type="button" class="outil-passif outil-actif outil-selection-actif" data-outil-planification="selection" aria-pressed="true">Sélection</button>
       <button type="button" class="outil-passif" data-outil-planification="poser" aria-pressed="false">Poser des jours</button>
       <button type="button" class="outil-passif outil-desactive" disabled>Scinder</button>
       <button type="button" class="outil-passif outil-desactive" disabled>Fusionner</button>
+      <h3>Choix du compteur</h3>
+      <label class="libelle-controle-planification" for="choix-compteur-planification">Choix du compteur</label>
+      <select id="choix-compteur-planification" class="controle-planification" data-compteurs-connus="{escape(compteurs_connus)}">
+        <option value="auto">Auto — laisser le moteur choisir</option>
+      </select>
+      <p id="commentaire-choix-compteur" class="note-outil">Options commentées par le moteur GUI prototype.</p>
+      <button type="button" id="exporter-scenario-local" class="outil-passif">Exporter scénario local</button>
+      <p class="note-outil">
+        1. Exporter le scénario local.<br>
+        2. Placer le fichier dans <code>donnees_locales/</code>.<br>
+        3. Relancer <code>orchestrateur_projection.py</code> avec
+        <code>--scenario donnees_locales/scenario_gui_chronotime.json</code>.<br>
+        4. Régénérer la vue HTML depuis la projection recalculée.
+      </p>
       <h3>Affichage</h3>
       <button type="button" class="outil-passif outil-actif mode-affichage-actif" data-mode-planification="general" aria-pressed="true">Général</button>
       <button type="button" class="outil-passif" data-mode-planification="detaille" aria-pressed="false">Détaillé</button>
@@ -2894,7 +3133,7 @@ def vue_planification(
 ) -> str:
     return f"""
     <section class="interface-planification">
-      {barre_outils_gauche()}
+      {barre_outils_gauche(projection)}
       <div class="zone-centrale-planification">
         <h2>Planification</h2>
         <div class="sous-vues-planification" role="tablist" aria-label="Vues passives de planification">
@@ -3412,6 +3651,26 @@ def feuille_style() -> str:
     .outil-desactive {
       opacity: 0.48;
       cursor: not-allowed;
+    }
+    .libelle-controle-planification,
+    .note-outil {
+      display: block;
+      margin: 6px 0;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.25;
+    }
+    .controle-planification {
+      width: 100%;
+      min-width: 0;
+      margin: 4px 0 8px;
+      padding: 8px;
+      border: 1px solid var(--trait);
+      border-radius: 8px;
+      background: #fffaf0;
+      color: var(--accent-fort);
+      font: inherit;
+      font-size: 0.82rem;
     }
     .valeur-info {
       margin: 0;

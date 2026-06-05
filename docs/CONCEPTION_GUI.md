@@ -10,7 +10,7 @@ Il distingue :
 - les règles stables à respecter ;
 - l’historique du prototype HTML local `V0.x`.
 
-Les sections `V0.1` à `V0.5.1` décrivent les étapes du prototype local. Elles restent utiles pour comprendre l’ergonomie explorée, mais elles ne définissent pas à elles seules l’architecture cible.
+Les sections `V0.1` à `V0.5.2` décrivent les étapes du prototype local. Elles restent utiles pour comprendre l’ergonomie explorée, mais elles ne définissent pas à elles seules l’architecture cible.
 
 ## Règle d’architecture
 
@@ -660,6 +660,56 @@ Limites maintenues :
 - aucun recalcul de `projection.demi_journees` ;
 - les blocs projetés issus de la projection ne sont pas encore convertis intégralement en `blocs_affichables` ;
 - `localStorage` reste une persistance prototype, pas une source métier durable.
+
+## V0.5.2 Choix de compteur manuel ou automatique
+
+La version `V0.5.2` introduit un modèle explicite de choix de compteur pour les blocs créés depuis la GUI.
+
+La GUI distingue désormais :
+
+- l’origine du bloc, par exemple `utilisateur` ;
+- l’intention de choix du compteur, portée par `choix_compteur` ;
+- le compteur effectivement affecté, qui reste une sortie dérivée du moteur ;
+- la source de décision du compteur, par exemple `utilisateur` ou `moteur`.
+
+Un bloc utilisateur peut demander explicitement un compteur :
+
+```json
+{
+  "origine_bloc": "utilisateur",
+  "choix_compteur": {
+    "mode": "manuel",
+    "compteur": "CANC"
+  }
+}
+```
+
+Il peut aussi laisser le choix au moteur :
+
+```json
+{
+  "origine_bloc": "utilisateur",
+  "choix_compteur": {
+    "mode": "auto",
+    "compteur": null
+  }
+}
+```
+
+`auto` est une intention source. Ce n’est pas un compteur final et ce n’est pas une optimisation déjà réalisée par la vue.
+
+La GUI peut afficher des options de compteur et des commentaires prudents, mais ces commentaires viennent du moteur GUI prototype centralisé. La vue ne doit pas inventer de priorité métier comme une expiration ou une règle de préservation si cette information n’est pas produite par le moteur.
+
+Le scénario exporté depuis la GUI contient `choix_compteur` et reste compatible avec le flux local existant via `compteur_souhaite` pour les choix manuels.
+
+Limites maintenues :
+
+- aucune optimisation complète d’allocation des compteurs ;
+- aucune répartition automatique d’un bloc sur plusieurs compteurs ;
+- aucun recalcul réel des soldes dans la page HTML ;
+- `mode: auto` est transporté et signalé, mais pas encore résolu ;
+- les décisions explicitement demandées par l’utilisateur devront être respectées par une future optimisation ;
+- les décisions laissées au moteur pourront être recalculées ou réoptimisées plus tard.
 
 ## Vue future des soldes dans le temps
 

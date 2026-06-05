@@ -135,6 +135,26 @@ def normaliser_entier(valeur: Any, defaut: int) -> int:
         raise ValueError(f"Entier invalide : {valeur!r}") from erreur
 
 
+def normaliser_choix_compteur(bloc_brut: dict[str, Any]) -> dict[str, Any] | None:
+    choix_brut = bloc_brut.get("choix_compteur")
+    if isinstance(choix_brut, dict):
+        mode = str(choix_brut.get("mode") or "").strip().lower()
+        if mode == "auto":
+            return {"mode": "auto", "compteur": None}
+        if mode == "manuel":
+            compteur = choix_brut.get("compteur")
+            if not isinstance(compteur, str) or not compteur.strip():
+                raise ValueError("Le choix_compteur manuel exige un compteur non vide.")
+            return {"mode": "manuel", "compteur": compteur.strip()}
+        raise ValueError(f"Mode de choix_compteur invalide : {mode!r}")
+
+    compteur_souhaite = bloc_brut.get("compteur_souhaite")
+    if isinstance(compteur_souhaite, str) and compteur_souhaite.strip():
+        return {"mode": "manuel", "compteur": compteur_souhaite.strip()}
+
+    return None
+
+
 def normaliser_bloc(bloc_brut: Any) -> dict[str, Any]:
     if not isinstance(bloc_brut, dict):
         raise ValueError(f"Bloc de scénario invalide : {bloc_brut!r}")
@@ -146,16 +166,19 @@ def normaliser_bloc(bloc_brut: Any) -> dict[str, Any]:
     date_debut = normaliser_date_iso(bloc_brut.get("date_debut"))
     date_fin = normaliser_date_iso(bloc_brut.get("date_fin"))
     date_limite = normaliser_date_iso(bloc_brut.get("date_limite"))
+    choix_compteur = normaliser_choix_compteur(bloc_brut)
 
     return {
         "identifiant_local": str(bloc_brut.get("identifiant_local") or ""),
         "libelle": str(bloc_brut.get("libelle") or "").strip(),
         "type": type_bloc,
         "source": str(bloc_brut.get("source") or SOURCE_PAR_DEFAUT),
+        "origine_bloc": str(bloc_brut.get("origine_bloc") or "").strip(),
         "date_debut": date_debut,
         "date_fin": date_fin,
         "unite": unite,
         "fraction_jour": fraction_jour,
+        "choix_compteur": choix_compteur,
         "compteur_souhaite": bloc_brut.get("compteur_souhaite"),
         "compteur_reellement_consomme": bloc_brut.get("compteur_reellement_consomme"),
         "statut": statut,
