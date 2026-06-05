@@ -94,6 +94,22 @@ Les diagnostics produits par le moteur peuvent cibler :
 
 Calendrier, frise, compteurs et alertes doivent afficher le même état central et les mêmes diagnostics. Ils ne doivent pas recalculer séparément les règles d’allocation, de solde ou de validation.
 
+## Port JS Expérimental Du Projecteur
+
+Le projecteur Python reste la référence métier du flux local actuel.
+
+Un port JavaScript du projecteur demi-journalier est introduit progressivement pour préparer un futur recalcul directement dans le navigateur. Ce port est une sortie parallèle de comparaison, pas un remplacement du moteur Python.
+
+Règles de portage :
+
+- conserver le moteur Python tant que la parité n’est pas suffisante ;
+- tester le moteur JS sur les mêmes entrées normalisées que le moteur Python ;
+- comparer les sorties `projection.demi_journees` sous forme canonique ;
+- ne pas déplacer la logique métier dans les vues ;
+- ne pas brancher la GUI sur le moteur JS tant que le contrat et la parité ne sont pas stabilisés.
+
+Les tests de parité Python / JS protègent contre les divergences de comportement sur les soldes, alertes, quantités appliquées et dates cibles.
+
 ## Rôle Du Vecteur De Demi-Journées
 
 Le vecteur de demi-journées sert à :

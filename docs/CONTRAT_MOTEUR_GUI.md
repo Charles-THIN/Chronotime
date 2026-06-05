@@ -332,6 +332,25 @@ Elles ne recalculent pas chacune :
 - reports ;
 - validité métier d’un déplacement.
 
+## Moteur JS Navigateur
+
+La future GUI pourra appeler un moteur JavaScript directement dans le navigateur.
+
+Ce choix technique ne change pas le contrat :
+
+```text
+commande utilisateur
+-> sources événementielles ou scénario local
+-> moteur identifiable
+-> projection dérivée
+-> diagnostics
+-> vues dérivées
+```
+
+Le port JS du projecteur doit rester séparé du rendu visuel. Il ne rend pas `projection.demi_journees`, `mouvements.soldes` ou `chronologie.soldes` éditables.
+
+Tant que la parité avec le moteur Python de référence n’est pas suffisante, la GUI ne doit pas dépendre exclusivement du moteur JS.
+
 ## Exemples de flux
 
 ### Ajouter une absence

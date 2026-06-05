@@ -57,6 +57,7 @@ Ce document liste les points encore ouverts avant de figer un moteur de calcul p
 - Remplacer `localStorage` prototype par une source de scénario locale ou un état moteur persistant.
 - Définir la stratégie de prévalidation pendant le glisser-déposer.
 - Définir comment calendrier, frise, compteurs et alertes consomment un même état central sans logique métier dupliquée.
+- Confirmer la parité complète Python / JS avant de brancher la GUI sur le moteur JS ou de supprimer le moteur Python.
 
 ## Événements de compteur
 

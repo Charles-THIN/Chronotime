@@ -128,6 +128,26 @@ python outils/chronotime/orchestrateur_projection.py `
 
 Les dates, compteurs, minimums, périodes de compteurs et jours non décomptés ci-dessus sont des hypothèses locales à vérifier. La GUI ne lance pas cette commande automatiquement depuis le navigateur.
 
+## Port JS Expérimental Du Projecteur
+
+Un port JavaScript expérimental du projecteur demi-journalier existe pour préparer un futur recalcul navigateur.
+
+Le moteur Python reste la référence. Les deux commandes suivantes permettent de comparer les sorties sur la même entrée artificielle :
+
+```powershell
+python outils/chronotime/projecteur_demi_journees.py `
+  donnees/exemples/entrees_projection_comparaison.exemple.json `
+  --sortie donnees_locales/projection_python_comparaison.json
+```
+
+```powershell
+node outils/chronotime/js/cli_projecteur_demi_journees.js `
+  donnees/exemples/entrees_projection_comparaison.exemple.json `
+  --sortie donnees_locales/projection_js_comparaison.json
+```
+
+Les fichiers générés sous `donnees_locales/` sont des sorties de validation locale et ne doivent pas être committés.
+
 ## Limites
 
 L’orchestrateur reste local.
