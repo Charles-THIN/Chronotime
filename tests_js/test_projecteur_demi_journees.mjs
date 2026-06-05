@@ -46,6 +46,16 @@ const alertesAttendues = {
   ],
 };
 
+function cloneJson(objet) {
+  return JSON.parse(JSON.stringify(objet));
+}
+
+function soldeFinal(projection, compteur) {
+  const demiJournees = projection.demi_journees || [];
+  const derniere = demiJournees[demiJournees.length - 1];
+  return derniere.soldes_apres[compteur];
+}
+
 test("projette tout le corpus artificiel", async () => {
   const fichiers = await fichiersCorpus();
   assert.ok(fichiers.length >= 2);
@@ -67,4 +77,48 @@ test("projette tout le corpus artificiel", async () => {
       assert.ok(typesAlertes.has(typeAlerte), `${nom} devrait contenir ${typeAlerte}`);
     }
   }
+});
+
+test("simule un ajout de bloc prototype GUI comme dans le navigateur", async () => {
+  const fichier = path.join(repertoireExemples, "entrees_projection_comparaison_minimum.exemple.json");
+  const donnees = JSON.parse(await readFile(fichier, "utf8"));
+  const projectionInitiale = projeterDemiJournees(donnees);
+  const donneesVivantes = cloneJson(donnees);
+
+  donneesVivantes.scenario.scenario.blocs.push({
+    identifiant_local: "bloc_gui_test",
+    libelle: "Absence utilisateur",
+    type: "absence",
+    source: "prototype_gui",
+    origine_bloc: "utilisateur",
+    date_debut: "2026-02-03",
+    date_fin: "2026-02-03",
+    unite: "jours_ouvres",
+    fraction_jour: 1.0,
+    choix_compteur: {
+      mode: "manuel",
+      compteur: "GCP",
+    },
+    compteur_souhaite: "GCP",
+    compteur_reellement_consomme: null,
+    statut: "actif",
+    verrouillage: false,
+    priorite: 50,
+    date_limite: null,
+    notes_locales: "Bloc GUI recalculé localement.",
+    actif: true,
+    duree: {
+      unite: "jours_ouvres",
+      valeur: 1.0,
+      methode: "prototype_gui",
+    },
+  });
+
+  const projectionVivante = projeterDemiJournees(donneesVivantes);
+  const evenement = projectionVivante.evenements_sources.find((source) => source.identifiant === "bloc_gui_test");
+
+  assert.ok(evenement);
+  assert.equal(evenement.source, "scenario");
+  assert.equal(evenement.source_decision_compteur, "utilisateur");
+  assert.equal(soldeFinal(projectionVivante, "GCP"), soldeFinal(projectionInitiale, "GCP") - 1);
 });

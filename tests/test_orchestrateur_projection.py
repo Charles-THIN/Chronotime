@@ -123,6 +123,31 @@ class TestOrchestrateurProjection(unittest.TestCase):
             projection = json.loads(chemin_sortie.read_text(encoding="utf-8"))
             self.assertGreater(projection["resume"]["nombre_demi_journees"], 0)
 
+    def test_script_avec_sortie_entrees_projection(self) -> None:
+        with tempfile.TemporaryDirectory() as repertoire_temporaire:
+            chemin_projection = Path(repertoire_temporaire) / "projection.json"
+            chemin_entrees = Path(repertoire_temporaire) / "entrees_projection.json"
+            subprocess.run(
+                [
+                    sys.executable,
+                    "outils/chronotime/orchestrateur_projection.py",
+                    *self._arguments_communs(),
+                    "--sortie",
+                    str(chemin_projection),
+                    "--sortie-entrees-projection",
+                    str(chemin_entrees),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            projection = json.loads(chemin_projection.read_text(encoding="utf-8"))
+            entrees = json.loads(chemin_entrees.read_text(encoding="utf-8"))
+            self.assertEqual(projection["source"], "projection.demi_journees")
+            self.assertEqual(entrees["source"], "projection.demi_journees.entrees")
+            self.assertIn("parametres_projection", entrees)
+
     def test_orchestrateur_avec_evenements_compteurs(self) -> None:
         projection = orchestrer_projection(
             analyser_arguments(

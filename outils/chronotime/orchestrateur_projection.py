@@ -185,7 +185,7 @@ def construire_entrees_projection(
     }
 
 
-def orchestrer_projection(arguments: argparse.Namespace) -> dict[str, Any]:
+def construire_projection_et_entrees(arguments: argparse.Namespace) -> tuple[dict[str, Any], dict[str, Any]]:
     soldes_normalises = normaliser_soldes(lire_json(arguments.soldes))
     agenda_normalise = normaliser_agenda(lire_json(arguments.agenda))
     scenario_normalise = normaliser_scenario(lire_json(arguments.scenario))
@@ -218,7 +218,12 @@ def orchestrer_projection(arguments: argparse.Namespace) -> dict[str, Any]:
         ordre_compteurs_sans_preference=analyser_ordre_compteurs(arguments.ordre_compteurs_sans_preference),
         evenements_compteurs=evenements_compteurs,
     )
-    return projeter_demi_journees(entrees_projection)
+    return projeter_demi_journees(entrees_projection), entrees_projection
+
+
+def orchestrer_projection(arguments: argparse.Namespace) -> dict[str, Any]:
+    projection, _entrees_projection = construire_projection_et_entrees(arguments)
+    return projection
 
 
 def analyser_arguments(argv: list[str] | None = None) -> argparse.Namespace:
@@ -252,16 +257,23 @@ def analyser_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         help="Ordre des compteurs pour les obligations sans compteur préféré.",
     )
     analyseur.add_argument("--sortie", type=Path, help="Chemin du fichier où écrire la projection.")
+    analyseur.add_argument(
+        "--sortie-entrees-projection",
+        type=Path,
+        help="Chemin facultatif où écrire les entrées normalisées utilisées par le projecteur.",
+    )
     return analyseur.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     arguments = analyser_arguments(argv)
     try:
-        projection = orchestrer_projection(arguments)
+        projection, entrees_projection = construire_projection_et_entrees(arguments)
     except ValueError as erreur:
         raise SystemExit(str(erreur)) from erreur
     ecrire_sortie(serialiser_json(projection), arguments.sortie)
+    if arguments.sortie_entrees_projection is not None:
+        ecrire_sortie(serialiser_json(entrees_projection), arguments.sortie_entrees_projection)
     return 0
 
 

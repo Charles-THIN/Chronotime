@@ -351,6 +351,8 @@ Le port JS du projecteur doit rester séparé du rendu visuel. Il ne rend pas `p
 
 Tant que la parité avec le moteur Python de référence n’est pas suffisante, la GUI ne doit pas dépendre exclusivement du moteur JS.
 
+Dans la phase `V0.5.3`, la page HTML peut embarquer `projection.demi_journees.entrees` et appeler le projecteur JS en mémoire. Le contrat reste inchangé : l’action utilisateur modifie un scénario local en mémoire, le moteur produit une projection dérivée recalculée, puis les vues affichent un résultat issu de cette projection. Les composants visuels ne deviennent pas propriétaires du calcul des soldes ou de l’allocation des compteurs.
+
 ## Exemples de flux
 
 ### Ajouter une absence

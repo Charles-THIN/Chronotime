@@ -10,7 +10,9 @@ Il distingue :
 - les règles stables à respecter ;
 - l’historique du prototype HTML local `V0.x`.
 
-Les sections `V0.1` à `V0.5.2` décrivent les étapes du prototype local. Elles restent utiles pour comprendre l’ergonomie explorée, mais elles ne définissent pas à elles seules l’architecture cible.
+Les sections `V0.1` à `V0.5.3` décrivent les étapes du prototype local. Elles restent utiles pour comprendre l’ergonomie explorée, mais elles ne définissent pas à elles seules l’architecture cible.
+
+Règle de sobriété d’interface : un contrôle explicite ne doit pas répéter inutilement un titre, un sous-titre et un libellé. La vue affiche le texte strictement nécessaire ; les explications longues restent en aide discrète, en infobulle ou dans la documentation.
 
 ## Règle d’architecture
 
@@ -701,6 +703,29 @@ Il peut aussi laisser le choix au moteur :
 La GUI peut afficher des options de compteur et des commentaires prudents, mais ces commentaires viennent du moteur GUI prototype centralisé. La vue ne doit pas inventer de priorité métier comme une expiration ou une règle de préservation si cette information n’est pas produite par le moteur.
 
 Le scénario exporté depuis la GUI contient `choix_compteur` et reste compatible avec le flux local existant via `compteur_souhaite` pour les choix manuels.
+
+## V0.5.3 Premier recalcul JS vivant
+
+La version `V0.5.3` active une première tranche verticale de recalcul local en navigateur.
+
+Quand la page HTML est générée avec `--entrees-projection`, elle embarque les entrées normalisées `projection.demi_journees.entrees` et le projecteur JavaScript expérimental. Les blocs posés dans la GUI sont transformés en blocs de scénario en mémoire, puis le projecteur JS recalcule une nouvelle projection dérivée sans modifier la projection initiale ni les sources sur disque.
+
+Le flux reste :
+
+```text
+geste utilisateur
+-> commande GUI acceptée
+-> scénario local en mémoire
+-> projecteur JS
+-> projection.demi_journees recalculée en mémoire
+-> résumé dérivé dans la barre droite
+```
+
+La projection vivante affiche pour l’instant un résumé compact : nombre d’alertes et soldes finaux. Les vues Calendrier et Frise ne sont pas encore intégralement reconstruites depuis cette projection vivante ; cette migration reste une étape suivante.
+
+Le moteur Python reste la référence. Le moteur JS est une brique expérimentale couverte par des tests de parité et utilisée localement dans la page uniquement lorsque les entrées de projection sont explicitement embarquées.
+
+En l’absence de `--entrees-projection`, la page reste utilisable en mode statique/prototype et indique que le recalcul direct est indisponible.
 
 Limites maintenues :
 

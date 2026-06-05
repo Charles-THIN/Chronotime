@@ -9,8 +9,10 @@ from typing import Any
 
 
 SOURCE_ATTENDUE = "projection.demi_journees"
+SOURCE_ENTREES_PROJECTION = "projection.demi_journees.entrees"
 SOURCE_CHRONOLOGIE = "chronologie.soldes"
 SOURCE_SYNTHESE = "synthese.planification"
+CHEMIN_PROJECTEUR_JS = Path(__file__).with_name("js") / "projecteur_demi_journees.js"
 MOIS_FRANCAIS = {
     1: "janvier",
     2: "février",
@@ -70,6 +72,15 @@ def charger_projection(chemin: Path) -> dict[str, Any]:
         raise ValueError("La projection doit être un objet JSON.")
     if donnees.get("source") != SOURCE_ATTENDUE:
         raise ValueError(f"Source de projection invalide : {donnees.get('source')!r}.")
+    return donnees
+
+
+def charger_entrees_projection(chemin: Path) -> dict[str, Any]:
+    donnees = lire_json(chemin)
+    if not isinstance(donnees, dict):
+        raise ValueError("Les entrées de projection doivent être un objet JSON.")
+    if donnees.get("source") != SOURCE_ENTREES_PROJECTION:
+        raise ValueError(f"Source d'entrées de projection invalide : {donnees.get('source')!r}.")
     return donnees
 
 
@@ -792,6 +803,48 @@ def envelopper_vue(identifiant: str, titre: str, contenu: str, active: bool = Fa
     )
 
 
+def serialiser_json_script(donnees: Any) -> str:
+    return json.dumps(donnees, ensure_ascii=False).replace("</", "<\\/")
+
+
+def script_entrees_projection(entrees_projection: dict[str, Any] | None) -> str:
+    donnees = "null" if entrees_projection is None else serialiser_json_script(entrees_projection)
+    return f"""
+    <script>
+    window.ChronotimeEntreesProjectionInitiales = {donnees};
+    </script>
+    """
+
+
+def source_projecteur_js_navigateur() -> str:
+    try:
+        source = CHEMIN_PROJECTEUR_JS.read_text(encoding="utf-8")
+    except OSError as erreur:
+        raise SystemExit(f"Impossible de lire le projecteur JS : {CHEMIN_PROJECTEUR_JS}") from erreur
+
+    interdits = ("import ", "fetch(", "XMLHttpRequest", "http://", "https://")
+    for interdit in interdits:
+        if interdit in source:
+            raise ValueError(f"Le projecteur JS embarqué contient une ressource ou API interdite : {interdit}")
+    return source.replace("export function ", "function ")
+
+
+def script_projecteur_js_embarque(entrees_projection: dict[str, Any] | None) -> str:
+    if entrees_projection is None:
+        return ""
+    source = source_projecteur_js_navigateur()
+    return f"""
+    <script>
+    (function () {{
+    {source}
+      window.ChronotimeProjecteur = {{
+        projeterDemiJournees: projeterDemiJournees
+      }};
+    }}());
+    </script>
+    """
+
+
 def script_onglets() -> str:
     return """
     <script>
@@ -804,6 +857,8 @@ def script_onglets() -> str:
       const boutonsOutils = Array.from(document.querySelectorAll('[data-outil-planification]'));
       const selectChoixCompteur = document.getElementById('choix-compteur-planification');
       const boutonExporterScenarioLocal = document.getElementById('exporter-scenario-local');
+      const cibleProjectionVivante = document.getElementById('projection-vivante-planification');
+      const entreesProjectionInitiales = window.ChronotimeEntreesProjectionInitiales || null;
       const CLE_STOCKAGE_PROTO = 'chronotime.planification.prototype.v1';
       let modePlanification = 'general';
       let outilPlanification = 'selection';
@@ -813,6 +868,7 @@ def script_onglets() -> str:
       let dateSurvolPose = null;
       let poseEnCours = false;
       let etatCentralGui = null;
+      let projectionVivante = null;
       // localStorage = persistance prototype ; etatCentralGui = état central courant de la page.
       // etatTransitoireInterface = manipulation en cours, non durable.
       let etatTransitoireInterface = {
@@ -905,7 +961,7 @@ def script_onglets() -> str:
             mode: 'manuel',
             valeur: compteur,
             libelle: compteur,
-            commentaire: 'Compteur connu dans la projection ; règle de priorité non déterminée dans cette vue.',
+            commentaire: 'Priorité non déterminée dans cette vue.',
             source_commentaire: 'moteur_gui_prototype'
           });
         });
@@ -923,12 +979,16 @@ def script_onglets() -> str:
           option.dataset.modeCompteur = optionCompteur.mode;
           option.dataset.commentaire = optionCompteur.commentaire;
           option.dataset.sourceCommentaire = optionCompteur.source_commentaire;
-          option.textContent = optionCompteur.libelle + ' — ' + optionCompteur.commentaire;
+          option.title = optionCompteur.commentaire;
+          option.textContent = optionCompteur.libelle;
           selectChoixCompteur.appendChild(option);
         });
         if (Array.from(selectChoixCompteur.options).some((option) => option.value === valeurCourante)) {
           selectChoixCompteur.value = valeurCourante;
         }
+        selectChoixCompteur.addEventListener('change', function () {
+          recalculerProjectionVivante();
+        });
       }
 
       function choixCompteurDepuisInterface() {
@@ -1600,6 +1660,7 @@ def script_onglets() -> str:
         synchroniserBlocsLocauxDepuisEtatCentral(etatCentralGui);
         sauvegarderBlocsLocauxPrototype();
         afficherEtatCentralGui(etatCentralGui);
+        recalculerProjectionVivante();
         if (options && options.selectionner && resultat.selection_suggeree) {
           afficherSelectionBlocLocal(blocLocalParId(resultat.selection_suggeree.identifiant));
         } else if (options && options.deselectionner) {
@@ -1607,15 +1668,11 @@ def script_onglets() -> str:
         }
       }
 
-      function periodeScenarioDepuisCalendrier() {
-        const dates = joursCalendrier().map((jour) => jour.dataset.dateIso).filter(Boolean).sort();
-        return {
-          debut: dates[0] || null,
-          fin: dates[dates.length - 1] || null
-        };
+      function cloneJson(valeur) {
+        return JSON.parse(JSON.stringify(valeur));
       }
 
-      function blocPrototypeVersBlocScenarioExport(bloc) {
+      function blocGuiVersBlocScenario(bloc) {
         const blocNormalise = normaliserBlocLocalPrototype(bloc);
         const choix = blocNormalise.choix_compteur || { mode: 'auto', compteur: null, libelle: 'Auto' };
         const compteurSouhaite = choix.mode === 'manuel' ? choix.compteur : null;
@@ -1639,8 +1696,110 @@ def script_onglets() -> str:
           verrouillage: false,
           priorite: 50,
           date_limite: null,
-          notes_locales: 'Exporté depuis la GUI locale ; règle métier à vérifier.'
+          notes_locales: 'Bloc GUI recalculé localement.',
+          actif: true,
+          duree: {
+            unite: 'jours_ouvres',
+            valeur: blocNormalise.quantite_jours,
+            methode: 'prototype_gui'
+          }
         };
+      }
+
+      function construireEntreesProjectionVivantes() {
+        if (!entreesProjectionInitiales) { return null; }
+        const entrees = cloneJson(entreesProjectionInitiales);
+        if (!entrees.scenario || typeof entrees.scenario !== 'object') {
+          entrees.scenario = { source: 'simulation.locale', scenario: { blocs: [] } };
+        }
+        if (!entrees.scenario.scenario || typeof entrees.scenario.scenario !== 'object') {
+          entrees.scenario.scenario = { blocs: [] };
+        }
+        if (!Array.isArray(entrees.scenario.scenario.blocs)) {
+          entrees.scenario.scenario.blocs = [];
+        }
+        const blocsGui = blocsScenarioDepuisEtat(etatCentralGui)
+          .filter((bloc) => !bloc.choix_compteur_incomplet)
+          .map(blocGuiVersBlocScenario);
+        entrees.scenario.scenario.blocs = entrees.scenario.scenario.blocs.concat(blocsGui);
+        return entrees;
+      }
+
+      function soldesFinProjectionVivante(projection) {
+        const demiJournees = projection && Array.isArray(projection.demi_journees) ? projection.demi_journees : [];
+        for (let index = demiJournees.length - 1; index >= 0; index -= 1) {
+          const soldes = demiJournees[index] && demiJournees[index].soldes_apres;
+          if (soldes && typeof soldes === 'object') {
+            return soldes;
+          }
+        }
+        return projection && projection.soldes_initiaux && typeof projection.soldes_initiaux === 'object'
+          ? projection.soldes_initiaux
+          : {};
+      }
+
+      function formaterNombreProjectionVivante(valeur) {
+        if (typeof valeur !== 'number' || !Number.isFinite(valeur)) {
+          return String(valeur || '0');
+        }
+        return String(Number(valeur.toFixed(2))).replace('.', ',');
+      }
+
+      function resumeSoldesFinProjectionVivante(soldes) {
+        const entrees = Object.entries(soldes || {}).sort((a, b) => a[0].localeCompare(b[0]));
+        if (!entrees.length) { return 'aucun solde'; }
+        return entrees
+          .map(([compteur, valeur]) => compteur + ' ' + formaterNombreProjectionVivante(valeur))
+          .join(' · ');
+      }
+
+      function afficherProjectionVivante(message, statut) {
+        if (!cibleProjectionVivante) { return; }
+        cibleProjectionVivante.textContent = '';
+        const puce = document.createElement('span');
+        puce.className = 'puce-projection-vivante';
+        puce.textContent = statut || 'Projection vivante';
+        const texte = document.createElement('strong');
+        texte.textContent = message;
+        cibleProjectionVivante.appendChild(puce);
+        cibleProjectionVivante.appendChild(texte);
+      }
+
+      function recalculerProjectionVivante() {
+        if (!entreesProjectionInitiales) {
+          projectionVivante = null;
+          afficherProjectionVivante('Recalcul direct indisponible : entrées de projection non fournies.', 'Projection statique');
+          return;
+        }
+        if (!window.ChronotimeProjecteur || typeof window.ChronotimeProjecteur.projeterDemiJournees !== 'function') {
+          projectionVivante = null;
+          afficherProjectionVivante('Recalcul impossible : projecteur JS indisponible.', 'Erreur');
+          return;
+        }
+        try {
+          const entreesVivantes = construireEntreesProjectionVivantes();
+          projectionVivante = window.ChronotimeProjecteur.projeterDemiJournees(entreesVivantes);
+          const alertes = Array.isArray(projectionVivante.alertes) ? projectionVivante.alertes.length : 0;
+          const soldesFin = resumeSoldesFinProjectionVivante(soldesFinProjectionVivante(projectionVivante));
+          afficherProjectionVivante('Alertes : ' + alertes + ' · Soldes fin : ' + soldesFin, 'Projection recalculée');
+        } catch (erreur) {
+          projectionVivante = null;
+          afficherProjectionVivante('Recalcul impossible : ' + (erreur && erreur.message ? erreur.message : String(erreur)), 'Erreur');
+        }
+      }
+
+      function periodeScenarioDepuisCalendrier() {
+        const dates = joursCalendrier().map((jour) => jour.dataset.dateIso).filter(Boolean).sort();
+        return {
+          debut: dates[0] || null,
+          fin: dates[dates.length - 1] || null
+        };
+      }
+
+      function blocPrototypeVersBlocScenarioExport(bloc) {
+        const blocScenario = blocGuiVersBlocScenario(bloc);
+        blocScenario.notes_locales = 'Exporté depuis la GUI locale ; règle métier à vérifier.';
+        return blocScenario;
       }
 
       function construireScenarioLocalExportable() {
@@ -2190,6 +2349,7 @@ def script_onglets() -> str:
       etatCentralGui = construireEtatCentralGui(blocsLocauxPrototype, []);
       initialiserChoixCompteurPlanification();
       afficherEtatCentralGui(etatCentralGui);
+      recalculerProjectionVivante();
       initialiserCurseursFrise();
     }());
     </script>
@@ -2455,10 +2615,9 @@ def barre_outils_gauche(projection: dict[str, Any]) -> str:
       <button type="button" class="outil-passif" data-outil-planification="poser" aria-pressed="false">Poser des jours</button>
       <button type="button" class="outil-passif outil-desactive" disabled>Scinder</button>
       <button type="button" class="outil-passif outil-desactive" disabled>Fusionner</button>
-      <h3>Choix du compteur</h3>
-      <label class="libelle-controle-planification" for="choix-compteur-planification">Choix du compteur</label>
+      <label class="libelle-controle-planification" for="choix-compteur-planification">Compteur</label>
       <select id="choix-compteur-planification" class="controle-planification" data-compteurs-connus="{escape(compteurs_connus)}">
-        <option value="auto">Auto — laisser le moteur choisir</option>
+        <option value="auto">Auto</option>
       </select>
       <p id="commentaire-choix-compteur" class="note-outil">Options commentées par le moteur GUI prototype.</p>
       <button type="button" id="exporter-scenario-local" class="outil-passif">Exporter scénario local</button>
@@ -2525,6 +2684,13 @@ def barre_infos_droite(projection: dict[str, Any], demi_journees: list[Any]) -> 
           <div class="grille-compteurs-droite">{grille_compteurs_droite(soldes_finaux)}</div>
         </section>
         <p class="expiration-mini"><span>Expiration</span><strong>non calculée</strong></p>
+        <section class="projection-vivante-section">
+          <h3>Projection</h3>
+          <div id="projection-vivante-planification" class="projection-vivante-planification">
+            <span class="puce-projection-vivante">Projection statique</span>
+            <strong>Recalcul direct indisponible : entrées de projection non fournies.</strong>
+          </div>
+        </section>
       </section>
       <section class="bloc-info-selection">
         <h3>Sélection</h3>
@@ -4001,6 +4167,35 @@ def feuille_style() -> str:
       overflow-wrap: anywhere;
       word-break: break-word;
     }
+    .projection-vivante-section {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed rgba(216, 201, 174, 0.85);
+    }
+    .projection-vivante-planification {
+      display: grid;
+      gap: 4px;
+      overflow-x: hidden;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      font-size: 0.8rem;
+    }
+    .projection-vivante-planification strong {
+      color: var(--accent-fort);
+      line-height: 1.18;
+    }
+    .puce-projection-vivante {
+      display: inline-flex;
+      width: fit-content;
+      max-width: 100%;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(20, 107, 95, 0.1);
+      color: var(--accent-fort);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: lowercase;
+    }
     .liste-diagnostics-planification {
       display: grid;
       gap: 5px;
@@ -4423,6 +4618,7 @@ def generer_html(
     projection: dict[str, Any],
     chronologie: dict[str, Any] | None = None,
     synthese: dict[str, Any] | None = None,
+    entrees_projection: dict[str, Any] | None = None,
 ) -> str:
     periode = projection.get("periode", {}) if isinstance(projection.get("periode"), dict) else {}
     resume = projection.get("resume", {}) if isinstance(projection.get("resume"), dict) else {}
@@ -4463,6 +4659,8 @@ def generer_html(
     </header>
     {''.join(contenu_vues)}
   </main>
+  {script_entrees_projection(entrees_projection)}
+  {script_projecteur_js_embarque(entrees_projection)}
   {script_onglets()}
 </body>
 </html>
@@ -4482,6 +4680,11 @@ def analyser_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         description="Générer une page HTML locale en lecture seule depuis une projection demi-journalière.",
     )
     analyseur.add_argument("--projection", type=Path, required=True, help="Chemin du fichier projection.demi_journees.")
+    analyseur.add_argument(
+        "--entrees-projection",
+        type=Path,
+        help="Chemin facultatif du fichier projection.demi_journees.entrees pour recalcul JS local.",
+    )
     analyseur.add_argument("--chronologie", type=Path, help="Chemin facultatif du fichier chronologie.soldes.")
     analyseur.add_argument("--synthese", type=Path, help="Chemin facultatif du fichier synthese.planification.")
     analyseur.add_argument("--sortie", type=Path, required=True, help="Chemin du fichier HTML à générer.")
@@ -4492,11 +4695,12 @@ def main(argv: list[str] | None = None) -> int:
     arguments = analyser_arguments(argv)
     try:
         projection = charger_projection(arguments.projection)
+        entrees_projection = charger_entrees_projection(arguments.entrees_projection) if arguments.entrees_projection else None
         chronologie = charger_chronologie(arguments.chronologie) if arguments.chronologie else None
         synthese = charger_synthese(arguments.synthese) if arguments.synthese else None
     except ValueError as erreur:
         raise SystemExit(str(erreur)) from erreur
-    ecrire_html(generer_html(projection, chronologie, synthese), arguments.sortie)
+    ecrire_html(generer_html(projection, chronologie, synthese, entrees_projection), arguments.sortie)
     return 0
 
 

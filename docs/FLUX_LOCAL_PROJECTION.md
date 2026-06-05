@@ -49,6 +49,8 @@ Les événements de compteur sont transportés dans la projection sous `evenemen
 
 Aucun fichier intermédiaire n’est écrit sauf si l’option `--sortie` est fournie pour la projection finale.
 
+L’option facultative `--sortie-entrees-projection` écrit aussi les entrées normalisées exactes transmises au projecteur, avec la source `projection.demi_journees.entrees`. Ce fichier permet à une vue HTML locale d’embarquer les sources nécessaires au recalcul JS vivant, sans tenter de reconstruire une projection depuis la seule sortie dérivée.
+
 ## Étape Aval Optionnelle : Mouvements De Solde
 
 Une projection `projection.demi_journees` peut ensuite être transformée en mouvements signés :
@@ -92,12 +94,45 @@ python outils/chronotime/orchestrateur_projection.py `
   --soldes-minimums-par-code JRTT=-10,GCP=0,CANC=0 `
   --jours-non-decomptes 2026-12-25,2026-07-14,2026-08-15 `
   --date-cible noel=Noël=2026-12-25 `
-  --sortie donnees_locales/projection_obligations_seules.json
+  --sortie donnees_locales/projection_obligations_seules.json `
+  --sortie-entrees-projection donnees_locales/entrees_projection_obligations_seules.json
 ```
 
 Si `--date-depart` et `--date-fin` ne sont pas fournis, l’orchestrateur utilise la période du scénario local.
 
 Les valeurs `GCP=suivant`, `JRTT=-10` et les jours non décomptés sont des hypothèses opérationnelles à vérifier.
+
+## Vue HTML Avec Recalcul JS Vivant
+
+Pour générer une vue HTML capable de recalculer une projection en mémoire dans le navigateur, produire d’abord la projection et ses entrées normalisées :
+
+```powershell
+python outils/chronotime/orchestrateur_projection.py `
+  --soldes donnees_locales/soldes_absences_chronotime.json `
+  --agenda donnees_locales/agenda_chronotime.json `
+  --obligations donnees_locales/obligations_conges_2026.json `
+  --scenario donnees_locales/scenario_vide.json `
+  --evenements-compteurs donnees_locales/evenements_compteurs.json `
+  --date-depart 2026-05-20 `
+  --date-fin 2026-12-31 `
+  --periode-compteurs courant `
+  --periodes-compteurs-par-code GCP=suivant,JRTT=courant,CANC=courant `
+  --soldes-minimums-par-code JRTT=-10,GCP=0,CANC=0 `
+  --jours-non-decomptes 2026-12-25,2026-07-14,2026-08-15 `
+  --sortie donnees_locales/projection_obligations_seules_v2.json `
+  --sortie-entrees-projection donnees_locales/entrees_projection_obligations_seules_v2.json
+```
+
+Puis générer la vue :
+
+```powershell
+python outils/chronotime/generateur_vue_projection.py `
+  --projection donnees_locales/projection_obligations_seules_v2.json `
+  --entrees-projection donnees_locales/entrees_projection_obligations_seules_v2.json `
+  --sortie donnees_locales/vue_projection.html
+```
+
+Les fichiers sous `donnees_locales/` restent locaux et ne doivent pas être committés.
 
 ## Scénario Exporté Depuis La GUI
 

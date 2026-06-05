@@ -58,6 +58,7 @@ Ce document liste les points encore ouverts avant de figer un moteur de calcul p
 - Définir la stratégie de prévalidation pendant le glisser-déposer.
 - Définir comment calendrier, frise, compteurs et alertes consomment un même état central sans logique métier dupliquée.
 - Confirmer la parité complète Python / JS sur un corpus croissant de scénarios artificiels avant de brancher la GUI sur le moteur JS ou de supprimer le moteur Python.
+- Remplacer progressivement les affichages statiques par des vues dérivées de la projection vivante recalculée en mémoire.
 
 ## Événements de compteur
 

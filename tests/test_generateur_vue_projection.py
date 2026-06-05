@@ -11,6 +11,7 @@ import unittest
 from outils.chronotime.generateur_vue_projection import (
     agreger_evenements_projetes,
     charger_chronologie,
+    charger_entrees_projection,
     charger_projection,
     charger_synthese,
     compteurs_tries_pour_affichage,
@@ -35,6 +36,20 @@ class TestGenerateurVueProjection(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "Source de projection invalide"):
                 charger_projection(chemin)
+
+    def test_chargement_entrees_projection_valide(self) -> None:
+        entrees = charger_entrees_projection(self._chemin_entrees_projection_minimum())
+        self.assertEqual(entrees["source"], "projection.demi_journees.entrees")
+
+    def test_refus_entrees_projection_source_invalide(self) -> None:
+        with tempfile.TemporaryDirectory() as repertoire:
+            chemin = Path(repertoire) / "entrees.json"
+            donnees = copy.deepcopy(self._charger_entrees_projection_minimum())
+            donnees["source"] = "projection.demi_journees"
+            chemin.write_text(json.dumps(donnees), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "Source d'entrées de projection invalide"):
+                charger_entrees_projection(chemin)
 
     def test_formatage_date_francaise(self) -> None:
         self.assertEqual(formater_date_francaise("2026-05-20"), "20 mai 2026")
@@ -604,7 +619,7 @@ class TestGenerateurVueProjection(unittest.TestCase):
 
         for marqueur in (
             "choix-compteur-planification",
-            "Choix du compteur",
+            "Compteur",
             "Auto",
             "choix_compteur",
             "mode: 'auto'",
@@ -612,10 +627,9 @@ class TestGenerateurVueProjection(unittest.TestCase):
             "obtenirOptionsCompteurMoteurGui",
             "source_decision_compteur",
             "justification_decision_compteur",
-            "Compteur connu dans la projection ; règle de priorité non déterminée dans cette vue.",
+            "Priorité non déterminée dans cette vue.",
             "moteur_gui_prototype",
             "Origine du bloc",
-            "Choix du compteur",
             "Source de décision du compteur",
         ):
             self.assertIn(marqueur, html)
@@ -644,6 +658,49 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertNotIn("XMLHttpRequest", html)
         self.assertNotIn("http://", html)
         self.assertNotIn("https://", html)
+
+    def test_generation_html_recalcul_js_vivant_avec_entrees(self) -> None:
+        html = generer_html(self._charger_exemple(), entrees_projection=self._charger_entrees_projection_minimum())
+
+        for marqueur in (
+            "ChronotimeProjecteur",
+            "projeterDemiJournees",
+            "projectionVivante",
+            "construireEntreesProjectionVivantes",
+            "blocGuiVersBlocScenario",
+            "recalculerProjectionVivante",
+            "projection-vivante-planification",
+            "projection.demi_journees.entrees",
+            "prototype_gui",
+            "source_decision_compteur",
+            "choix_compteur",
+            "window.ChronotimeEntreesProjectionInitiales",
+        ):
+            self.assertIn(marqueur, html)
+
+    def test_generation_html_sans_entrees_recalcul_indisponible(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn("projection-vivante-planification", html)
+        self.assertIn("Recalcul direct indisponible : entrées de projection non fournies.", html)
+        self.assertIn("window.ChronotimeEntreesProjectionInitiales = null", html)
+
+    def test_generation_html_recalcul_js_sans_reseau(self) -> None:
+        html = generer_html(self._charger_exemple(), entrees_projection=self._charger_entrees_projection_minimum())
+
+        self.assertNotIn("fetch(", html)
+        self.assertNotIn("XMLHttpRequest", html)
+        self.assertNotIn("http://", html)
+        self.assertNotIn("https://", html)
+        self.assertNotIn("<script src=", html)
+
+    def test_generation_html_options_compteur_compactes(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        self.assertIn('for="choix-compteur-planification">Compteur</label>', html)
+        self.assertIn('<option value="auto">Auto</option>', html)
+        self.assertNotIn("Auto — laisser le moteur choisir", html)
+        self.assertNotIn("Compteur connu dans la projection ; règle de priorité non déterminée dans cette vue.", html)
 
     def test_generation_html_planification_non_regression_vues_et_outils(self) -> None:
         html = generer_html(self._charger_exemple())
@@ -680,6 +737,29 @@ class TestGenerateurVueProjection(unittest.TestCase):
             html = chemin_sortie.read_text(encoding="utf-8")
             self.assertIn("<!doctype html>", html)
             self.assertIn("Frise 1D des demi-journées", html)
+
+    def test_generation_fichier_html_avec_entrees_projection(self) -> None:
+        with tempfile.TemporaryDirectory() as repertoire:
+            chemin_sortie = Path(repertoire) / "vue.html"
+            subprocess.run(
+                [
+                    sys.executable,
+                    "outils/chronotime/generateur_vue_projection.py",
+                    "--projection",
+                    str(self._chemin_exemple()),
+                    "--entrees-projection",
+                    str(self._chemin_entrees_projection_minimum()),
+                    "--sortie",
+                    str(chemin_sortie),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            html = chemin_sortie.read_text(encoding="utf-8")
+            self.assertIn("ChronotimeProjecteur", html)
+            self.assertIn("projection.demi_journees.entrees", html)
+            self.assertIn("projection-vivante-planification", html)
 
     def test_generation_fichier_html_avec_chronologie(self) -> None:
         with tempfile.TemporaryDirectory() as repertoire:
@@ -814,6 +894,12 @@ class TestGenerateurVueProjection(unittest.TestCase):
 
     def _charger_exemple(self) -> dict[str, object]:
         return json.loads(self._chemin_exemple().read_text(encoding="utf-8"))
+
+    def _chemin_entrees_projection_minimum(self) -> Path:
+        return Path("donnees/exemples/entrees_projection_comparaison_minimum.exemple.json")
+
+    def _charger_entrees_projection_minimum(self) -> dict[str, object]:
+        return json.loads(self._chemin_entrees_projection_minimum().read_text(encoding="utf-8"))
 
     def _chronologie_factice(self) -> dict[str, object]:
         return {
