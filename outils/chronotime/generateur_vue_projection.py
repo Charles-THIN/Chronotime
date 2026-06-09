@@ -972,7 +972,9 @@ def script_onglets() -> str:
 
       function initialiserChoixCompteurPlanification() {
         if (!selectChoixCompteur) { return; }
-        const valeurCourante = selectChoixCompteur.value || 'auto';
+        const valeurCourante = selectChoixCompteur.value && selectChoixCompteur.value !== 'auto'
+          ? selectChoixCompteur.value
+          : 'GCP';
         const options = obtenirOptionsCompteurMoteurGui(etatCentralGui, { select: selectChoixCompteur });
         selectChoixCompteur.textContent = '';
         options.forEach((optionCompteur) => {
@@ -988,6 +990,8 @@ def script_onglets() -> str:
         });
         if (Array.from(selectChoixCompteur.options).some((option) => option.value === valeurCourante)) {
           selectChoixCompteur.value = valeurCourante;
+        } else if (Array.from(selectChoixCompteur.options).some((option) => option.value === 'GCP')) {
+          selectChoixCompteur.value = 'GCP';
         }
         selectChoixCompteur.addEventListener('change', function () {
           recalculerProjectionVivante();
@@ -2511,7 +2515,7 @@ def script_onglets() -> str:
         }
       });
 
-      activerVue('vue-ensemble');
+      activerVue('vue-planification');
       activerSousVue('calendrier');
       activerModePlanification('general');
       activerOutilPlanification('selection');

@@ -85,10 +85,10 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn('class="onglet onglet-actif"', html)
         self.assertIn('data-cible="vue-ensemble"', html)
 
-    def test_premiere_vue_par_defaut_vue_ensemble(self) -> None:
+    def test_premiere_vue_par_defaut_planification(self) -> None:
         html = generer_html(self._charger_exemple())
-        self.assertIn('id="vue-ensemble" class="vue-tableau-de-bord vue-active"', html)
-        self.assertIn("activerVue('vue-ensemble')", html)
+        self.assertIn("activerVue('vue-planification')", html)
+        self.assertNotIn("activerVue('vue-ensemble')", html)
 
     def test_generation_html_informations_historiques(self) -> None:
         html = generer_html(self._charger_exemple())
@@ -732,6 +732,9 @@ class TestGenerateurVueProjection(unittest.TestCase):
 
         self.assertIn('for="choix-compteur-planification">Compteur</label>', html)
         self.assertIn('<option value="auto">Auto</option>', html)
+        self.assertIn("selectChoixCompteur.value !== 'auto'", html)
+        self.assertIn(": 'GCP';", html)
+        self.assertIn("selectChoixCompteur.value = 'GCP';", html)
         self.assertNotIn("Auto — laisser le moteur choisir", html)
         self.assertNotIn("Compteur connu dans la projection ; règle de priorité non déterminée dans cette vue.", html)
 
