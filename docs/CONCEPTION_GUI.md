@@ -10,7 +10,7 @@ Il distingue :
 - les règles stables à respecter ;
 - l’historique du prototype HTML local `V0.x`.
 
-Les sections `V0.1` à `V0.5.4` décrivent les étapes du prototype local. Elles restent utiles pour comprendre l’ergonomie explorée, mais elles ne définissent pas à elles seules l’architecture cible.
+Les sections `V0.1` à `V0.5.5` décrivent les étapes du prototype local. Elles restent utiles pour comprendre l’ergonomie explorée, mais elles ne définissent pas à elles seules l’architecture cible.
 
 Règle de sobriété d’interface : un contrôle explicite ne doit pas répéter inutilement un titre, un sous-titre et un libellé. La vue affiche le texte strictement nécessaire ; les explications longues restent en aide discrète, en infobulle ou dans la documentation.
 
@@ -774,6 +774,31 @@ Limites maintenues :
 - `Auto` reste une intention diagnostiquée, pas une optimisation réalisée ;
 - les familles de compteurs sont préparées avec `standard`, sans ajouter encore les règles ou compteurs de parentalité ;
 - aucun chapitre `Parentalité` vide ne doit être affiché.
+
+## V0.5.5 Lancement local et autosauvegarde
+
+La version `V0.5.5` rapproche l’usage courant de la cible ergonomique : une commande locale prépare les données, génère la vue et ouvre directement la planification.
+
+```powershell
+python outils/chronotime/lancer_planificateur.py
+```
+
+Python reste le lanceur et le préparateur de données. Pendant l’édition interactive, les modifications acceptées par le moteur GUI prototype sont conservées dans le navigateur et la projection est recalculée en JavaScript lorsque les entrées de projection sont embarquées.
+
+L’autosauvegarde actuelle utilise `localStorage` avec la clé `chronotime.scenario_gui.v1`. Elle porte sur le scénario source GUI, pas sur les sorties dérivées `projection.demi_journees`, `mouvements.soldes` ou `chronologie.soldes`.
+
+La vue restaure cette autosauvegarde à l’ouverture lorsqu’elle existe. L’ancien stockage prototype `chronotime.planification.prototype.v1` reste lu comme mécanisme de migration, mais n’est plus le format principal.
+
+Le terme visible `vivant` ne doit pas être utilisé dans l’interface. Les noms techniques internes peuvent conserver `projectionVivante` ou `projection_vivante` pour limiter les renommages sans valeur utilisateur.
+
+Fonctions encore à implémenter :
+
+- enregistrer explicitement vers un fichier ;
+- charger explicitement depuis un fichier ;
+- revenir à l’état à l’ouverture ;
+- annuler les changements depuis le lancement ;
+- reconstruire complètement calendrier et frise depuis la projection recalculée ;
+- résoudre réellement le choix `Auto`.
 
 ## Vue future des soldes dans le temps
 

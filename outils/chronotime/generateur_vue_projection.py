@@ -860,6 +860,7 @@ def script_onglets() -> str:
       const cibleProjectionVivante = document.getElementById('projection-vivante-planification');
       const entreesProjectionInitiales = window.ChronotimeEntreesProjectionInitiales || null;
       const CLE_STOCKAGE_PROTO = 'chronotime.planification.prototype.v1';
+      const CLE_SCENARIO_GUI = 'chronotime.scenario_gui.v1';
       let modePlanification = 'general';
       let outilPlanification = 'selection';
       let blocsLocauxPrototype = [];
@@ -869,7 +870,7 @@ def script_onglets() -> str:
       let poseEnCours = false;
       let etatCentralGui = null;
       let projectionVivante = null;
-      // localStorage = persistance prototype ; etatCentralGui = état central courant de la page.
+      // localStorage = autosauvegarde prototype du scénario source ; etatCentralGui = état central courant de la page.
       // etatTransitoireInterface = manipulation en cours, non durable.
       let etatTransitoireInterface = {
         outil_actif: 'selection',
@@ -1156,7 +1157,7 @@ def script_onglets() -> str:
               ajouterChampSelection(fiche, 'Consommés', resumeConsommationsParCompteur(infosVivantes.consommations_par_compteur), false);
               ajouterChampSelection(
                 fiche,
-                'Alertes vivantes',
+                'Alertes recalculées',
                 infosVivantes.alertes.length ? infosVivantes.alertes.map((alerte) => alerte.code).join(', ') : 'aucune',
                 false
               );
@@ -1169,7 +1170,7 @@ def script_onglets() -> str:
             ajouterChampSelection(fiche, 'Compteur demandé', donnees.selectionCompteurDemande || 'aucun', false);
             ajouterChampSelection(fiche, 'Source de décision du compteur', donnees.selectionSourceDecisionCompteur || 'moteur', false);
             ajouterChampSelection(fiche, 'Justification', donnees.selectionJustificationDecisionCompteur || 'Le moteur devra résoudre ce choix lors du recalcul.', false);
-            ajouterChampSelection(fiche, 'Source', 'prototype local localStorage', false);
+            ajouterChampSelection(fiche, 'Source', 'scénario GUI autosauvegardé localement', false);
             ajouterChampSelection(fiche, 'Moteur', 'non recalculé par le moteur dans cette vue tant que la projection n’a pas été régénérée', false);
             ajouterChampSelection(fiche, 'Instruction', 'Suppr pour supprimer', false);
           } else {
@@ -1371,24 +1372,11 @@ def script_onglets() -> str:
         afficherEtatTransitoireInterface();
       }
 
-      function lireBlocsLocauxPrototype() {
-        try {
-          const texte = localStorage.getItem(CLE_STOCKAGE_PROTO);
-          const donnees = texte ? JSON.parse(texte) : [];
-          return Array.isArray(donnees)
-            ? donnees.filter((bloc) => bloc && bloc.type === 'absence_locale_prototype').map(normaliserBlocLocalPrototype)
-            : [];
-        } catch (_erreur) {
-          return [];
-        }
-      }
-
-      function sauvegarderBlocsLocauxPrototype() {
-        try {
-          localStorage.setItem(CLE_STOCKAGE_PROTO, JSON.stringify(blocsLocauxPrototype));
-        } catch (_erreur) {
-          afficherCurseurPrototype(dateSurvolPose || dateDebutPose || '', dateSurvolPose || dateDebutPose || '', true);
-        }
+      function afficherEtatSauvegardeScenario(message, etat) {
+        const cible = document.getElementById('etat-sauvegarde-scenario');
+        if (!cible) { return; }
+        cible.textContent = message;
+        cible.dataset.etatSauvegarde = etat || 'information';
       }
 
       function normaliserChoixCompteurPrototype(bloc) {
@@ -1437,6 +1425,71 @@ def script_onglets() -> str:
 
       function copierBlocsLocauxPrototype(blocs) {
         return Array.isArray(blocs) ? blocs.map(normaliserBlocLocalPrototype) : [];
+      }
+
+      function blocScenarioVersBlocLocalPrototype(bloc) {
+        const choix = bloc && bloc.choix_compteur && typeof bloc.choix_compteur === 'object'
+          ? bloc.choix_compteur
+          : null;
+        return normaliserBlocLocalPrototype({
+          id: bloc.identifiant_local || bloc.id,
+          type: 'absence_locale_prototype',
+          date_debut: bloc.date_debut,
+          date_fin: bloc.date_fin,
+          origine: 'ajoute_par_utilisateur',
+          origine_bloc: bloc.origine_bloc || 'utilisateur',
+          statut: 'scenario_local_prototype',
+          choix_compteur: choix || (
+            bloc.compteur_souhaite
+              ? { mode: 'manuel', compteur: bloc.compteur_souhaite, libelle: bloc.compteur_souhaite }
+              : { mode: 'auto', compteur: null, libelle: 'Auto' }
+          ),
+          compteur_indicatif: bloc.compteur_souhaite || 'non_recalcule',
+          quantite_jours: bloc.quantite_jours,
+          jours_calendaires_selectionnes: bloc.jours_calendaires_selectionnes,
+          cree_le: bloc.cree_le || bloc.date_creation || new Date().toISOString()
+        });
+      }
+
+      function restaurerScenarioGuiAutosauvegarde() {
+        try {
+          const texteScenario = localStorage.getItem(CLE_SCENARIO_GUI);
+          if (texteScenario) {
+            const enveloppe = JSON.parse(texteScenario);
+            const scenario = enveloppe && enveloppe.scenario && enveloppe.scenario.scenario;
+            const blocs = scenario && Array.isArray(scenario.blocs) ? scenario.blocs : null;
+            if (Array.isArray(blocs)) {
+              afficherEtatSauvegardeScenario('Restauré', 'restaure');
+              return blocs.map(blocScenarioVersBlocLocalPrototype);
+            }
+            afficherEtatSauvegardeScenario('Sauvegarde impossible', 'erreur');
+            return [];
+          }
+        } catch (_erreur) {
+          afficherEtatSauvegardeScenario('Sauvegarde impossible', 'erreur');
+          return [];
+        }
+
+        try {
+          const textePrototype = localStorage.getItem(CLE_STOCKAGE_PROTO);
+          const donnees = textePrototype ? JSON.parse(textePrototype) : [];
+          if (Array.isArray(donnees) && donnees.length) {
+            afficherEtatSauvegardeScenario('Restauré', 'migration');
+            return donnees
+              .filter((bloc) => bloc && bloc.type === 'absence_locale_prototype')
+              .map(normaliserBlocLocalPrototype);
+          }
+        } catch (_erreur) {
+          afficherEtatSauvegardeScenario('Sauvegarde impossible', 'erreur');
+          return [];
+        }
+
+        afficherEtatSauvegardeScenario('Aucun scénario local sauvegardé', 'vide');
+        return [];
+      }
+
+      function lireBlocsLocauxPrototype() {
+        return restaurerScenarioGuiAutosauvegarde();
       }
 
       function compteurAfficheDepuisChoix(choix) {
@@ -1701,7 +1754,7 @@ def script_onglets() -> str:
         }
         etatCentralGui = resultat.etat_central || etatCentralGui;
         synchroniserBlocsLocauxDepuisEtatCentral(etatCentralGui);
-        sauvegarderBlocsLocauxPrototype();
+        sauvegarderScenarioGuiAutomatiquement();
         afficherEtatCentralGui(etatCentralGui);
         recalculerProjectionVivante();
         if (options && options.selectionner && resultat.selection_suggeree) {
@@ -1878,8 +1931,8 @@ def script_onglets() -> str:
           }
           if (deltaElement) {
             deltaElement.textContent = delta && Math.abs(delta) > 0.0000001
-              ? 'vivant · Δ ' + (delta > 0 ? '+' : '') + formaterNombreProjectionVivante(delta)
-              : 'vivant';
+              ? 'Recalculé · Δ ' + (delta > 0 ? '+' : '') + formaterNombreProjectionVivante(delta)
+              : 'Recalculé';
           }
         });
       }
@@ -1906,8 +1959,8 @@ def script_onglets() -> str:
         }
         if (deltaElement) {
           deltaElement.textContent = delta && Math.abs(delta) > 0.0000001
-            ? 'vivant · Δ ' + (delta > 0 ? '+' : '') + formaterNombreProjectionVivante(delta) + ' j'
-            : 'vivant';
+            ? 'Recalculé · Δ ' + (delta > 0 ? '+' : '') + formaterNombreProjectionVivante(delta) + ' j'
+            : 'Recalculé';
         }
       }
 
@@ -1924,7 +1977,7 @@ def script_onglets() -> str:
         cibleProjectionVivante.textContent = '';
         const puce = document.createElement('span');
         puce.className = 'puce-projection-vivante';
-        puce.textContent = statut || 'Projection vivante';
+        puce.textContent = statut || 'Projection recalculée';
         const texte = document.createElement('strong');
         texte.textContent = message;
         cibleProjectionVivante.appendChild(puce);
@@ -1983,12 +2036,37 @@ def script_onglets() -> str:
             periode: periode,
             dates_cibles: [],
             preferences: {
-              origine: 'prototype_gui',
+              origine: 'gui_locale',
               exporte_depuis: 'vue_projection_html'
             },
             blocs: blocs
           }
         };
+      }
+
+      function construireAutosauvegardeScenarioGui() {
+        const scenario = construireScenarioLocalExportable();
+        scenario.scenario.libelle = 'Scénario GUI autosauvegardé';
+        scenario.scenario.preferences = {
+          origine: 'gui_locale',
+          autosauvegarde: true
+        };
+        return {
+          source: 'chronotime.gui.autosauvegarde',
+          version: 1,
+          date_sauvegarde: new Date().toISOString(),
+          scenario: scenario
+        };
+      }
+
+      function sauvegarderScenarioGuiAutomatiquement() {
+        try {
+          const enveloppe = construireAutosauvegardeScenarioGui();
+          localStorage.setItem(CLE_SCENARIO_GUI, JSON.stringify(enveloppe));
+          afficherEtatSauvegardeScenario('Sauvegardé', 'sauvegarde');
+        } catch (_erreur) {
+          afficherEtatSauvegardeScenario('Sauvegarde impossible', 'erreur');
+        }
       }
 
       function exporterScenarioLocalGui() {
@@ -2795,6 +2873,7 @@ def barre_outils_gauche(projection: dict[str, Any]) -> str:
       </select>
       <p id="commentaire-choix-compteur" class="note-outil">Options commentées par le moteur GUI prototype.</p>
       <button type="button" id="exporter-scenario-local" class="outil-passif">Exporter scénario local</button>
+      <p id="etat-sauvegarde-scenario" class="etat-sauvegarde-scenario" data-etat-sauvegarde="vide">Aucun scénario local sauvegardé</p>
       <p class="note-outil">
         1. Exporter le scénario local.<br>
         2. Placer le fichier dans <code>donnees_locales/</code>.<br>
@@ -4397,6 +4476,21 @@ def feuille_style() -> str:
     .diagnostic-bloquant,
     .diagnostic-erreur {
       border-left-color: var(--alerte);
+    }
+    .etat-sauvegarde-scenario {
+      margin: 6px 0 8px;
+      padding: 5px 7px;
+      border: 1px dashed rgba(20, 107, 95, 0.35);
+      border-radius: 8px;
+      color: var(--accent-fort);
+      background: rgba(20, 107, 95, 0.08);
+      font-size: 0.74rem;
+      font-weight: 700;
+    }
+    .etat-sauvegarde-scenario[data-etat-sauvegarde="erreur"] {
+      border-color: rgba(177, 59, 46, 0.55);
+      color: var(--alerte);
+      background: rgba(177, 59, 46, 0.08);
     }
     .fiche-selection {
       display: grid;

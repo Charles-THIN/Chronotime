@@ -21,3 +21,13 @@ Pour reprendre le projet depuis zéro :
 8. `docs/CONCEPTION_GUI.md`
 9. `docs/CONTRAT_MOTEUR_GUI.md`
 10. `docs/PASSATION_UI.md`
+
+## Lancement Local Rapide
+
+Pour préparer la projection locale, générer la vue HTML et l’ouvrir directement :
+
+```powershell
+python outils/chronotime/lancer_planificateur.py
+```
+
+La commande utilise par défaut les fichiers sous `donnees_locales/`. La vue s’ouvre sur `Planification` et les modifications GUI sont autosauvegardées dans le stockage local du navigateur.

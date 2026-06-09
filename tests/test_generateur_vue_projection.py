@@ -588,7 +588,7 @@ class TestGenerateurVueProjection(unittest.TestCase):
     def test_generation_html_etat_transitoire_separe_du_central(self) -> None:
         html = generer_html(self._charger_exemple())
 
-        self.assertIn("localStorage = persistance prototype", html)
+        self.assertIn("localStorage = autosauvegarde prototype du scénario source", html)
         self.assertIn("etatCentralGui = état central courant de la page", html)
         self.assertIn("etatTransitoireInterface = manipulation en cours, non durable", html)
         self.assertIn("bloc-fantome-local", html)
@@ -687,7 +687,7 @@ class TestGenerateurVueProjection(unittest.TestCase):
             "data-total-restant-delta",
             "data-compteur-code",
             "projection_vivante",
-            "vivant",
+            "compteur-vivant-recalcule",
             "Projection recalculée",
             "à résoudre",
             "famille_compteur",
@@ -700,6 +700,8 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertNotIn("Parentalité", html)
         self.assertNotIn("Soldes fin : ", html)
         self.assertNotIn("Soldes fin : ASTJ", html)
+        self.assertNotIn("Projection vivante", html)
+        self.assertNotIn("vivant · Δ", html)
 
     def test_generation_html_quantites_bloc_utilisateur_explicitent_decompte(self) -> None:
         html = generer_html(self._charger_exemple(), entrees_projection=self._charger_entrees_projection_minimum())
@@ -737,6 +739,39 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("selectChoixCompteur.value = 'GCP';", html)
         self.assertNotIn("Auto — laisser le moteur choisir", html)
         self.assertNotIn("Compteur connu dans la projection ; règle de priorité non déterminée dans cette vue.", html)
+
+    def test_generation_html_autosauvegarde_scenario_gui(self) -> None:
+        html = generer_html(self._charger_exemple())
+
+        for marqueur in (
+            "chronotime.scenario_gui.v1",
+            "chronotime.gui.autosauvegarde",
+            "sauvegarderScenarioGuiAutomatiquement",
+            "restaurerScenarioGuiAutosauvegarde",
+            "etat-sauvegarde-scenario",
+            "Sauvegardé",
+            "Restauré",
+            "Aucun scénario local sauvegardé",
+            "Sauvegarde impossible",
+            "localStorage.setItem(CLE_SCENARIO_GUI",
+            "localStorage.getItem(CLE_SCENARIO_GUI)",
+            "blocScenarioVersBlocLocalPrototype",
+            "simulation.locale",
+            "gui_locale",
+        ):
+            self.assertIn(marqueur, html)
+
+        self.assertIn("chronotime.planification.prototype.v1", html)
+        self.assertNotIn("localStorage.setItem(CLE_STOCKAGE_PROTO", html)
+
+    def test_generation_html_sans_libelle_visible_vivant(self) -> None:
+        html = generer_html(self._charger_exemple(), entrees_projection=self._charger_entrees_projection_minimum())
+
+        self.assertNotIn("vivant · Δ", html)
+        self.assertNotIn(">vivant<", html)
+        self.assertNotIn("Projection vivante", html)
+        self.assertIn("projectionVivante", html)
+        self.assertIn("projection_vivante", html)
 
     def test_generation_html_planification_non_regression_vues_et_outils(self) -> None:
         html = generer_html(self._charger_exemple())

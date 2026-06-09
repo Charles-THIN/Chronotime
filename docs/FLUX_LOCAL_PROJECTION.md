@@ -102,6 +102,30 @@ Si `--date-depart` et `--date-fin` ne sont pas fournis, l’orchestrateur utilis
 
 Les valeurs `GCP=suivant`, `JRTT=-10` et les jours non décomptés sont des hypothèses opérationnelles à vérifier.
 
+## Lancement Local Du Planificateur
+
+Le lanceur local prépare la projection, écrit aussi les entrées normalisées nécessaires au recalcul JS, génère la vue HTML puis l’ouvre dans le navigateur :
+
+```powershell
+python outils/chronotime/lancer_planificateur.py
+```
+
+Par défaut, il lit les fichiers sous `donnees_locales/` et produit :
+
+- `donnees_locales/projection_obligations_seules_v2.json` ;
+- `donnees_locales/entrees_projection_obligations_seules_v2.json` ;
+- `donnees_locales/vue_projection.html`.
+
+L’édition se fait ensuite dans le navigateur. Les modifications de scénario GUI sont autosauvegardées dans le stockage local du navigateur avec une structure de source de scénario, pas avec une projection dérivée.
+
+Pour générer sans ouvrir le navigateur :
+
+```powershell
+python outils/chronotime/lancer_planificateur.py --ne-pas-ouvrir
+```
+
+Les fichiers générés sous `donnees_locales/` restent locaux et ne doivent pas être committés.
+
 ## Vue HTML Avec Recalcul JS Vivant
 
 Pour générer une vue HTML capable de recalculer une projection en mémoire dans le navigateur, produire d’abord la projection et ses entrées normalisées :
