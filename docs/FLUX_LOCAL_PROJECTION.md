@@ -163,6 +163,32 @@ python outils/chronotime/orchestrateur_projection.py `
 
 Les dates, compteurs, minimums, périodes de compteurs et jours non décomptés ci-dessus sont des hypothèses locales à vérifier. La GUI ne lance pas cette commande automatiquement depuis le navigateur.
 
+### Durée déduite de la période
+
+Les blocs exportés ou injectés par la GUI peuvent laisser la quantité à déduire de la période et de l’unité :
+
+```json
+{
+  "unite": "jours_ouvres",
+  "duree": {
+    "unite": "jours_ouvres",
+    "valeur": null,
+    "methode": "periode_selon_unite"
+  }
+}
+```
+
+Dans ce cas, le projecteur calcule la quantité demandée selon `date_debut`, `date_fin`, `unite` et `jours_non_decomptes`.
+
+Unités prises en compte :
+
+- `jours_ouvres` : lundi à vendredi, hors jours non décomptés ;
+- `jours_ouvrables` : lundi à samedi, hors jours non décomptés ;
+- `jours_calendaires` : toutes les dates civiles ;
+- `demi_journee` : quantité de `0,5`.
+
+Les durées numériques explicites restent compatibles et conservent leur comportement historique.
+
 ## Port JS Expérimental Du Projecteur
 
 Un port JavaScript expérimental du projecteur demi-journalier existe pour préparer un futur recalcul navigateur.

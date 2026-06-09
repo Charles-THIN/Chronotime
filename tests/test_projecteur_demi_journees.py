@@ -188,6 +188,31 @@ class TestProjecteurDemiJournees(unittest.TestCase):
         self.assertEqual(detail["source_decision_compteur"], "utilisateur")
         self.assertEqual(detail["justification_decision_compteur"], "Compteur demandé explicitement par l’utilisateur.")
 
+    def test_quantite_decomptee_depuis_periode_selon_unite_vendredi_mercredi(self) -> None:
+        chemin = Path("donnees/exemples/entrees_projection_comparaison_quantites_decomptees.exemple.json")
+        donnees = json.loads(chemin.read_text(encoding="utf-8"))
+
+        projection = projeter_demi_journees(donnees)
+        evenement = next(
+            evenement for evenement in projection["evenements_sources"] if evenement["identifiant"] == "bloc_vendredi_mercredi"
+        )
+        details = [
+            detail
+            for demi_journee in projection["demi_journees"]
+            for detail in demi_journee["consommations_detaillees"]
+            if detail["identifiant_evenement"] == "bloc_vendredi_mercredi"
+        ]
+        alertes_quantite = [
+            alerte for alerte in projection["alertes"] if alerte["type"] == "quantite_evenement_non_projectee"
+        ]
+
+        self.assertEqual(evenement["quantite"], 4.0)
+        self.assertEqual(sum(detail["quantite_demandee"] for detail in details), 4.0)
+        self.assertEqual(sum(detail["quantite_appliquee"] for detail in details), 4.0)
+        self.assertEqual(projection["soldes_initiaux"]["GCP"], 10.0)
+        self.assertEqual(self._dernier_solde(projection, "GCP"), 6.0)
+        self.assertEqual(alertes_quantite, [])
+
     def test_choix_compteur_auto_signale_a_resoudre(self) -> None:
         donnees = self._donnees_projection_minimum("CANC", 5.0, 0.0)
         donnees["verification_obligations"]["obligations"] = []
@@ -489,6 +514,10 @@ class TestProjecteurDemiJournees(unittest.TestCase):
             for demi_journee in projection["demi_journees"]
             if demi_journee["date"] == date and demi_journee["portion"] == portion
         )
+
+    def _dernier_solde(self, projection: dict[str, object], compteur: str) -> float:
+        demi_journees = projection["demi_journees"]
+        return demi_journees[-1]["soldes_apres"][compteur]
 
 
 if __name__ == "__main__":

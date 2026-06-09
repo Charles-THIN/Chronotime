@@ -10,7 +10,7 @@ Il distingue :
 - les règles stables à respecter ;
 - l’historique du prototype HTML local `V0.x`.
 
-Les sections `V0.1` à `V0.5.3` décrivent les étapes du prototype local. Elles restent utiles pour comprendre l’ergonomie explorée, mais elles ne définissent pas à elles seules l’architecture cible.
+Les sections `V0.1` à `V0.5.4` décrivent les étapes du prototype local. Elles restent utiles pour comprendre l’ergonomie explorée, mais elles ne définissent pas à elles seules l’architecture cible.
 
 Règle de sobriété d’interface : un contrôle explicite ne doit pas répéter inutilement un titre, un sous-titre et un libellé. La vue affiche le texte strictement nécessaire ; les explications longues restent en aide discrète, en infobulle ou dans la documentation.
 
@@ -731,10 +731,47 @@ Limites maintenues :
 
 - aucune optimisation complète d’allocation des compteurs ;
 - aucune répartition automatique d’un bloc sur plusieurs compteurs ;
-- aucun recalcul réel des soldes dans la page HTML ;
 - `mode: auto` est transporté et signalé, mais pas encore résolu ;
 - les décisions explicitement demandées par l’utilisateur devront être respectées par une future optimisation ;
 - les décisions laissées au moteur pourront être recalculées ou réoptimisées plus tard.
+
+## V0.5.4 Quantités décomptées et compteurs vivants
+
+La version `V0.5.4` corrige la confusion entre période civile sélectionnée et consommation réelle.
+
+La GUI distingue désormais :
+
+- la période civile du bloc ;
+- les jours calendaires sélectionnés ;
+- les jours décomptés par le projecteur selon l’unité du bloc ;
+- les jours effectivement consommés sur le compteur.
+
+Un bloc posé du vendredi au mercredi peut donc afficher six jours calendaires sélectionnés, mais seulement quatre jours ouvrés décomptés si le week-end n’est pas consommable.
+
+Les blocs GUI envoyés au recalcul vivant ne transmettent plus une durée civile comme quantité à consommer. Ils transmettent une intention de durée déduite de la période et de l’unité :
+
+```json
+{
+  "duree": {
+    "unite": "jours_ouvres",
+    "valeur": null,
+    "methode": "periode_selon_unite"
+  }
+}
+```
+
+Le projecteur calcule alors la quantité demandée depuis `date_debut`, `date_fin`, `unite` et `jours_non_decomptes`. Les durées numériques explicites restent compatibles avec les scénarios existants.
+
+Quand une projection vivante existe, les compteurs visibles de la barre droite sont mis à jour depuis les soldes finaux de cette projection. La projection statique initiale reste le repli lorsque les entrées de projection ne sont pas embarquées.
+
+La fiche de sélection d’un bloc utilisateur lit les consommations dans `projectionVivante.demi_journees`, notamment `consommations_detaillees.quantite_demandee`, `quantite_appliquee`, `quantite_non_couverte` et `compteur`. Elle n’essaie pas de recalculer ces quantités dans le rendu.
+
+Limites maintenues :
+
+- les vues calendrier et frise ne sont pas encore entièrement reconstruites depuis la projection vivante ;
+- `Auto` reste une intention diagnostiquée, pas une optimisation réalisée ;
+- les familles de compteurs sont préparées avec `standard`, sans ajouter encore les règles ou compteurs de parentalité ;
+- aucun chapitre `Parentalité` vide ne doit être affiché.
 
 ## Vue future des soldes dans le temps
 

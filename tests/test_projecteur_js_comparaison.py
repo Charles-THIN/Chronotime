@@ -52,6 +52,10 @@ class TestProjecteurJsComparaison(unittest.TestCase):
     def test_projection_js_identique_projection_python_sur_corpus(self) -> None:
         fichiers_entree = sorted(REPERTOIRE_EXEMPLES.glob("entrees_projection_comparaison*.exemple.json"))
         self.assertGreaterEqual(len(fichiers_entree), 2)
+        self.assertIn(
+            "entrees_projection_comparaison_quantites_decomptees.exemple.json",
+            {fichier.name for fichier in fichiers_entree},
+        )
 
         with tempfile.TemporaryDirectory() as repertoire_temporaire:
             for entree in fichiers_entree:

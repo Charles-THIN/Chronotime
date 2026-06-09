@@ -674,9 +674,34 @@ class TestGenerateurVueProjection(unittest.TestCase):
             "prototype_gui",
             "source_decision_compteur",
             "choix_compteur",
+            "infosBlocDepuisProjectionVivante",
+            "jours_calendaires_selectionnes",
+            "jours_decomptes",
+            "jours_consommes",
+            "consommations_par_compteur",
+            "mettreAJourCompteursDepuisProjectionVivante",
+            "data-compteur-code",
+            "projection_vivante",
+            "vivant",
+            "à résoudre",
+            "famille_compteur",
+            "standard",
+            "periode_selon_unite",
             "window.ChronotimeEntreesProjectionInitiales",
         ):
             self.assertIn(marqueur, html)
+
+        self.assertNotIn("Parentalité", html)
+
+    def test_generation_html_quantites_bloc_utilisateur_explicitent_decompte(self) -> None:
+        html = generer_html(self._charger_exemple(), entrees_projection=self._charger_entrees_projection_minimum())
+
+        self.assertIn("Jours calendaires", html)
+        self.assertIn("Jours décomptés", html)
+        self.assertIn("Consommés", html)
+        self.assertIn("Quantité", html)
+        self.assertNotIn("ajouterChampSelection(fiche, 'Quantité', bloc.quantite_jours + ' j'", html)
+        self.assertNotIn("Compteur connu dans la projection ; règle de priorité non déterminée dans cette vue.", html)
 
     def test_generation_html_sans_entrees_recalcul_indisponible(self) -> None:
         html = generer_html(self._charger_exemple())

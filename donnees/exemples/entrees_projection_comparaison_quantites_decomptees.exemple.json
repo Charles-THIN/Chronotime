@@ -1,0 +1,93 @@
+{
+  "source": "projection.demi_journees.entrees",
+  "soldes": {
+    "source": "chronotime.soldeabs",
+    "compteurs": [
+      {
+        "code": "GCP",
+        "libelle": "Compteur artificiel GCP",
+        "periodes": {
+          "courant": {
+            "solde": {
+              "brut": "10j00",
+              "unite": "jour",
+              "valeur": 10.0
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scenario": {
+    "source": "simulation.locale",
+    "scenario": {
+      "identifiant": "scenario_comparaison_quantites_decomptees",
+      "libelle": "Scénario artificiel quantités décomptées",
+      "periode": {
+        "debut": "2026-06-12",
+        "fin": "2026-06-17"
+      },
+      "dates_cibles": [],
+      "preferences": {},
+      "blocs": [
+        {
+          "identifiant_local": "bloc_vendredi_mercredi",
+          "libelle": "Absence artificielle vendredi-mercredi",
+          "type": "absence",
+          "source": "prototype_gui",
+          "origine_bloc": "utilisateur",
+          "date_debut": "2026-06-12",
+          "date_fin": "2026-06-17",
+          "unite": "jours_ouvres",
+          "fraction_jour": 1.0,
+          "choix_compteur": {
+            "mode": "manuel",
+            "compteur": "GCP"
+          },
+          "compteur_souhaite": "GCP",
+          "compteur_reellement_consomme": null,
+          "statut": "actif",
+          "verrouillage": false,
+          "priorite": 50,
+          "date_limite": null,
+          "notes_locales": "Cas artificiel sans donnée personnelle.",
+          "actif": true,
+          "duree": {
+            "unite": "jours_ouvres",
+            "valeur": null,
+            "methode": "periode_selon_unite"
+          }
+        }
+      ]
+    },
+    "resume": {
+      "nombre_blocs": 1,
+      "nombre_blocs_actifs": 1,
+      "nombre_blocs_inactifs": 0
+    }
+  },
+  "verification_obligations": {
+    "source": "verification.obligations",
+    "obligations": [],
+    "resume": {
+      "nombre_obligations": 0,
+      "nombre_satisfaites": 0,
+      "nombre_partielles": 0,
+      "nombre_a_poser": 0,
+      "quantite_totale_requise": 0.0,
+      "quantite_totale_satisfaite": 0.0,
+      "quantite_totale_restante": 0.0
+    }
+  },
+  "parametres_projection": {
+    "periode_compteurs": "courant",
+    "date_depart": "2026-06-12",
+    "date_fin": "2026-06-17",
+    "dates_cibles": [],
+    "ordre_compteurs_sans_preference": ["GCP"],
+    "soldes_minimums_par_code": {
+      "GCP": 0.0
+    },
+    "jours_non_decomptes": []
+  }
+}

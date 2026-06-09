@@ -212,6 +212,49 @@ function construireEvenementsObligations(donnees, ordreSansPreference) {
   return evenements;
 }
 
+function quantiteDepuisPeriode(dateDebut, dateFin, unite, joursNonDecomptes = null) {
+  if (unite === "demi_journee") {
+    return 0.5;
+  }
+  if (unite === "heures") {
+    return null;
+  }
+
+  const debut = convertirDateIso(dateDebut, "bloc.date_debut");
+  const fin = convertirDateIso(dateFin, "bloc.date_fin");
+  if (comparerDates(fin, debut) < 0) {
+    return 0.0;
+  }
+
+  let quantite = 0.0;
+  for (let jour = debut; comparerDates(jour, fin) <= 0; jour = ajouterJours(jour, 1)) {
+    if (jourEstProjectable(jour, unite, joursNonDecomptes)) {
+      quantite += 1.0;
+    }
+  }
+  return arrondirQuantite(quantite);
+}
+
+function extraireJoursNonDecomptes(donnees) {
+  const parametres = estObjet(donnees.parametres_projection) ? donnees.parametres_projection : {};
+  const jours = Array.isArray(parametres.jours_non_decomptes) ? parametres.jours_non_decomptes : [];
+  return new Set(jours.map((jour) => normaliserDateIso(jour, "jours_non_decomptes")).filter(Boolean));
+}
+
+function quantiteBlocScenario(bloc, unite, joursNonDecomptes = null) {
+  const duree = estObjet(bloc.duree) ? bloc.duree : {};
+  if (estNombre(duree.valeur)) {
+    return Number(duree.valeur);
+  }
+  if (duree.methode === "periode_selon_unite") {
+    return quantiteDepuisPeriode(bloc.date_debut, bloc.date_fin, unite, joursNonDecomptes);
+  }
+  if (estNombre(bloc.fraction_jour)) {
+    return Number(bloc.fraction_jour);
+  }
+  return null;
+}
+
 function resoudreChoixCompteurAuto(_bloc) {
   return null;
 }
@@ -237,6 +280,7 @@ function construireEvenementsScenario(donnees, alertes = null) {
   const scenario = estObjet(donneesScenario.scenario) ? donneesScenario.scenario : {};
   const blocs = Array.isArray(scenario.blocs) ? scenario.blocs : [];
   const evenements = [];
+  const joursNonDecomptes = extraireJoursNonDecomptes(donnees);
 
   for (const bloc of blocs) {
     if (!estObjet(bloc)) {
@@ -265,7 +309,8 @@ function construireEvenementsScenario(donnees, alertes = null) {
       continue;
     }
     const duree = estObjet(bloc.duree) ? bloc.duree : {};
-    const quantite = estNombre(duree.valeur) ? duree.valeur : bloc.fraction_jour;
+    const unite = String(bloc.unite || duree.unite || "jours_ouvres");
+    const quantite = quantiteBlocScenario(bloc, unite, joursNonDecomptes);
     if (!estNombre(quantite) || quantite <= 0) {
       continue;
     }
@@ -275,7 +320,7 @@ function construireEvenementsScenario(donnees, alertes = null) {
       libelle: String(bloc.libelle || ""),
       date_debut: normaliserDateIso(bloc.date_debut, "bloc.date_debut"),
       date_fin: normaliserDateIso(bloc.date_fin, "bloc.date_fin"),
-      unite: String(bloc.unite || duree.unite || "jours_ouvres"),
+      unite,
       quantite: Number(quantite),
       compteur: String(compteur),
       priorite: Number.parseInt(bloc.priorite ?? 50, 10),

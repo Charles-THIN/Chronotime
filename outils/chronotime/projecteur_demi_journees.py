@@ -206,6 +206,54 @@ def construire_evenements_obligations(donnees: dict[str, Any], ordre_sans_prefer
     return evenements
 
 
+def quantite_depuis_periode(
+    date_debut: Any,
+    date_fin: Any,
+    unite: str,
+    jours_non_decomptes: set[str] | None = None,
+) -> float | None:
+    if unite == "demi_journee":
+        return 0.5
+    if unite == "heures":
+        return None
+
+    debut = convertir_date_iso(date_debut, "bloc.date_debut")
+    fin = convertir_date_iso(date_fin, "bloc.date_fin")
+    if fin < debut:
+        return 0.0
+
+    quantite = 0.0
+    jour = debut
+    while jour <= fin:
+        if jour_est_projectable(jour, unite, jours_non_decomptes):
+            quantite += 1.0
+        jour += timedelta(days=1)
+    return arrondir_quantite(quantite)
+
+
+def extraire_jours_non_decomptes(donnees: dict[str, Any]) -> set[str]:
+    parametres = donnees.get("parametres_projection", {})
+    jours = parametres.get("jours_non_decomptes", []) if isinstance(parametres, dict) else []
+    return {jour_normalise for jour in jours if (jour_normalise := normaliser_date_iso(jour, "jours_non_decomptes"))}
+
+
+def quantite_bloc_scenario(
+    bloc: dict[str, Any],
+    unite: str,
+    jours_non_decomptes: set[str] | None = None,
+) -> float | None:
+    duree = bloc.get("duree") if isinstance(bloc.get("duree"), dict) else {}
+    valeur = duree.get("valeur")
+    if isinstance(valeur, (int, float)):
+        return float(valeur)
+    if duree.get("methode") == "periode_selon_unite":
+        return quantite_depuis_periode(bloc.get("date_debut"), bloc.get("date_fin"), unite, jours_non_decomptes)
+    fraction_jour = bloc.get("fraction_jour")
+    if isinstance(fraction_jour, (int, float)):
+        return float(fraction_jour)
+    return None
+
+
 def resoudre_choix_compteur_auto(_bloc: dict[str, Any]) -> str | None:
     return None
 
@@ -236,6 +284,7 @@ def construire_evenements_scenario(donnees: dict[str, Any], alertes: list[dict[s
     scenario = donnees_scenario.get("scenario", {}) if isinstance(donnees_scenario, dict) else {}
     blocs = scenario.get("blocs", []) if isinstance(scenario, dict) else []
     evenements: list[dict[str, Any]] = []
+    jours_non_decomptes = extraire_jours_non_decomptes(donnees)
 
     for bloc in blocs:
         if not isinstance(bloc, dict):
@@ -259,7 +308,8 @@ def construire_evenements_scenario(donnees: dict[str, Any], alertes: list[dict[s
         if not compteur:
             continue
         duree = bloc.get("duree") if isinstance(bloc.get("duree"), dict) else {}
-        quantite = duree.get("valeur", bloc.get("fraction_jour"))
+        unite = str(bloc.get("unite", duree.get("unite", "jours_ouvres")))
+        quantite = quantite_bloc_scenario(bloc, unite, jours_non_decomptes)
         if not isinstance(quantite, (int, float)) or quantite <= 0:
             continue
         evenements.append(
@@ -269,7 +319,7 @@ def construire_evenements_scenario(donnees: dict[str, Any], alertes: list[dict[s
                 "libelle": str(bloc.get("libelle", "")),
                 "date_debut": normaliser_date_iso(bloc.get("date_debut"), "bloc.date_debut"),
                 "date_fin": normaliser_date_iso(bloc.get("date_fin"), "bloc.date_fin"),
-                "unite": str(bloc.get("unite", duree.get("unite", "jours_ouvres"))),
+                "unite": unite,
                 "quantite": float(quantite),
                 "compteur": str(compteur),
                 "priorite": int(bloc.get("priorite", 50)),

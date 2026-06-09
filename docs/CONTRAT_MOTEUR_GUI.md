@@ -332,6 +332,17 @@ Elles ne recalculent pas chacune :
 - reports ;
 - validité métier d’un déplacement.
 
+Si une projection vivante existe, elle devient la source prioritaire d’affichage pour les soldes visibles, les alertes et les quantités rattachées à un bloc. La projection statique initiale reste seulement un repli.
+
+Les quantités affichées doivent distinguer :
+
+- période civile ;
+- quantité demandée ou jours décomptés ;
+- quantité appliquée ou jours consommés ;
+- quantité non couverte lorsque le moteur la signale.
+
+Ces valeurs proviennent de la projection active, par exemple de `consommations_detaillees`, et non d’un calcul local dispersé dans chaque vue.
+
 ## Moteur JS Navigateur
 
 La future GUI pourra appeler un moteur JavaScript directement dans le navigateur.

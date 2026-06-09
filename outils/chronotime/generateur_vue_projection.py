@@ -953,7 +953,8 @@ def script_onglets() -> str:
             valeur: 'auto',
             libelle: 'Auto',
             commentaire: 'Laisser le moteur choisir selon les règles connues.',
-            source_commentaire: 'moteur_gui_prototype'
+            source_commentaire: 'moteur_gui_prototype',
+            famille_compteur: 'standard'
           }
         ];
         compteurs.forEach((compteur) => {
@@ -962,7 +963,8 @@ def script_onglets() -> str:
             valeur: compteur,
             libelle: compteur,
             commentaire: 'Priorité non déterminée dans cette vue.',
-            source_commentaire: 'moteur_gui_prototype'
+            source_commentaire: 'moteur_gui_prototype',
+            famille_compteur: 'standard'
           });
         });
         return options;
@@ -979,6 +981,7 @@ def script_onglets() -> str:
           option.dataset.modeCompteur = optionCompteur.mode;
           option.dataset.commentaire = optionCompteur.commentaire;
           option.dataset.sourceCommentaire = optionCompteur.source_commentaire;
+          option.dataset.familleCompteur = optionCompteur.famille_compteur || 'standard';
           option.title = optionCompteur.commentaire;
           option.textContent = optionCompteur.libelle;
           selectChoixCompteur.appendChild(option);
@@ -1136,8 +1139,27 @@ def script_onglets() -> str:
         } else if (donnees.selectionType === 'bloc') {
           ajouterChampSelection(fiche, 'Période', donnees.selectionPeriode, false);
           ajouterChampSelection(fiche, 'Libellé', donnees.selectionLibelle, false);
-          ajouterChampSelection(fiche, 'Quantité', donnees.selectionQuantite, false);
           if (donnees.selectionOrigine === 'ajoute_par_utilisateur') {
+            const infosVivantes = infosBlocDepuisProjectionVivante(donnees.selectionIdentifiant);
+            const joursCalendaires = Number(donnees.selectionJoursCalendairesSelectionnes)
+              || joursCalendairesSelectionnes(donnees.selectionDateDebut, donnees.selectionDateFin);
+            ajouterChampSelection(fiche, 'Jours calendaires', String(joursCalendaires || 'non disponible'), false);
+            if ((donnees.selectionChoixCompteurMode || 'auto') === 'auto' && (!infosVivantes || infosVivantes.jours_decomptes === 0)) {
+              ajouterChampSelection(fiche, 'Jours décomptés', 'non résolu', false);
+              ajouterChampSelection(fiche, 'Auto', 'à résoudre', false);
+            } else if (infosVivantes) {
+              ajouterChampSelection(fiche, 'Jours décomptés', formatQuantiteJours(infosVivantes.jours_decomptes), false);
+              ajouterChampSelection(fiche, 'Consommés', resumeConsommationsParCompteur(infosVivantes.consommations_par_compteur), false);
+              ajouterChampSelection(
+                fiche,
+                'Alertes vivantes',
+                infosVivantes.alertes.length ? infosVivantes.alertes.map((alerte) => alerte.code).join(', ') : 'aucune',
+                false
+              );
+            } else {
+              ajouterChampSelection(fiche, 'Jours décomptés', 'non recalculé', false);
+              ajouterChampSelection(fiche, 'Consommés', 'non recalculé', false);
+            }
             ajouterChampSelection(fiche, 'Origine du bloc', donnees.selectionOrigineBloc || 'utilisateur', false);
             ajouterChampSelection(fiche, 'Choix du compteur', donnees.selectionChoixCompteurLibelle || 'Auto', false);
             ajouterChampSelection(fiche, 'Compteur demandé', donnees.selectionCompteurDemande || 'aucun', false);
@@ -1147,6 +1169,7 @@ def script_onglets() -> str:
             ajouterChampSelection(fiche, 'Moteur', 'non recalculé par le moteur dans cette vue tant que la projection n’a pas été régénérée', false);
             ajouterChampSelection(fiche, 'Instruction', 'Suppr pour supprimer', false);
           } else {
+            ajouterChampSelection(fiche, 'Quantité', donnees.selectionQuantite, false);
             ajouterChampSelection(fiche, 'Compteurs', donnees.selectionCompteurs, false);
             ajouterChampSelection(fiche, 'Alertes', donnees.selectionAlertes, false);
           }
@@ -1235,6 +1258,15 @@ def script_onglets() -> str:
         return joursCalendrier()
           .map((jour) => jour.dataset.dateIso)
           .filter((dateIso) => dateIso >= bornes[0] && dateIso <= bornes[1]);
+      }
+
+      function joursCalendairesSelectionnes(dateA, dateB) {
+        if (!dateA || !dateB) { return 0; }
+        const bornes = normaliserPlageDates(dateA, dateB);
+        const debut = new Date(bornes[0] + 'T00:00:00Z');
+        const fin = new Date(bornes[1] + 'T00:00:00Z');
+        if (Number.isNaN(debut.getTime()) || Number.isNaN(fin.getTime())) { return 0; }
+        return Math.floor((fin.getTime() - debut.getTime()) / 86400000) + 1;
       }
 
       function jourOccupePourPose(jour) {
@@ -1392,6 +1424,9 @@ def script_onglets() -> str:
           choix_compteur_incomplet: Boolean(choixCompteur.incomplet_ancien_prototype),
           compteur_indicatif: compteurIndicatifDepuisChoix(choixCompteur, bloc),
           quantite_jours: Number(bloc.quantite_jours || datesProjeteesEntre(bloc.date_debut, bloc.date_fin).length || 0),
+          jours_calendaires_selectionnes: Number(
+            bloc.jours_calendaires_selectionnes || joursCalendairesSelectionnes(bloc.date_debut, bloc.date_fin) || 0
+          ),
           cree_le: bloc.cree_le || new Date().toISOString()
         };
       }
@@ -1434,6 +1469,9 @@ def script_onglets() -> str:
           source_decision_compteur: sourceDecisionCompteurDepuisChoix(choix),
           justification_decision_compteur: justificationDecisionCompteurDepuisChoix(choix),
           quantite_jours: blocNormalise.quantite_jours,
+          jours_calendaires_selectionnes: blocNormalise.jours_calendaires_selectionnes,
+          jours_decomptes: null,
+          jours_consommes: null,
           diagnostics: []
         };
       }
@@ -1554,6 +1592,7 @@ def script_onglets() -> str:
               choix_compteur: parametres.choix_compteur || { mode: 'auto', compteur: null, libelle: 'Auto' },
               compteur_indicatif: parametres.compteur_indicatif || 'non_recalcule',
               quantite_jours: dates.length,
+              jours_calendaires_selectionnes: joursCalendairesSelectionnes(dates[0], dates[dates.length - 1]),
               cree_le: new Date().toISOString()
             });
             const nouvelEtat = construireEtatCentralGui(blocs.concat([bloc]), []);
@@ -1700,8 +1739,8 @@ def script_onglets() -> str:
           actif: true,
           duree: {
             unite: 'jours_ouvres',
-            valeur: blocNormalise.quantite_jours,
-            methode: 'prototype_gui'
+            valeur: null,
+            methode: 'periode_selon_unite'
           }
         };
       }
@@ -1745,6 +1784,102 @@ def script_onglets() -> str:
         return String(Number(valeur.toFixed(2))).replace('.', ',');
       }
 
+      function formatQuantiteJours(valeur) {
+        if (typeof valeur !== 'number' || !Number.isFinite(valeur)) {
+          return 'non recalculé';
+        }
+        return formaterNombreProjectionVivante(valeur) + ' j';
+      }
+
+      function infosBlocDepuisProjectionVivante(identifiantBloc) {
+        if (!projectionVivante || !Array.isArray(projectionVivante.demi_journees) || !identifiantBloc) {
+          return null;
+        }
+        const infos = {
+          jours_decomptes: 0,
+          jours_consommes: 0,
+          consommations_par_compteur: {},
+          alertes: []
+        };
+        projectionVivante.demi_journees.forEach((demiJournee) => {
+          const details = Array.isArray(demiJournee.consommations_detaillees) ? demiJournee.consommations_detaillees : [];
+          details.forEach((detail) => {
+            if (!detail || detail.identifiant_evenement !== identifiantBloc) { return; }
+            const compteur = detail.compteur || 'inconnu';
+            const demandee = typeof detail.quantite_demandee === 'number' ? detail.quantite_demandee : 0;
+            const appliquee = typeof detail.quantite_appliquee === 'number' ? detail.quantite_appliquee : 0;
+            const nonCouverte = typeof detail.quantite_non_couverte === 'number' ? detail.quantite_non_couverte : 0;
+            infos.jours_decomptes += demandee;
+            infos.jours_consommes += appliquee;
+            infos.consommations_par_compteur[compteur] = (infos.consommations_par_compteur[compteur] || 0) + appliquee;
+            if (nonCouverte > 0) {
+              infos.alertes.push({
+                niveau: 'avertissement',
+                code: 'quantite_non_couverte',
+                message: 'Quantité non couverte : ' + formatQuantiteJours(nonCouverte)
+              });
+            }
+          });
+        });
+        const alertesProjection = Array.isArray(projectionVivante.alertes) ? projectionVivante.alertes : [];
+        alertesProjection.forEach((alerte) => {
+          if (!alerte || alerte.identifiant_evenement !== identifiantBloc) { return; }
+          infos.alertes.push({
+            niveau: alerte.severite || 'information',
+            code: alerte.type || 'alerte',
+            message: alerte.message || alerte.type || 'alerte'
+          });
+        });
+        infos.jours_decomptes = Number(infos.jours_decomptes.toFixed(10));
+        infos.jours_consommes = Number(infos.jours_consommes.toFixed(10));
+        Object.keys(infos.consommations_par_compteur).forEach((compteur) => {
+          infos.consommations_par_compteur[compteur] = Number(infos.consommations_par_compteur[compteur].toFixed(10));
+        });
+        return infos;
+      }
+
+      function resumeConsommationsParCompteur(consommationsParCompteur) {
+        const entrees = Object.entries(consommationsParCompteur || {})
+          .filter(([, valeur]) => typeof valeur === 'number' && Number.isFinite(valeur) && valeur !== 0)
+          .sort((a, b) => a[0].localeCompare(b[0]));
+        if (!entrees.length) { return 'aucune'; }
+        return entrees.map(([compteur, valeur]) => formatQuantiteJours(valeur) + ' ' + compteur).join(' · ');
+      }
+
+      function diagnosticsDepuisProjectionVivante(projection) {
+        const alertes = projection && Array.isArray(projection.alertes) ? projection.alertes : [];
+        return alertes.map((alerte) => ({
+          niveau: alerte.severite || 'information',
+          code: alerte.type || 'alerte_projection_vivante',
+          message: alerte.message || alerte.type || 'Alerte de projection vivante',
+          cibles: alerte.identifiant_evenement ? [{ type: 'bloc_absence', identifiant: alerte.identifiant_evenement }] : []
+        }));
+      }
+
+      function mettreAJourCompteursDepuisProjectionVivante(projection) {
+        const soldesFin = soldesFinProjectionVivante(projection || {});
+        document.querySelectorAll('[data-compteur-code][data-compteur-valeur="solde_fin"]').forEach((carte) => {
+          const code = carte.dataset.compteurCode;
+          if (!Object.prototype.hasOwnProperty.call(soldesFin, code)) { return; }
+          const valeur = soldesFin[code];
+          if (typeof valeur !== 'number' || !Number.isFinite(valeur)) { return; }
+          const valeurElement = carte.querySelector('[data-compteur-solde]');
+          const deltaElement = carte.querySelector('[data-compteur-delta]');
+          const initial = Number(carte.dataset.soldeStatique);
+          const delta = Number.isFinite(initial) ? Number((valeur - initial).toFixed(10)) : null;
+          carte.dataset.sourceCompteurs = 'projection_vivante';
+          carte.classList.add('compteur-vivant-recalcule');
+          if (valeurElement) {
+            valeurElement.textContent = formaterNombreProjectionVivante(valeur);
+          }
+          if (deltaElement) {
+            deltaElement.textContent = delta && Math.abs(delta) > 0.0000001
+              ? 'vivant · Δ ' + (delta > 0 ? '+' : '') + formaterNombreProjectionVivante(delta)
+              : 'vivant';
+          }
+        });
+      }
+
       function resumeSoldesFinProjectionVivante(soldes) {
         const entrees = Object.entries(soldes || {}).sort((a, b) => a[0].localeCompare(b[0]));
         if (!entrees.length) { return 'aucun solde'; }
@@ -1782,6 +1917,8 @@ def script_onglets() -> str:
           const alertes = Array.isArray(projectionVivante.alertes) ? projectionVivante.alertes.length : 0;
           const soldesFin = resumeSoldesFinProjectionVivante(soldesFinProjectionVivante(projectionVivante));
           afficherProjectionVivante('Alertes : ' + alertes + ' · Soldes fin : ' + soldesFin, 'Projection recalculée');
+          mettreAJourCompteursDepuisProjectionVivante(projectionVivante);
+          afficherDiagnosticsGui(diagnosticsDepuisProjectionVivante(projectionVivante));
         } catch (erreur) {
           projectionVivante = null;
           afficherProjectionVivante('Recalcul impossible : ' + (erreur && erreur.message ? erreur.message : String(erreur)), 'Erreur');
@@ -1917,6 +2054,9 @@ def script_onglets() -> str:
         niveau.dataset.selectionIdentifiant = bloc.id;
         niveau.dataset.selectionLibelle = 'absence locale prototype';
         niveau.dataset.selectionQuantite = bloc.quantite_jours + ' j';
+        niveau.dataset.selectionJoursCalendairesSelectionnes = String(
+          bloc.jours_calendaires_selectionnes || joursCalendairesSelectionnes(bloc.date_debut, bloc.date_fin)
+        );
         niveau.dataset.selectionCompteurIndicatif = bloc.compteur_indicatif || 'non_recalcule';
         niveau.dataset.selectionChoixCompteurMode = choix.mode || 'auto';
         niveau.dataset.selectionChoixCompteurLibelle = choix.mode === 'manuel' ? 'Manuel' : 'Auto';
@@ -1937,7 +2077,8 @@ def script_onglets() -> str:
           statut: 'scenario_local_prototype',
           choix_compteur: blocAffichable.choix_compteur || { mode: 'auto', compteur: null, libelle: 'Auto' },
           compteur_indicatif: blocAffichable.source_decision_compteur === 'utilisateur' ? blocAffichable.compteur : 'non_recalcule',
-          quantite_jours: blocAffichable.quantite_jours
+          quantite_jours: blocAffichable.quantite_jours,
+          jours_calendaires_selectionnes: blocAffichable.jours_calendaires_selectionnes
         });
       }
 
@@ -2003,6 +2144,9 @@ def script_onglets() -> str:
             rect.dataset.selectionIdentifiant = bloc.id;
             rect.dataset.selectionLibelle = 'absence locale prototype';
             rect.dataset.selectionQuantite = bloc.quantite_jours + ' j';
+            rect.dataset.selectionJoursCalendairesSelectionnes = String(
+              bloc.jours_calendaires_selectionnes || joursCalendairesSelectionnes(bloc.date_debut, bloc.date_fin)
+            );
             rect.dataset.selectionCompteurIndicatif = bloc.compteur_indicatif || 'non_recalcule';
             rect.dataset.selectionChoixCompteurMode = choix.mode || 'auto';
             rect.dataset.selectionChoixCompteurLibelle = choix.mode === 'manuel' ? 'Manuel' : 'Auto';
@@ -2069,28 +2213,27 @@ def script_onglets() -> str:
           afficherSelectionPlanification(donnees);
           return;
         }
-        const cible = document.getElementById('selection-planification');
-        if (!cible) { return; }
-        cible.textContent = '';
-        const fiche = document.createElement('div');
-        fiche.className = 'fiche-selection fiche-prototype';
-        const puce = document.createElement('span');
-        puce.className = 'puce-selection';
-        puce.textContent = 'bloc local prototype';
-        fiche.appendChild(puce);
         const choix = bloc.choix_compteur || { mode: 'auto', compteur: null, libelle: 'Auto' };
-        ajouterChampSelection(fiche, 'Période', libelleBlocLocal(bloc), false);
-        ajouterChampSelection(fiche, 'Quantité', bloc.quantite_jours + ' j', false);
-        ajouterChampSelection(fiche, 'Origine du bloc', 'utilisateur', false);
-        ajouterChampSelection(fiche, 'Choix du compteur', choix.mode === 'manuel' ? 'Manuel' : 'Auto', false);
-        ajouterChampSelection(fiche, 'Compteur demandé', choix.mode === 'manuel' ? choix.compteur : 'aucun', false);
-        ajouterChampSelection(fiche, 'Source de décision du compteur', sourceDecisionCompteurDepuisChoix(choix), false);
-        ajouterChampSelection(fiche, 'Justification', justificationDecisionCompteurDepuisChoix(choix), false);
-        ajouterChampSelection(fiche, 'Source', 'prototype local localStorage', false);
-        ajouterChampSelection(fiche, 'Moteur', 'non recalculé par le moteur dans cette vue tant que la projection n’a pas été régénérée', false);
-        ajouterChampSelection(fiche, 'Instruction', 'Suppr pour supprimer', false);
-        ajouterChampSelection(fiche, 'Identifiant', bloc.id, true);
-        cible.appendChild(fiche);
+        afficherSelectionPlanification({
+          selectionType: 'bloc',
+          selectionOrigine: 'ajoute_par_utilisateur',
+          selectionOrigineBloc: 'utilisateur',
+          selectionDateDebut: bloc.date_debut,
+          selectionDateFin: bloc.date_fin,
+          selectionPeriode: libelleBlocLocal(bloc),
+          selectionIdentifiant: bloc.id,
+          selectionLibelle: 'absence locale prototype',
+          selectionJoursCalendairesSelectionnes: String(
+            bloc.jours_calendaires_selectionnes || joursCalendairesSelectionnes(bloc.date_debut, bloc.date_fin)
+          ),
+          selectionCompteurIndicatif: bloc.compteur_indicatif || 'non_recalcule',
+          selectionChoixCompteurMode: choix.mode || 'auto',
+          selectionChoixCompteurLibelle: choix.mode === 'manuel' ? 'Manuel' : 'Auto',
+          selectionCompteurDemande: choix.mode === 'manuel' ? choix.compteur : 'aucun',
+          selectionSourceDecisionCompteur: sourceDecisionCompteurDepuisChoix(choix),
+          selectionJustificationDecisionCompteur: justificationDecisionCompteurDepuisChoix(choix),
+          selectionAlertes: 'aucune'
+        });
       }
 
       function supprimerBlocLocalSelectionne() {
@@ -2653,10 +2796,17 @@ def grille_compteurs_droite(soldes: dict[str, Any]) -> str:
     cellules = []
     for compteur, valeur in compteurs_tries_pour_affichage(soldes):
         valeur_lisible = formater_nombre_francais(valeur) if isinstance(valeur, (int, float)) else str(valeur)
+        compteur_echappe = escape(str(compteur))
+        solde_statique = escape(str(float(valeur))) if isinstance(valeur, (int, float)) else ""
         cellules.append(
-            "<article class=\"compteur-mini\">"
-            f"<span>{escape(str(compteur))}</span>"
-            f"<strong>{escape(valeur_lisible)}</strong>"
+            "<article class=\"compteur-mini\" "
+            f"data-compteur-code=\"{compteur_echappe}\" "
+            "data-compteur-valeur=\"solde_fin\" "
+            "data-source-compteurs=\"projection_statique\" "
+            f"data-solde-statique=\"{solde_statique}\">"
+            f"<span>{compteur_echappe}</span>"
+            f"<strong data-compteur-solde=\"{compteur_echappe}\">{escape(valeur_lisible)}</strong>"
+            f"<small class=\"delta-compteur-vivant\" data-compteur-delta=\"{compteur_echappe}\">statique</small>"
             "</article>"
         )
     return "".join(cellules) if cellules else "<p class=\"info-compacte\">aucun solde disponible</p>"
@@ -4522,6 +4672,22 @@ def feuille_style() -> str:
       font-size: 0.9rem;
       line-height: 1.1;
       overflow-wrap: anywhere;
+    }
+    .delta-compteur-vivant {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 0.68rem;
+      line-height: 1.05;
+      overflow-wrap: anywhere;
+    }
+    .compteur-vivant-recalcule {
+      border-bottom-color: rgba(20, 107, 95, 0.45);
+      box-shadow: inset 0 -2px 0 rgba(20, 107, 95, 0.18);
+    }
+    .compteur-vivant-recalcule .delta-compteur-vivant {
+      color: var(--accent-fort);
+      font-weight: 700;
     }
     .expiration-mini {
       display: flex;

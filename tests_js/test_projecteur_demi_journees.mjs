@@ -40,6 +40,7 @@ const alertesAttendues = {
   ],
   "entrees_projection_comparaison_periodes_compteurs.exemple.json": ["periode_compteur_absente"],
   "entrees_projection_comparaison_priorites.exemple.json": ["solde_minimum_depasse"],
+  "entrees_projection_comparaison_quantites_decomptees.exemple.json": [],
   "entrees_projection_comparaison_unites.exemple.json": [
     "unite_non_projectee",
     "quantite_evenement_non_projectee",
@@ -109,8 +110,8 @@ test("simule un ajout de bloc prototype GUI comme dans le navigateur", async () 
     actif: true,
     duree: {
       unite: "jours_ouvres",
-      valeur: 1.0,
-      methode: "prototype_gui",
+      valeur: null,
+      methode: "periode_selon_unite",
     },
   });
 
@@ -121,4 +122,21 @@ test("simule un ajout de bloc prototype GUI comme dans le navigateur", async () 
   assert.equal(evenement.source, "scenario");
   assert.equal(evenement.source_decision_compteur, "utilisateur");
   assert.equal(soldeFinal(projectionVivante, "GCP"), soldeFinal(projectionInitiale, "GCP") - 1);
+});
+
+test("deduit la quantite projetee depuis une periode vendredi-mercredi", async () => {
+  const fichier = path.join(repertoireExemples, "entrees_projection_comparaison_quantites_decomptees.exemple.json");
+  const donnees = JSON.parse(await readFile(fichier, "utf8"));
+  const projection = projeterDemiJournees(donnees);
+  const evenement = projection.evenements_sources.find((source) => source.identifiant === "bloc_vendredi_mercredi");
+  const details = projection.demi_journees
+    .flatMap((demiJournee) => demiJournee.consommations_detaillees)
+    .filter((detail) => detail.identifiant_evenement === "bloc_vendredi_mercredi");
+  const typesAlertes = new Set(projection.alertes.map((alerte) => alerte.type));
+
+  assert.equal(evenement.quantite, 4);
+  assert.equal(details.reduce((total, detail) => total + detail.quantite_demandee, 0), 4);
+  assert.equal(details.reduce((total, detail) => total + detail.quantite_appliquee, 0), 4);
+  assert.equal(soldeFinal(projection, "GCP"), 6);
+  assert.equal(typesAlertes.has("quantite_evenement_non_projectee"), false);
 });
