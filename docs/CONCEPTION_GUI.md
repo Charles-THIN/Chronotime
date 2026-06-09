@@ -764,6 +764,8 @@ Le projecteur calcule alors la quantité demandée depuis `date_debut`, `date_fi
 
 Quand une projection vivante existe, les compteurs visibles de la barre droite sont mis à jour depuis les soldes finaux de cette projection. La projection statique initiale reste le repli lorsque les entrées de projection ne sont pas embarquées.
 
+Le total restant de la barre droite suit aussi la projection vivante. Il reste une somme provisoire des soldes finaux numériques, sans appliquer encore les réserves, le reste libre ni les règles de conservation `N+1`.
+
 La fiche de sélection d’un bloc utilisateur lit les consommations dans `projectionVivante.demi_journees`, notamment `consommations_detaillees.quantite_demandee`, `quantite_appliquee`, `quantite_non_couverte` et `compteur`. Elle n’essaie pas de recalculer ces quantités dans le rendu.
 
 Limites maintenues :

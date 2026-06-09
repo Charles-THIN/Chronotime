@@ -680,9 +680,15 @@ class TestGenerateurVueProjection(unittest.TestCase):
             "jours_consommes",
             "consommations_par_compteur",
             "mettreAJourCompteursDepuisProjectionVivante",
+            "mettreAJourTotalRestantDepuisProjectionVivante",
+            "mettreAJourTotalRestantDepuisProjectionVivante(projectionVivante)",
+            "data-total-restant",
+            "data-total-restant-valeur",
+            "data-total-restant-delta",
             "data-compteur-code",
             "projection_vivante",
             "vivant",
+            "Projection recalculée",
             "à résoudre",
             "famille_compteur",
             "standard",
@@ -692,6 +698,8 @@ class TestGenerateurVueProjection(unittest.TestCase):
             self.assertIn(marqueur, html)
 
         self.assertNotIn("Parentalité", html)
+        self.assertNotIn("Soldes fin : ", html)
+        self.assertNotIn("Soldes fin : ASTJ", html)
 
     def test_generation_html_quantites_bloc_utilisateur_explicitent_decompte(self) -> None:
         html = generer_html(self._charger_exemple(), entrees_projection=self._charger_entrees_projection_minimum())

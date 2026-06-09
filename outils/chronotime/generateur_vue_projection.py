@@ -1880,6 +1880,33 @@ def script_onglets() -> str:
         });
       }
 
+      function totalRestantDepuisSoldes(soldes) {
+        return Object.values(soldes || {}).reduce((total, valeur) => (
+          typeof valeur === 'number' && Number.isFinite(valeur) ? total + valeur : total
+        ), 0);
+      }
+
+      function mettreAJourTotalRestantDepuisProjectionVivante(projection) {
+        const carte = document.querySelector('[data-total-restant="solde_fin"]');
+        if (!carte) { return; }
+        const soldesFin = soldesFinProjectionVivante(projection || {});
+        const total = Number(totalRestantDepuisSoldes(soldesFin).toFixed(10));
+        const valeurElement = carte.querySelector('[data-total-restant-valeur]');
+        const deltaElement = carte.querySelector('[data-total-restant-delta]');
+        const initial = Number(carte.dataset.totalStatique);
+        const delta = Number.isFinite(initial) ? Number((total - initial).toFixed(10)) : null;
+        carte.dataset.sourceTotal = 'projection_vivante';
+        carte.classList.add('total-vivant-recalcule');
+        if (valeurElement) {
+          valeurElement.textContent = formatQuantiteJours(total);
+        }
+        if (deltaElement) {
+          deltaElement.textContent = delta && Math.abs(delta) > 0.0000001
+            ? 'vivant · Δ ' + (delta > 0 ? '+' : '') + formaterNombreProjectionVivante(delta) + ' j'
+            : 'vivant';
+        }
+      }
+
       function resumeSoldesFinProjectionVivante(soldes) {
         const entrees = Object.entries(soldes || {}).sort((a, b) => a[0].localeCompare(b[0]));
         if (!entrees.length) { return 'aucun solde'; }
@@ -1915,9 +1942,9 @@ def script_onglets() -> str:
           const entreesVivantes = construireEntreesProjectionVivantes();
           projectionVivante = window.ChronotimeProjecteur.projeterDemiJournees(entreesVivantes);
           const alertes = Array.isArray(projectionVivante.alertes) ? projectionVivante.alertes.length : 0;
-          const soldesFin = resumeSoldesFinProjectionVivante(soldesFinProjectionVivante(projectionVivante));
-          afficherProjectionVivante('Alertes : ' + alertes + ' · Soldes fin : ' + soldesFin, 'Projection recalculée');
+          afficherProjectionVivante('Recalculé · ' + alertes + ' alertes', 'Projection recalculée');
           mettreAJourCompteursDepuisProjectionVivante(projectionVivante);
+          mettreAJourTotalRestantDepuisProjectionVivante(projectionVivante);
           afficherDiagnosticsGui(diagnosticsDepuisProjectionVivante(projectionVivante));
         } catch (erreur) {
           projectionVivante = null;
@@ -2816,13 +2843,15 @@ def barre_infos_droite(projection: dict[str, Any], demi_journees: list[Any]) -> 
     soldes_finaux = soldes_fin_projection(projection, demi_journees)
     total_restant = somme_soldes_numeriques(soldes_finaux)
     total_restant_texte = formater_quantite_jour(total_restant) if total_restant is not None else "Niveau non disponible"
+    total_restant_statique = escape(str(float(total_restant))) if total_restant is not None else ""
     return f"""
     <aside class="barre-infos-droite barre-infos-droite-stable" aria-label="Barre d’informations de planification">
       <section class="bloc-info-fixe">
         <div class="resume-droite-compact">
-          <article class="resume-mini">
+          <article class="resume-mini" data-total-restant="solde_fin" data-source-total="projection_statique" data-total-statique="{total_restant_statique}">
             <span>Total restant</span>
-            <strong>{escape(total_restant_texte)}</strong>
+            <strong data-total-restant-valeur>{escape(total_restant_texte)}</strong>
+            <small class="delta-total-restant" data-total-restant-delta>statique</small>
           </article>
           <article class="resume-mini">
             <span>Cette année</span>
@@ -4638,6 +4667,22 @@ def feuille_style() -> str:
       font-size: 1.05rem;
       line-height: 1.1;
       overflow-wrap: anywhere;
+    }
+    .delta-total-restant {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 0.68rem;
+      line-height: 1.05;
+      overflow-wrap: anywhere;
+    }
+    .total-vivant-recalcule {
+      border-color: rgba(20, 107, 95, 0.45);
+      box-shadow: inset 0 -2px 0 rgba(20, 107, 95, 0.18);
+    }
+    .total-vivant-recalcule .delta-total-restant {
+      color: var(--accent-fort);
+      font-weight: 700;
     }
     .compteurs-droite-section {
       margin-bottom: 6px;
