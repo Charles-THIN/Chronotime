@@ -852,6 +852,16 @@ Elle ne contient pas de logique métier d’allocation des compteurs. Les consom
 
 La pose depuis la frise, le déplacement, le redimensionnement et les règles fines liées à `Auto`, aux congés parentaux ou aux expirations restent des étapes ultérieures.
 
+## V0.5.8 Modes visuels cohérents entre calendrier et frise
+
+La frise reprend la même distinction que le calendrier entre mode général et mode détaillé.
+
+En mode général, la lecture privilégie l’origine du bloc : ajout utilisateur, obligation locale, scénario, donnée Chronotime ou autre source. Les compteurs ne doivent pas être le premier niveau de lecture.
+
+En mode détaillé, la lecture privilégie les compteurs consommés, avec les mêmes familles visuelles que le calendrier pour `GCP`, `JRTT`, `CANC` et les autres compteurs.
+
+Cette étape ne découpe pas encore un même bloc en sous-blocs lorsqu’il consomme plusieurs compteurs. Elle prépare seulement un langage visuel commun entre calendrier et frise.
+
 ## Vue future des soldes dans le temps
 
 Une future vue `Soldes dans le temps` devra représenter :

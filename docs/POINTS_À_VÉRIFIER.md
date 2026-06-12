@@ -64,6 +64,7 @@ Ce document liste les points encore ouverts avant de figer un moteur de calcul p
 - Fait : curseur compact toujours visible.
 - Fait : indicateur `Posés {année}`.
 - Fait : frise synchronisée en lecture avec la projection active.
+- Fait : modes visuels général/détaillé alignés entre calendrier et frise.
 - Reste : définir le total métier final, le reste libre et les réserves `N+1`.
 - Reste : ajouter une sauvegarde explicite vers fichier.
 - Reste : ajouter un chargement explicite depuis fichier.

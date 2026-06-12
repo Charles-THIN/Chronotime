@@ -2497,8 +2497,23 @@ def script_onglets() -> str:
         return codes.length ? 'compteur-frise-defaut' : '';
       }
 
+      function origineFriseBloc(bloc) {
+        const origine = String((bloc && bloc.origine_bloc) || '').trim().toLowerCase();
+        const source = String((bloc && bloc.source) || '').trim().toLowerCase();
+        if (origine === 'utilisateur') { return 'utilisateur'; }
+        if (source.includes('obligation')) { return 'obligation'; }
+        if (source.includes('chronotime') || source.includes('agenda')) { return 'chronotime'; }
+        if (source.includes('scenario') || source.includes('simulation')) { return 'scenario'; }
+        return 'autre';
+      }
+
+      function classeOrigineFrise(bloc) {
+        return 'origine-frise-' + origineFriseBloc(bloc);
+      }
+
       function definirDonneesSelectionBlocFrise(element, bloc, utilisateur) {
         element.dataset.friseSource = 'projection_active';
+        element.dataset.friseOrigine = origineFriseBloc(bloc);
         element.dataset.identifiantBloc = bloc.identifiant;
         element.dataset.selectionType = 'bloc';
         element.dataset.selectionIdentifiant = bloc.identifiant;
@@ -2546,11 +2561,13 @@ def script_onglets() -> str:
 
         const groupeBloc = document.createElementNS(svg.namespaceURI, 'g');
         const classeCompteur = classeCompteurFrise(bloc.compteurs);
+        const classeOrigine = classeOrigineFrise(bloc);
         groupeBloc.setAttribute('class', [
           'bloc-frise-groupe',
           'element-selectionnable',
           'bloc-frise-actif',
           utilisateur ? 'bloc-utilisateur-frise' : '',
+          classeOrigine,
           classeCompteur
         ].filter(Boolean).join(' '));
         groupeBloc.setAttribute('role', 'button');
@@ -2566,6 +2583,7 @@ def script_onglets() -> str:
           'bloc-frise-rectangle',
           'bloc-frise-actif',
           utilisateur ? 'bloc-utilisateur-frise-rectangle' : '',
+          classeOrigine,
           classeCompteur
         ].filter(Boolean).join(' '));
         rect.setAttribute('x', String(gauche));
@@ -4754,25 +4772,58 @@ def feuille_style() -> str:
       background: linear-gradient(180deg, rgba(255, 250, 240, 0.88), rgba(239, 228, 208, 0.8));
     }
     .bloc-temporel-projete {
-      fill: rgba(20, 107, 95, 0.72);
+      fill: rgba(20, 107, 95, 0.18);
       stroke: var(--accent-fort);
-      stroke-width: 1;
+      stroke-width: 1.2;
     }
-    .bloc-frise-actif.compteur-frise-gcp {
-      fill: rgba(20, 107, 95, 0.68);
+    .bloc-frise-groupe {
+      cursor: pointer;
+    }
+    .interface-planification[data-mode-planification="general"] .bloc-frise-groupe.origine-frise-utilisateur .bloc-temporel-projete {
+      fill: rgba(20, 107, 95, 0.26);
+      stroke: var(--accent-fort);
+      stroke-width: 1.5;
+      stroke-dasharray: 5 3;
+    }
+    .interface-planification[data-mode-planification="general"] .bloc-frise-groupe.origine-frise-obligation .bloc-temporel-projete {
+      fill: rgba(155, 107, 0, 0.24);
+      stroke: var(--confirmation);
+      stroke-width: 1.5;
+    }
+    .interface-planification[data-mode-planification="general"] .bloc-frise-groupe.origine-frise-scenario .bloc-temporel-projete {
+      fill: rgba(20, 107, 95, 0.20);
+      stroke: var(--accent-fort);
+      stroke-width: 1.2;
+    }
+    .interface-planification[data-mode-planification="general"] .bloc-frise-groupe.origine-frise-chronotime .bloc-temporel-projete {
+      fill: rgba(79, 134, 198, 0.18);
+      stroke: var(--info);
+      stroke-width: 1.3;
+    }
+    .interface-planification[data-mode-planification="general"] .bloc-frise-groupe.origine-frise-autre .bloc-temporel-projete {
+      fill: rgba(90, 82, 68, 0.18);
+      stroke: var(--muted);
+      stroke-width: 1.2;
+    }
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-groupe.compteur-frise-gcp .bloc-temporel-projete,
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-rectangle.compteur-frise-gcp {
+      fill: rgba(201, 111, 117, 0.22);
       stroke: var(--compteur-gcp);
     }
-    .bloc-frise-actif.compteur-frise-jrtt {
-      fill: rgba(177, 59, 46, 0.22);
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-groupe.compteur-frise-jrtt .bloc-temporel-projete,
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-rectangle.compteur-frise-jrtt {
+      fill: rgba(79, 134, 198, 0.22);
       stroke: var(--compteur-jrtt);
     }
-    .bloc-frise-actif.compteur-frise-canc {
-      fill: rgba(155, 107, 0, 0.24);
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-groupe.compteur-frise-canc .bloc-temporel-projete,
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-rectangle.compteur-frise-canc {
+      fill: rgba(79, 155, 115, 0.22);
       stroke: var(--compteur-canc);
     }
-    .bloc-frise-actif.compteur-frise-defaut {
-      fill: rgba(90, 82, 68, 0.2);
-      stroke: var(--muted);
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-groupe.compteur-frise-defaut .bloc-temporel-projete,
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-rectangle.compteur-frise-defaut {
+      fill: rgba(20, 107, 95, 0.14);
+      stroke: var(--compteur-defaut);
     }
     .bloc-temporel-projete.selection-active,
     .bloc-selectionne {
@@ -4780,20 +4831,16 @@ def feuille_style() -> str:
       stroke: #5f1d16;
       stroke-width: 3;
     }
-    .bloc-frise-groupe {
-      cursor: pointer;
-    }
     .bloc-frise-groupe.selection-active .bloc-temporel-projete,
     .bloc-frise-groupe.bloc-utilisateur-selectionne .bloc-temporel-projete {
       fill: rgba(20, 107, 95, 0.34);
       stroke: var(--accent-fort);
       stroke-width: 3;
     }
-    .bloc-utilisateur-frise .bloc-temporel-projete,
-    .bloc-utilisateur-frise-rectangle {
-      fill: rgba(20, 107, 95, 0.32);
+    .bloc-frise-groupe.selection-active .liaison-bloc-courbe,
+    .bloc-frise-groupe.bloc-utilisateur-selectionne .liaison-bloc-courbe {
       stroke: var(--accent-fort);
-      stroke-width: 1.4;
+      stroke-width: 2;
     }
     .liaison-bloc-courbe {
       stroke: rgba(177, 59, 46, 0.42);
