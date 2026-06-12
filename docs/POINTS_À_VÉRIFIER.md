@@ -60,13 +60,19 @@ Ce document liste les points encore ouverts avant de figer un moteur de calcul p
 - Confirmer la parité complète Python / JS sur un corpus croissant de scénarios artificiels avant de brancher la GUI sur le moteur JS ou de supprimer le moteur Python.
 - Fait : les compteurs principaux et le total restant de la barre droite peuvent être mis à jour depuis la projection vivante recalculée en mémoire.
 - Fait : l’autosauvegarde locale du scénario GUI est déclenchée après modification acceptée.
-- Reste : définir le total métier final, le reste libre, les réserves `N+1` et l’affichage `Cette année`.
+- Fait : nettoyage des messages de succès et du vocabulaire prototype dans la vue Calendrier.
+- Fait : curseur compact toujours visible.
+- Fait : indicateur `Posés {année}`.
+- Reste : définir le total métier final, le reste libre et les réserves `N+1`.
 - Reste : ajouter une sauvegarde explicite vers fichier.
 - Reste : ajouter un chargement explicite depuis fichier.
 - Reste : permettre un retour à l’état à l’ouverture.
 - Reste : permettre l’annulation des changements depuis le lancement.
-- Reste : remplacer progressivement les affichages statiques du calendrier et de la frise par des vues dérivées de la projection vivante.
-- Reste : implémenter l’optimisation réelle du choix `Auto`.
+- Reste : frise interactive.
+- Reste : reconstruction complète calendrier/frise depuis projection recalculée.
+- Reste : Auto réel.
+- Reste : expirations fines par compteur.
+- Reste : journal technique consultable.
 - Reste : intégrer les familles de compteurs liées à la parentalité lorsque les blocs parentalité seront modélisés.
 
 ## Événements de compteur

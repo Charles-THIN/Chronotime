@@ -940,6 +940,8 @@ def script_onglets() -> str:
           bouton.setAttribute('aria-pressed', actif ? 'true' : 'false');
         });
         nettoyerFantomeLocal();
+        nettoyerCurseurPose();
+        afficherDiagnosticsGui([]);
         deselectionnerPlanification();
       }
 
@@ -953,7 +955,7 @@ def script_onglets() -> str:
             mode: 'auto',
             valeur: 'auto',
             libelle: 'Auto',
-            commentaire: 'Laisser le moteur choisir selon les règles connues.',
+            commentaire: 'Auto',
             source_commentaire: 'moteur_gui_prototype',
             famille_compteur: 'standard'
           }
@@ -963,7 +965,7 @@ def script_onglets() -> str:
             mode: 'manuel',
             valeur: compteur,
             libelle: compteur,
-            commentaire: 'Priorité non déterminée dans cette vue.',
+            commentaire: compteur,
             source_commentaire: 'moteur_gui_prototype',
             famille_compteur: 'standard'
           });
@@ -1008,11 +1010,19 @@ def script_onglets() -> str:
       }
 
       function libelleSelection(type) {
-        if (type === 'jour') { return 'jour calendrier'; }
-        if (type === 'bloc') { return 'bloc projeté'; }
+        if (type === 'jour') { return 'Jour'; }
+        if (type === 'bloc') { return 'Bloc projeté'; }
         if (type === 'sous-bloc') { return 'sous-bloc'; }
         if (type === 'reste') { return 'reste agrégé provisoire'; }
         return type || 'élément';
+      }
+
+      function ajouterLigneSelection(conteneur, texte) {
+        if (!texte) { return; }
+        const ligne = document.createElement('p');
+        ligne.className = 'ligne-selection-compacte';
+        ligne.textContent = texte;
+        conteneur.appendChild(ligne);
       }
 
       function ajouterChampSelection(conteneur, libelle, valeur, long) {
@@ -1027,6 +1037,13 @@ def script_onglets() -> str:
         champ.appendChild(etiquette);
         champ.appendChild(contenu);
         conteneur.appendChild(champ);
+      }
+
+      function prefixerPuceSelection(fiche, texte) {
+        const puce = document.createElement('span');
+        puce.className = 'puce-selection';
+        puce.textContent = texte;
+        fiche.appendChild(puce);
       }
 
       function niveauxDisponibles(element) {
@@ -1051,6 +1068,14 @@ def script_onglets() -> str:
         const index = prochain % niveaux.length;
         element.dataset.selectionIndex = String(index);
         return niveaux[index].dataset;
+      }
+
+      function lireDonneesCurseurSelection(element) {
+        const niveaux = niveauxDisponibles(element);
+        if (!niveaux.length) {
+          return element.dataset;
+        }
+        return niveaux[0].dataset;
       }
 
       function reinitialiserCyclesSelection() {
@@ -1130,79 +1155,73 @@ def script_onglets() -> str:
         cible.textContent = '';
         const fiche = document.createElement('div');
         fiche.className = 'fiche-selection';
-        const puce = document.createElement('span');
-        puce.className = 'puce-selection';
-        puce.textContent = donnees.selectionOrigine === 'ajoute_par_utilisateur'
-          ? 'bloc utilisateur prototype'
-          : libelleSelection(donnees.selectionType);
-        fiche.appendChild(puce);
 
         if (donnees.selectionType === 'jour') {
-          ajouterChampSelection(fiche, 'Date', donnees.selectionDate, false);
-          ajouterChampSelection(fiche, 'Consommation', donnees.selectionConsommation, false);
-          ajouterChampSelection(fiche, 'Alertes', donnees.selectionAlertes, false);
+          prefixerPuceSelection(fiche, donnees.selectionDate || 'Jour');
+          const consommation = donnees.selectionConsommation || '';
+          ajouterLigneSelection(fiche, consommation && consommation !== 'aucune' ? consommation + ' consommé' : 'Aucune absence');
+          if (donnees.selectionAlertes && donnees.selectionAlertes !== 'aucune') {
+            ajouterLigneSelection(fiche, 'Alerte : ' + donnees.selectionAlertes);
+          }
         } else if (donnees.selectionType === 'bloc') {
-          ajouterChampSelection(fiche, 'Période', donnees.selectionPeriode, false);
-          ajouterChampSelection(fiche, 'Libellé', donnees.selectionLibelle, false);
           if (donnees.selectionOrigine === 'ajoute_par_utilisateur') {
+            prefixerPuceSelection(fiche, 'Bloc utilisateur · ' + (donnees.selectionPeriode || 'période'));
             const infosVivantes = infosBlocDepuisProjectionVivante(donnees.selectionIdentifiant);
             const joursCalendaires = Number(donnees.selectionJoursCalendairesSelectionnes)
               || joursCalendairesSelectionnes(donnees.selectionDateDebut, donnees.selectionDateFin);
-            ajouterChampSelection(fiche, 'Jours calendaires', String(joursCalendaires || 'non disponible'), false);
+            ajouterLigneSelection(fiche, joursCalendaires ? libelleJours(joursCalendaires, 'jours calendaires') : '');
             if ((donnees.selectionChoixCompteurMode || 'auto') === 'auto' && (!infosVivantes || infosVivantes.jours_decomptes === 0)) {
-              ajouterChampSelection(fiche, 'Jours décomptés', 'non résolu', false);
-              ajouterChampSelection(fiche, 'Auto', 'à résoudre', false);
+              ajouterLigneSelection(fiche, 'Auto à résoudre');
             } else if (infosVivantes) {
-              ajouterChampSelection(fiche, 'Jours décomptés', formatQuantiteJours(infosVivantes.jours_decomptes), false);
-              ajouterChampSelection(fiche, 'Consommés', resumeConsommationsParCompteur(infosVivantes.consommations_par_compteur), false);
-              ajouterChampSelection(
-                fiche,
-                'Alertes recalculées',
-                infosVivantes.alertes.length ? infosVivantes.alertes.map((alerte) => alerte.code).join(', ') : 'aucune',
-                false
-              );
+              ajouterLigneSelection(fiche, libelleJours(infosVivantes.jours_consommes, 'jours consommés au total'));
+              ajouterLigneSelection(fiche, resumeConsommationsCompactes(infosVivantes.consommations_par_compteur));
+              infosVivantes.alertes.forEach((alerte) => {
+                ajouterLigneSelection(fiche, 'Alerte : ' + (alerte.message || alerte.code || 'à vérifier'));
+              });
             } else {
-              ajouterChampSelection(fiche, 'Jours décomptés', 'non recalculé', false);
-              ajouterChampSelection(fiche, 'Consommés', 'non recalculé', false);
+              const compteurDemande = donnees.selectionCompteurDemande && donnees.selectionCompteurDemande !== 'aucun'
+                ? donnees.selectionCompteurDemande
+                : '';
+              ajouterLigneSelection(fiche, compteurDemande ? (donnees.selectionQuantite || '') + ' ' + compteurDemande : 'Auto à résoudre');
             }
-            ajouterChampSelection(fiche, 'Origine du bloc', donnees.selectionOrigineBloc || 'utilisateur', false);
-            ajouterChampSelection(fiche, 'Choix du compteur', donnees.selectionChoixCompteurLibelle || 'Auto', false);
-            ajouterChampSelection(fiche, 'Compteur demandé', donnees.selectionCompteurDemande || 'aucun', false);
-            ajouterChampSelection(fiche, 'Source de décision du compteur', donnees.selectionSourceDecisionCompteur || 'moteur', false);
-            ajouterChampSelection(fiche, 'Justification', donnees.selectionJustificationDecisionCompteur || 'Le moteur devra résoudre ce choix lors du recalcul.', false);
-            ajouterChampSelection(fiche, 'Source', 'scénario GUI autosauvegardé localement', false);
-            ajouterChampSelection(fiche, 'Moteur', 'non recalculé par le moteur dans cette vue tant que la projection n’a pas été régénérée', false);
-            ajouterChampSelection(fiche, 'Instruction', 'Suppr pour supprimer', false);
+            ajouterLigneSelection(fiche, 'Suppr pour supprimer');
           } else {
-            ajouterChampSelection(fiche, 'Quantité', donnees.selectionQuantite, false);
-            ajouterChampSelection(fiche, 'Compteurs', donnees.selectionCompteurs, false);
-            ajouterChampSelection(fiche, 'Alertes', donnees.selectionAlertes, false);
+            prefixerPuceSelection(fiche, 'Bloc projeté · ' + (donnees.selectionPeriode || 'période'));
+            ajouterLigneSelection(fiche, (donnees.selectionQuantite || '') + ' consommés au total');
+            ajouterLigneSelection(fiche, donnees.selectionCompteurs || '');
+            ajouterLigneSelection(fiche, 'Origine : scénario');
+            if (donnees.selectionAlertes && donnees.selectionAlertes !== 'aucune') {
+              ajouterLigneSelection(fiche, 'Alerte : ' + donnees.selectionAlertes);
+            }
           }
-          ajouterChampSelection(fiche, 'Identifiant', donnees.selectionIdentifiant, true);
         } else if (donnees.selectionType === 'sous-bloc') {
-          ajouterChampSelection(fiche, 'Période', donnees.selectionPeriode, false);
-          ajouterChampSelection(fiche, 'Compteur', donnees.selectionCompteur, false);
-          ajouterChampSelection(fiche, 'Quantité', donnees.selectionQuantite, false);
-          ajouterChampSelection(fiche, 'Bloc parent', donnees.selectionParent, true);
+          prefixerPuceSelection(fiche, 'Bloc projeté · ' + (donnees.selectionPeriode || 'période'));
+          ajouterLigneSelection(fiche, (donnees.selectionQuantite || '') + ' consommés au total');
+          ajouterLigneSelection(fiche, donnees.selectionCompteur || '');
         } else if (donnees.selectionType === 'reste') {
-          ajouterChampSelection(fiche, 'Date', donnees.selectionDate, false);
-          ajouterChampSelection(fiche, 'Portion', donnees.selectionPortion, false);
-          ajouterChampSelection(fiche, 'Niveau', donnees.selectionNiveau, false);
+          prefixerPuceSelection(fiche, donnees.selectionDate || 'Niveau');
+          ajouterLigneSelection(fiche, donnees.selectionNiveau || '');
         }
 
         cible.appendChild(fiche);
       }
 
-      function afficherCurseurPlanification(donnees) {
+      function mettreAJourCurseurSelection(donnees) {
         const cible = document.getElementById('curseur-planification');
         if (!cible) { return; }
         cible.textContent = '';
         const fiche = document.createElement('div');
         fiche.className = 'fiche-selection fiche-curseur';
-        ajouterChampSelection(fiche, 'Date', donnees.selectionDate, false);
-        ajouterChampSelection(fiche, 'Portion', donnees.selectionPortion, false);
-        ajouterChampSelection(fiche, 'Niveau', donnees.selectionNiveau, false);
+        prefixerPuceSelection(fiche, donnees.selectionDate || donnees.selectionPeriode || 'Curseur');
+        if (donnees.selectionType === 'jour') {
+          const consommation = donnees.selectionConsommation || '';
+          ajouterLigneSelection(fiche, consommation && consommation !== 'aucune' ? consommation + ' consommé' : 'Aucune absence');
+        }
         cible.appendChild(fiche);
+      }
+
+      function afficherCurseurPlanification(donnees) {
+        mettreAJourCurseurSelection(donnees);
       }
 
       function afficherCurseurPrototype(dateDebut, dateFin, impossible) {
@@ -1212,28 +1231,23 @@ def script_onglets() -> str:
         cible.textContent = '';
         const fiche = document.createElement('div');
         fiche.className = 'fiche-selection fiche-curseur fiche-prototype';
-        const puce = document.createElement('span');
-        puce.className = 'puce-selection';
-        puce.textContent = impossible ? 'pose impossible' : 'prévisualisation locale';
-        fiche.appendChild(puce);
-        ajouterChampSelection(fiche, 'Période', periodeLisible(dateDebut, dateFin), false);
-        ajouterChampSelection(fiche, 'Quantité', quantite + ' j projeté(s)', false);
-        ajouterChampSelection(fiche, 'Compteur indicatif', 'non_recalcule', false);
-        ajouterChampSelection(fiche, 'Moteur', 'non recalculé par le moteur', false);
+        prefixerPuceSelection(fiche, periodeLisible(dateDebut, dateFin));
         if (impossible) {
-          ajouterChampSelection(fiche, 'Raison', 'plage déjà occupée', false);
+          ajouterLigneSelection(fiche, 'Pose impossible : plage déjà occupée');
+        } else if (dateDebut !== dateFin) {
+          ajouterLigneSelection(fiche, quantite + ' jours ouvrés possibles');
         }
         cible.appendChild(fiche);
       }
 
-      function viderCurseurPlanification() {
+      function nettoyerCurseurPose() {
         const cible = document.getElementById('curseur-planification');
         if (!cible) { return; }
         cible.textContent = '';
-        const vide = document.createElement('p');
-        vide.className = 'info-compacte';
-        vide.textContent = 'aucun';
-        cible.appendChild(vide);
+      }
+
+      function viderCurseurPlanification() {
+        nettoyerCurseurPose();
       }
 
       function deselectionnerPlanification() {
@@ -1368,15 +1382,17 @@ def script_onglets() -> str:
         etatTransitoireInterface.fantome_calendrier = { date_debut: dateA, date_fin: dateB };
         etatTransitoireInterface.fantome_frise = { date_debut: dateA, date_fin: dateB };
         etatTransitoireInterface.dernier_resultat_previsualisation = resultat;
-        etatTransitoireInterface.message_temporaire = resultat.diagnostics.length ? 'pose impossible' : 'prévisualisation locale';
+        etatTransitoireInterface.message_temporaire = resultat.diagnostics.length ? 'pose impossible' : '';
         afficherEtatTransitoireInterface();
       }
 
       function afficherEtatSauvegardeScenario(message, etat) {
         const cible = document.getElementById('etat-sauvegarde-scenario');
         if (!cible) { return; }
-        cible.textContent = message;
         cible.dataset.etatSauvegarde = etat || 'information';
+        const visible = etat === 'erreur' && message;
+        cible.textContent = visible ? message : '';
+        cible.hidden = !visible;
       }
 
       function normaliserChoixCompteurPrototype(bloc) {
@@ -1459,14 +1475,14 @@ def script_onglets() -> str:
             const scenario = enveloppe && enveloppe.scenario && enveloppe.scenario.scenario;
             const blocs = scenario && Array.isArray(scenario.blocs) ? scenario.blocs : null;
             if (Array.isArray(blocs)) {
-              afficherEtatSauvegardeScenario('Restauré', 'restaure');
+              afficherEtatSauvegardeScenario('', 'restaure');
               return blocs.map(blocScenarioVersBlocLocalPrototype);
             }
-            afficherEtatSauvegardeScenario('Sauvegarde impossible', 'erreur');
+            afficherEtatSauvegardeScenario('Restauration impossible', 'erreur');
             return [];
           }
         } catch (_erreur) {
-          afficherEtatSauvegardeScenario('Sauvegarde impossible', 'erreur');
+          afficherEtatSauvegardeScenario('Restauration impossible', 'erreur');
           return [];
         }
 
@@ -1474,17 +1490,17 @@ def script_onglets() -> str:
           const textePrototype = localStorage.getItem(CLE_STOCKAGE_PROTO);
           const donnees = textePrototype ? JSON.parse(textePrototype) : [];
           if (Array.isArray(donnees) && donnees.length) {
-            afficherEtatSauvegardeScenario('Restauré', 'migration');
+            afficherEtatSauvegardeScenario('', 'migration');
             return donnees
               .filter((bloc) => bloc && bloc.type === 'absence_locale_prototype')
               .map(normaliserBlocLocalPrototype);
           }
         } catch (_erreur) {
-          afficherEtatSauvegardeScenario('Sauvegarde impossible', 'erreur');
+          afficherEtatSauvegardeScenario('Restauration impossible', 'erreur');
           return [];
         }
 
-        afficherEtatSauvegardeScenario('Aucun scénario local sauvegardé', 'vide');
+        afficherEtatSauvegardeScenario('', 'vide');
         return [];
       }
 
@@ -1507,7 +1523,7 @@ def script_onglets() -> str:
         if (choix && choix.mode === 'manuel') {
           return 'Compteur demandé explicitement par l’utilisateur.';
         }
-        return 'Le moteur devra résoudre ce choix lors du recalcul.';
+        return 'Auto à résoudre.';
       }
 
       function blocPrototypeVersBlocAffichable(bloc) {
@@ -1676,7 +1692,7 @@ def script_onglets() -> str:
                 diagnosticMoteurGui(
                   'bloquant',
                   'bloc_introuvable',
-                  'Suppression impossible : le bloc prototype est introuvable.',
+                  'Suppression impossible : bloc introuvable.',
                   [{ type: 'bloc_absence', identifiant: identifiant || '' }],
                   {}
                 )
@@ -1693,7 +1709,7 @@ def script_onglets() -> str:
                 diagnosticMoteurGui(
                   'bloquant',
                   'bloc_non_modifiable',
-                  'Suppression impossible : seul un bloc utilisateur prototype peut être supprimé.',
+                  'Suppression impossible : ce bloc ne peut pas être supprimé ici.',
                   [{ type: 'bloc_absence', identifiant: identifiant || '' }],
                   {}
                 )
@@ -1715,7 +1731,7 @@ def script_onglets() -> str:
             diagnosticMoteurGui(
               'erreur',
               'commande_non_prise_en_charge',
-              'Commande non prise en charge par le moteur GUI prototype.',
+              'Commande non prise en charge.',
               [{ type: 'commande', identifiant: (commande && commande.identifiant_commande) || '' }],
               {}
             )
@@ -1727,21 +1743,20 @@ def script_onglets() -> str:
       function afficherDiagnosticsGui(diagnostics) {
         const cible = document.getElementById('diagnostics-planification');
         if (!cible) { return; }
+        const section = cible.closest('.zone-diagnostics-planification');
         cible.textContent = '';
         const diagnosticsAffiches = Array.isArray(diagnostics) ? diagnostics : [];
         if (!diagnosticsAffiches.length) {
-          const vide = document.createElement('p');
-          vide.className = 'info-compacte';
-          vide.textContent = 'aucun';
-          cible.appendChild(vide);
+          if (section) { section.hidden = true; }
           return;
         }
+        if (section) { section.hidden = false; }
         const liste = document.createElement('ul');
         liste.className = 'liste-diagnostics-planification';
         diagnosticsAffiches.forEach((diagnostic) => {
           const element = document.createElement('li');
           element.className = 'diagnostic-planification diagnostic-' + (diagnostic.niveau || 'information');
-          element.textContent = (diagnostic.niveau || 'information') + ' · ' + (diagnostic.code || 'diagnostic') + ' · ' + (diagnostic.message || '');
+          element.textContent = diagnostic.message || diagnostic.code || 'Diagnostic à vérifier';
           liste.appendChild(element);
         });
         cible.appendChild(liste);
@@ -1843,9 +1858,14 @@ def script_onglets() -> str:
 
       function formatQuantiteJours(valeur) {
         if (typeof valeur !== 'number' || !Number.isFinite(valeur)) {
-          return 'non recalculé';
+          return '';
         }
         return formaterNombreProjectionVivante(valeur) + ' j';
+      }
+
+      function libelleJours(valeur, suffixe) {
+        if (typeof valeur !== 'number' || !Number.isFinite(valeur)) { return ''; }
+        return formaterNombreProjectionVivante(valeur) + ' ' + suffixe;
       }
 
       function infosBlocDepuisProjectionVivante(identifiantBloc) {
@@ -1903,6 +1923,13 @@ def script_onglets() -> str:
         return entrees.map(([compteur, valeur]) => formatQuantiteJours(valeur) + ' ' + compteur).join(' · ');
       }
 
+      function resumeConsommationsCompactes(consommationsParCompteur) {
+        const entrees = Object.entries(consommationsParCompteur || {})
+          .filter(([, valeur]) => typeof valeur === 'number' && Number.isFinite(valeur) && valeur !== 0)
+          .sort((a, b) => a[0].localeCompare(b[0]));
+        return entrees.map(([compteur, valeur]) => formaterNombreProjectionVivante(valeur) + ' ' + compteur).join(' · ');
+      }
+
       function diagnosticsDepuisProjectionVivante(projection) {
         const alertes = projection && Array.isArray(projection.alertes) ? projection.alertes : [];
         return alertes.map((alerte) => ({
@@ -1930,9 +1957,11 @@ def script_onglets() -> str:
             valeurElement.textContent = formaterNombreProjectionVivante(valeur);
           }
           if (deltaElement) {
-            deltaElement.textContent = delta && Math.abs(delta) > 0.0000001
-              ? 'Recalculé · Δ ' + (delta > 0 ? '+' : '') + formaterNombreProjectionVivante(delta)
-              : 'Recalculé';
+            const deltaVisible = delta && Math.abs(delta) > 0.0000001;
+            deltaElement.textContent = deltaVisible
+              ? 'Δ ' + (delta > 0 ? '+' : '') + formaterNombreProjectionVivante(delta)
+              : '';
+            deltaElement.hidden = !deltaVisible;
           }
         });
       }
@@ -1958,9 +1987,43 @@ def script_onglets() -> str:
           valeurElement.textContent = formatQuantiteJours(total);
         }
         if (deltaElement) {
-          deltaElement.textContent = delta && Math.abs(delta) > 0.0000001
-            ? 'Recalculé · Δ ' + (delta > 0 ? '+' : '') + formaterNombreProjectionVivante(delta) + ' j'
-            : 'Recalculé';
+          const deltaVisible = delta && Math.abs(delta) > 0.0000001;
+          deltaElement.textContent = deltaVisible
+            ? 'Δ ' + (delta > 0 ? '+' : '') + formaterNombreProjectionVivante(delta) + ' j'
+            : '';
+          deltaElement.hidden = !deltaVisible;
+        }
+      }
+
+      function calculerPosesAnneeDepuisProjection(projection) {
+        const demiJournees = projection && Array.isArray(projection.demi_journees) ? projection.demi_journees : [];
+        const premiereDate = demiJournees.map((demiJournee) => demiJournee && demiJournee.date).filter(Boolean).sort()[0];
+        const annee = premiereDate ? String(premiereDate).slice(0, 4) : '';
+        let total = 0;
+        demiJournees.forEach((demiJournee) => {
+          if (!annee || !demiJournee || String(demiJournee.date || '').slice(0, 4) !== annee) { return; }
+          const details = Array.isArray(demiJournee.consommations_detaillees) ? demiJournee.consommations_detaillees : [];
+          details.forEach((detail) => {
+            const quantite = detail && detail.quantite_appliquee;
+            if (typeof quantite === 'number' && Number.isFinite(quantite)) {
+              total += quantite;
+            }
+          });
+        });
+        return { annee: annee, total: Number(total.toFixed(10)) };
+      }
+
+      function mettreAJourPosesDepuisProjectionVivante(projection) {
+        const carte = document.querySelector('[data-poses-annee]');
+        if (!carte) { return; }
+        const resultat = calculerPosesAnneeDepuisProjection(projection || {});
+        const libelle = carte.querySelector('[data-poses-annee-libelle]');
+        const valeur = carte.querySelector('[data-poses-annee-valeur]');
+        if (libelle && resultat.annee) {
+          libelle.textContent = 'Posés ' + resultat.annee;
+        }
+        if (valeur) {
+          valeur.textContent = formatQuantiteJours(resultat.total);
         }
       }
 
@@ -1974,10 +2037,16 @@ def script_onglets() -> str:
 
       function afficherProjectionVivante(message, statut) {
         if (!cibleProjectionVivante) { return; }
+        const section = cibleProjectionVivante.closest('.projection-vivante-section');
         cibleProjectionVivante.textContent = '';
+        if (statut !== 'Erreur') {
+          if (section) { section.hidden = true; }
+          return;
+        }
+        if (section) { section.hidden = false; }
         const puce = document.createElement('span');
         puce.className = 'puce-projection-vivante';
-        puce.textContent = statut || 'Projection recalculée';
+        puce.textContent = 'Erreur';
         const texte = document.createElement('strong');
         texte.textContent = message;
         cibleProjectionVivante.appendChild(puce);
@@ -1987,7 +2056,7 @@ def script_onglets() -> str:
       function recalculerProjectionVivante() {
         if (!entreesProjectionInitiales) {
           projectionVivante = null;
-          afficherProjectionVivante('Recalcul direct indisponible : entrées de projection non fournies.', 'Projection statique');
+          afficherProjectionVivante('', '');
           return;
         }
         if (!window.ChronotimeProjecteur || typeof window.ChronotimeProjecteur.projeterDemiJournees !== 'function') {
@@ -1998,10 +2067,10 @@ def script_onglets() -> str:
         try {
           const entreesVivantes = construireEntreesProjectionVivantes();
           projectionVivante = window.ChronotimeProjecteur.projeterDemiJournees(entreesVivantes);
-          const alertes = Array.isArray(projectionVivante.alertes) ? projectionVivante.alertes.length : 0;
-          afficherProjectionVivante('Recalculé · ' + alertes + ' alertes', 'Projection recalculée');
+          afficherProjectionVivante('', '');
           mettreAJourCompteursDepuisProjectionVivante(projectionVivante);
           mettreAJourTotalRestantDepuisProjectionVivante(projectionVivante);
+          mettreAJourPosesDepuisProjectionVivante(projectionVivante);
           afficherDiagnosticsGui(diagnosticsDepuisProjectionVivante(projectionVivante));
         } catch (erreur) {
           projectionVivante = null;
@@ -2063,7 +2132,7 @@ def script_onglets() -> str:
         try {
           const enveloppe = construireAutosauvegardeScenarioGui();
           localStorage.setItem(CLE_SCENARIO_GUI, JSON.stringify(enveloppe));
-          afficherEtatSauvegardeScenario('Sauvegardé', 'sauvegarde');
+          afficherEtatSauvegardeScenario('', 'sauvegarde');
         } catch (_erreur) {
           afficherEtatSauvegardeScenario('Sauvegarde impossible', 'erreur');
         }
@@ -2161,7 +2230,7 @@ def script_onglets() -> str:
         niveau.dataset.selectionDateFin = bloc.date_fin;
         niveau.dataset.selectionPeriode = periodeLisible(bloc.date_debut, bloc.date_fin);
         niveau.dataset.selectionIdentifiant = bloc.id;
-        niveau.dataset.selectionLibelle = 'absence locale prototype';
+        niveau.dataset.selectionLibelle = 'absence locale';
         niveau.dataset.selectionQuantite = bloc.quantite_jours + ' j';
         niveau.dataset.selectionJoursCalendairesSelectionnes = String(
           bloc.jours_calendaires_selectionnes || joursCalendairesSelectionnes(bloc.date_debut, bloc.date_fin)
@@ -2171,7 +2240,6 @@ def script_onglets() -> str:
         niveau.dataset.selectionChoixCompteurLibelle = choix.mode === 'manuel' ? 'Manuel' : 'Auto';
         niveau.dataset.selectionCompteurDemande = choix.mode === 'manuel' ? choix.compteur : 'aucun';
         niveau.dataset.selectionSourceDecisionCompteur = sourceDecisionCompteurDepuisChoix(choix);
-        niveau.dataset.selectionJustificationDecisionCompteur = justificationDecisionCompteurDepuisChoix(choix);
         niveau.dataset.selectionAlertes = 'aucune';
         return niveau;
       }
@@ -2251,7 +2319,7 @@ def script_onglets() -> str:
             rect.dataset.selectionDateFin = bloc.date_fin;
             rect.dataset.selectionPeriode = libelleBlocLocal(bloc);
             rect.dataset.selectionIdentifiant = bloc.id;
-            rect.dataset.selectionLibelle = 'absence locale prototype';
+            rect.dataset.selectionLibelle = 'absence locale';
             rect.dataset.selectionQuantite = bloc.quantite_jours + ' j';
             rect.dataset.selectionJoursCalendairesSelectionnes = String(
               bloc.jours_calendaires_selectionnes || joursCalendairesSelectionnes(bloc.date_debut, bloc.date_fin)
@@ -2261,10 +2329,9 @@ def script_onglets() -> str:
             rect.dataset.selectionChoixCompteurLibelle = choix.mode === 'manuel' ? 'Manuel' : 'Auto';
             rect.dataset.selectionCompteurDemande = choix.mode === 'manuel' ? choix.compteur : 'aucun';
             rect.dataset.selectionSourceDecisionCompteur = sourceDecisionCompteurDepuisChoix(choix);
-            rect.dataset.selectionJustificationDecisionCompteur = justificationDecisionCompteurDepuisChoix(choix);
             rect.dataset.selectionAlertes = 'aucune';
             const titre = document.createElementNS(svg.namespaceURI, 'title');
-            titre.textContent = 'Bloc local prototype ' + libelleBlocLocal(bloc);
+            titre.textContent = 'Bloc utilisateur ' + libelleBlocLocal(bloc);
             rect.appendChild(titre);
             groupe.appendChild(rect);
             connecterElementSelectionnable(rect);
@@ -2331,7 +2398,7 @@ def script_onglets() -> str:
           selectionDateFin: bloc.date_fin,
           selectionPeriode: libelleBlocLocal(bloc),
           selectionIdentifiant: bloc.id,
-          selectionLibelle: 'absence locale prototype',
+          selectionLibelle: 'absence locale',
           selectionJoursCalendairesSelectionnes: String(
             bloc.jours_calendaires_selectionnes || joursCalendairesSelectionnes(bloc.date_debut, bloc.date_fin)
           ),
@@ -2340,7 +2407,6 @@ def script_onglets() -> str:
           selectionChoixCompteurLibelle: choix.mode === 'manuel' ? 'Manuel' : 'Auto',
           selectionCompteurDemande: choix.mode === 'manuel' ? choix.compteur : 'aucun',
           selectionSourceDecisionCompteur: sourceDecisionCompteurDepuisChoix(choix),
-          selectionJustificationDecisionCompteur: justificationDecisionCompteurDepuisChoix(choix),
           selectionAlertes: 'aucune'
         });
       }
@@ -2456,6 +2522,8 @@ def script_onglets() -> str:
         etatTransitoireInterface.dernier_resultat_previsualisation = null;
         etatTransitoireInterface.message_temporaire = null;
         nettoyerFantomeLocal();
+        nettoyerCurseurPose();
+        afficherDiagnosticsGui([]);
       }
 
       function finaliserPoseLocalePrototype(dateFin) {
@@ -2471,6 +2539,8 @@ def script_onglets() -> str:
         etatTransitoireInterface.plage_en_cours = null;
         etatTransitoireInterface.fantome_calendrier = null;
         etatTransitoireInterface.fantome_frise = null;
+        nettoyerCurseurPose();
+        afficherDiagnosticsGui([]);
       }
 
       boutons.forEach((bouton) => {
@@ -2508,7 +2578,10 @@ def script_onglets() -> str:
       joursCalendrier().forEach((jour) => {
         jour.addEventListener('mouseenter', function () {
           jour.classList.add('jour-survol-simple');
-          if (outilPlanification !== 'poser') { return; }
+          if (outilPlanification !== 'poser') {
+            mettreAJourCurseurSelection(lireDonneesCurseurSelection(jour));
+            return;
+          }
           const dateIso = jour.dataset.dateIso;
           if (!dateIso) { return; }
           dateSurvolPose = dateIso;
@@ -2865,22 +2938,13 @@ def barre_outils_gauche(projection: dict[str, Any]) -> str:
       <h3>Outils</h3>
       <button type="button" class="outil-passif outil-actif outil-selection-actif" data-outil-planification="selection" aria-pressed="true">Sélection</button>
       <button type="button" class="outil-passif" data-outil-planification="poser" aria-pressed="false">Poser des jours</button>
-      <button type="button" class="outil-passif outil-desactive" disabled>Scinder</button>
-      <button type="button" class="outil-passif outil-desactive" disabled>Fusionner</button>
       <label class="libelle-controle-planification" for="choix-compteur-planification">Compteur</label>
       <select id="choix-compteur-planification" class="controle-planification" data-compteurs-connus="{escape(compteurs_connus)}">
         <option value="auto">Auto</option>
       </select>
-      <p id="commentaire-choix-compteur" class="note-outil">Options commentées par le moteur GUI prototype.</p>
+      <p id="commentaire-choix-compteur" class="note-outil" hidden></p>
       <button type="button" id="exporter-scenario-local" class="outil-passif">Exporter scénario local</button>
-      <p id="etat-sauvegarde-scenario" class="etat-sauvegarde-scenario" data-etat-sauvegarde="vide">Aucun scénario local sauvegardé</p>
-      <p class="note-outil">
-        1. Exporter le scénario local.<br>
-        2. Placer le fichier dans <code>donnees_locales/</code>.<br>
-        3. Relancer <code>orchestrateur_projection.py</code> avec
-        <code>--scenario donnees_locales/scenario_gui_chronotime.json</code>.<br>
-        4. Régénérer la vue HTML depuis la projection recalculée.
-      </p>
+      <p id="etat-sauvegarde-scenario" class="etat-sauvegarde-scenario" data-etat-sauvegarde="vide" hidden></p>
       <h3>Affichage</h3>
       <button type="button" class="outil-passif outil-actif mode-affichage-actif" data-mode-planification="general" aria-pressed="true">Général</button>
       <button type="button" class="outil-passif" data-mode-planification="detaille" aria-pressed="false">Détaillé</button>
@@ -2916,7 +2980,7 @@ def grille_compteurs_droite(soldes: dict[str, Any]) -> str:
             f"data-solde-statique=\"{solde_statique}\">"
             f"<span>{compteur_echappe}</span>"
             f"<strong data-compteur-solde=\"{compteur_echappe}\">{escape(valeur_lisible)}</strong>"
-            f"<small class=\"delta-compteur-vivant\" data-compteur-delta=\"{compteur_echappe}\">statique</small>"
+            f"<small class=\"delta-compteur-vivant\" data-compteur-delta=\"{compteur_echappe}\" hidden></small>"
             "</article>"
         )
     return "".join(cellules) if cellules else "<p class=\"info-compacte\">aucun solde disponible</p>"
@@ -2927,6 +2991,9 @@ def barre_infos_droite(projection: dict[str, Any], demi_journees: list[Any]) -> 
     total_restant = somme_soldes_numeriques(soldes_finaux)
     total_restant_texte = formater_quantite_jour(total_restant) if total_restant is not None else "Niveau non disponible"
     total_restant_statique = escape(str(float(total_restant))) if total_restant is not None else ""
+    annee_poses = annee_reference_projection(demi_journees)
+    poses_annee = jours_poses_annee(demi_journees, annee_poses) if annee_poses else 0.0
+    libelle_poses = f"Posés {annee_poses}" if annee_poses else "Posés"
     return f"""
     <aside class="barre-infos-droite barre-infos-droite-stable" aria-label="Barre d’informations de planification">
       <section class="bloc-info-fixe">
@@ -2934,23 +3001,19 @@ def barre_infos_droite(projection: dict[str, Any], demi_journees: list[Any]) -> 
           <article class="resume-mini" data-total-restant="solde_fin" data-source-total="projection_statique" data-total-statique="{total_restant_statique}">
             <span>Total restant</span>
             <strong data-total-restant-valeur>{escape(total_restant_texte)}</strong>
-            <small class="delta-total-restant" data-total-restant-delta>statique</small>
+            <small class="delta-total-restant" data-total-restant-delta hidden></small>
           </article>
-          <article class="resume-mini">
-            <span>Cette année</span>
-            <strong>non calculé</strong>
+          <article class="resume-mini" data-poses-annee>
+            <span data-poses-annee-libelle>{escape(libelle_poses)}</span>
+            <strong data-poses-annee-valeur>{escape(formater_quantite_jour(poses_annee))}</strong>
           </article>
         </div>
         <section class="compteurs-droite-section">
           <h3>Compteurs</h3>
           <div class="grille-compteurs-droite">{grille_compteurs_droite(soldes_finaux)}</div>
         </section>
-        <p class="expiration-mini"><span>Expiration</span><strong>non calculée</strong></p>
-        <section class="projection-vivante-section">
-          <h3>Projection</h3>
+        <section class="projection-vivante-section" hidden>
           <div id="projection-vivante-planification" class="projection-vivante-planification">
-            <span class="puce-projection-vivante">Projection statique</span>
-            <strong>Recalcul direct indisponible : entrées de projection non fournies.</strong>
           </div>
         </section>
       </section>
@@ -2959,18 +3022,16 @@ def barre_infos_droite(projection: dict[str, Any], demi_journees: list[Any]) -> 
         <div id="selection-planification" class="selection-planification">
           <p class="info-compacte">aucune</p>
         </div>
-        <div class="zone-diagnostics-planification">
+        <div class="zone-diagnostics-planification" hidden>
           <h3>Diagnostics</h3>
           <div id="diagnostics-planification" class="diagnostics-planification">
-            <p class="info-compacte">aucun</p>
           </div>
         </div>
       </section>
       <div class="separateur-infos" aria-hidden="true"></div>
       <section class="bloc-info-curseur">
         <h3>Curseur</h3>
-        <div id="curseur-planification" class="curseur-planification">
-          <p class="info-compacte">aucun</p>
+        <div id="curseur-planification" class="curseur-planification curseur-toujours-visible">
         </div>
       </section>
     </aside>
@@ -3098,10 +3159,36 @@ def resume_alertes_jour(info: dict[str, Any]) -> str:
 def resume_compteurs_selection(compteurs: Any) -> str:
     if not isinstance(compteurs, dict) or not compteurs:
         return "aucun"
-    return ", ".join(
-        f"{compteur} {formater_quantite_jour(quantite)}"
+    return " · ".join(
+        f"{formater_nombre_francais(quantite)} {compteur}"
         for compteur, quantite in sorted(compteurs.items())
     )
+
+
+def annee_reference_projection(demi_journees: list[Any]) -> str:
+    dates = sorted(
+        str(demi_journee.get("date"))
+        for demi_journee in demi_journees
+        if isinstance(demi_journee, dict) and demi_journee.get("date")
+    )
+    return dates[0][:4] if dates else ""
+
+
+def jours_poses_annee(demi_journees: list[Any], annee: str) -> float:
+    total = 0.0
+    for demi_journee in demi_journees:
+        if not isinstance(demi_journee, dict) or str(demi_journee.get("date", ""))[:4] != annee:
+            continue
+        details = demi_journee.get("consommations_detaillees", [])
+        if not isinstance(details, list):
+            continue
+        for detail in details:
+            if not isinstance(detail, dict):
+                continue
+            quantite = detail.get("quantite_appliquee")
+            if isinstance(quantite, (int, float)):
+                total += float(quantite)
+    return total
 
 
 def compteur_principal_jour(consommations: Any) -> str:
@@ -4487,6 +4574,9 @@ def feuille_style() -> str:
       font-size: 0.74rem;
       font-weight: 700;
     }
+    .etat-sauvegarde-scenario[hidden] {
+      display: none;
+    }
     .etat-sauvegarde-scenario[data-etat-sauvegarde="erreur"] {
       border-color: rgba(177, 59, 46, 0.55);
       color: var(--alerte);
@@ -4495,6 +4585,13 @@ def feuille_style() -> str:
     .fiche-selection {
       display: grid;
       gap: 8px;
+    }
+    .ligne-selection-compacte {
+      margin: 0;
+      color: var(--accent-fort);
+      font-size: 0.9rem;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
     }
     .puce-selection {
       display: inline-flex;
@@ -4567,16 +4664,23 @@ def feuille_style() -> str:
       border-top: 1px solid rgba(216, 201, 174, 0.95);
     }
     .bloc-info-curseur {
+      position: sticky;
+      bottom: 0;
+      z-index: 2;
       min-height: 0;
       overflow: hidden;
       display: grid;
       grid-template-rows: auto minmax(0, auto);
+      background: var(--carte);
     }
     .curseur-planification {
       min-height: 0;
-      max-height: 118px;
-      overflow-y: auto;
+      max-height: 86px;
+      overflow-y: hidden;
       overflow-x: hidden;
+    }
+    .curseur-toujours-visible {
+      overscroll-behavior: contain;
     }
     .selection-plage {
       box-shadow: inset 0 0 0 3px var(--accent-fort);
@@ -4750,8 +4854,7 @@ def feuille_style() -> str:
       border-radius: 10px;
       background: rgba(255, 255, 255, 0.32);
     }
-    .resume-mini span,
-    .expiration-mini span {
+    .resume-mini span {
       display: block;
       color: var(--muted);
       font-size: 0.68rem;
@@ -4832,17 +4935,6 @@ def feuille_style() -> str:
       color: var(--accent-fort);
       font-weight: 700;
     }
-    .expiration-mini {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      margin: 3px 0 8px;
-      font-size: 0.84rem;
-    }
-    .expiration-mini strong {
-      color: var(--accent-fort);
-      font-size: 0.86rem;
-    }
     .bloc-info-selection {
       min-height: 0;
       overflow: hidden;
@@ -4861,15 +4953,19 @@ def feuille_style() -> str:
       border-top: 1px solid rgba(216, 201, 174, 0.95);
     }
     .bloc-info-curseur {
+      position: sticky;
+      bottom: 0;
+      z-index: 2;
       min-height: 0;
       overflow: hidden;
       display: grid;
       grid-template-rows: auto minmax(0, auto);
+      background: var(--carte);
     }
     .curseur-planification {
       min-height: 0;
-      max-height: 96px;
-      overflow-y: auto;
+      max-height: 76px;
+      overflow-y: hidden;
       overflow-x: hidden;
     }
     .fiche-selection {

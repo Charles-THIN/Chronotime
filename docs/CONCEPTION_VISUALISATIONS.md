@@ -148,6 +148,8 @@ La zone de sélection reste vide si rien n’est sélectionné.
 
 Cette barre permet aussi à la vue calendrier de montrer l’effet d’une action sur le reste agrégé, même si la courbe de niveau n’est pas visible dans la zone centrale.
 
+En état normal, la barre droite doit afficher seulement les résultats utiles. Les succès techniques de sauvegarde, restauration ou recalcul ne sont pas affichés ; les erreurs réelles et diagnostics bloquants restent visibles avec un message court.
+
 ## Interactions communes
 
 Les interactions communes des vues centrales sont :

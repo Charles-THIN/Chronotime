@@ -144,27 +144,36 @@ class TestGenerateurVueProjection(unittest.TestCase):
 
         self.assertIn("Sélection", html)
         self.assertIn("Poser des jours", html)
-        self.assertIn("Scinder", html)
-        self.assertIn("Fusionner", html)
         self.assertIn("Général", html)
         self.assertIn("Détaillé", html)
-        self.assertIn("outil-desactive", html)
-        self.assertIn("disabled", html)
         self.assertIn('data-outil-planification="selection"', html)
         self.assertIn('data-outil-planification="poser"', html)
         self.assertNotIn('data-outil-planification="poser" aria-pressed="false" disabled', html)
+        self.assertNotIn("Scinder", html)
+        self.assertNotIn("Fusionner", html)
+        self.assertNotIn("Relancer orchestrateur_projection.py", html)
+        self.assertNotIn("Régénérer la vue HTML", html)
+        self.assertNotIn("Placer le fichier dans", html)
 
     def test_generation_html_planification_barre_infos(self) -> None:
         html = generer_html(self._charger_exemple())
 
         self.assertIn("Total restant", html)
-        self.assertIn("Cette année", html)
+        self.assertIn("Posés 2026", html)
+        self.assertIn("data-poses-annee", html)
+        self.assertIn("data-poses-annee-valeur", html)
         self.assertIn("Compteurs", html)
-        self.assertIn("Expiration", html)
         self.assertIn("Sélection", html)
-        self.assertIn("non calculé", html)
-        self.assertIn("non calculée", html)
-        self.assertIn("aucune", html)
+        self.assertIn("data-total-restant", html)
+        self.assertIn("data-total-restant-valeur", html)
+        self.assertIn("data-compteur-code", html)
+        self.assertNotIn("Cette année", html)
+        self.assertNotIn("Expiration", html)
+        self.assertNotIn("non calculé", html)
+        self.assertNotIn("non calculée", html)
+        self.assertNotIn("Recalculé ·", html)
+        self.assertNotIn("Projection statique", html)
+        self.assertNotIn("Recalcul direct indisponible", html)
         self.assertNotIn("Détail compteurs", html)
         self.assertNotIn("Compteur</th><th>Solde final", html)
 
@@ -536,10 +545,13 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("selection-plage-bloc-utilisateur", html)
         self.assertIn("bloc-fantome-local", html)
         self.assertIn("bloc-fantome-impossible", html)
-        self.assertIn("prévisualisation locale", html)
         self.assertIn("pose impossible", html)
-        self.assertIn("Compteur indicatif", html)
-        self.assertIn("non recalculé par le moteur", html)
+        self.assertIn("Pose impossible : plage déjà occupée", html)
+        self.assertIn("jours ouvrés possibles", html)
+        self.assertNotIn("prévisualisation locale", html)
+        self.assertNotIn("Compteur indicatif", html)
+        self.assertNotIn("non recalculé par le moteur", html)
+        self.assertNotIn("j projeté(s)", html)
         self.assertIn("Suppr pour supprimer", html)
         self.assertIn("jourOccupePourPose", html)
         self.assertIn("plageLibrePourPose", html)
@@ -596,7 +608,8 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("dernier_resultat_previsualisation", html)
         self.assertIn("traiterCommandeMoteurGui(etatCentralGui, commande)", html)
         self.assertIn("afficherEtatCentralGui(etatCentralGui)", html)
-        self.assertIn("non recalculé par le moteur", html)
+        self.assertIn("nettoyerCurseurPose", html)
+        self.assertIn("afficherDiagnosticsGui([])", html)
         self.assertNotIn("etatTransitoireFrise", html)
 
     def test_generation_html_fantome_refuse_reste_visible(self) -> None:
@@ -627,12 +640,12 @@ class TestGenerateurVueProjection(unittest.TestCase):
             "obtenirOptionsCompteurMoteurGui",
             "source_decision_compteur",
             "justification_decision_compteur",
-            "Priorité non déterminée dans cette vue.",
             "moteur_gui_prototype",
-            "Origine du bloc",
-            "Source de décision du compteur",
         ):
             self.assertIn(marqueur, html)
+        self.assertNotIn("Priorité non déterminée dans cette vue.", html)
+        self.assertNotIn("Source de décision du compteur", html)
+        self.assertNotIn("Origine du bloc", html)
 
     def test_generation_html_export_scenario_local(self) -> None:
         html = generer_html(self._charger_exemple())
@@ -645,14 +658,14 @@ class TestGenerateurVueProjection(unittest.TestCase):
             "scenario_gui_chronotime",
             "prototype_gui",
             "jours_ouvres",
-            "orchestrateur_projection.py",
-            "--scenario donnees_locales/scenario_gui_chronotime.json",
             "construireScenarioLocalExportable",
             "exporterScenarioLocalGui",
             "compteur_souhaite",
             "compteur_reellement_consomme",
         ):
             self.assertIn(marqueur, html)
+        self.assertNotIn("orchestrateur_projection.py", html)
+        self.assertNotIn("--scenario donnees_locales/scenario_gui_chronotime.json", html)
 
         self.assertNotIn("fetch(", html)
         self.assertNotIn("XMLHttpRequest", html)
@@ -688,7 +701,8 @@ class TestGenerateurVueProjection(unittest.TestCase):
             "data-compteur-code",
             "projection_vivante",
             "compteur-vivant-recalcule",
-            "Projection recalculée",
+            "mettreAJourPosesDepuisProjectionVivante",
+            "data-poses-annee",
             "à résoudre",
             "famille_compteur",
             "standard",
@@ -702,22 +716,29 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertNotIn("Soldes fin : ASTJ", html)
         self.assertNotIn("Projection vivante", html)
         self.assertNotIn("vivant · Δ", html)
+        self.assertNotIn("Projection recalculée", html)
+        self.assertNotIn("Recalculé ·", html)
 
     def test_generation_html_quantites_bloc_utilisateur_explicitent_decompte(self) -> None:
         html = generer_html(self._charger_exemple(), entrees_projection=self._charger_entrees_projection_minimum())
 
-        self.assertIn("Jours calendaires", html)
-        self.assertIn("Jours décomptés", html)
-        self.assertIn("Consommés", html)
-        self.assertIn("Quantité", html)
+        self.assertIn("Bloc utilisateur", html)
+        self.assertIn("jours calendaires", html)
+        self.assertIn("jours consommés au total", html)
+        self.assertIn("Suppr pour supprimer", html)
+        self.assertIn("resumeConsommationsCompactes", html)
         self.assertNotIn("ajouterChampSelection(fiche, 'Quantité', bloc.quantite_jours + ' j'", html)
         self.assertNotIn("Compteur connu dans la projection ; règle de priorité non déterminée dans cette vue.", html)
+        self.assertNotIn("bloc utilisateur prototype", html)
+        self.assertNotIn("Source de décision du compteur", html)
+        self.assertNotIn("scénario GUI autosauvegardé localement", html)
 
     def test_generation_html_sans_entrees_recalcul_indisponible(self) -> None:
         html = generer_html(self._charger_exemple())
 
         self.assertIn("projection-vivante-planification", html)
-        self.assertIn("Recalcul direct indisponible : entrées de projection non fournies.", html)
+        self.assertIn('class="projection-vivante-section" hidden', html)
+        self.assertNotIn("Recalcul direct indisponible : entrées de projection non fournies.", html)
         self.assertIn("window.ChronotimeEntreesProjectionInitiales = null", html)
 
     def test_generation_html_recalcul_js_sans_reseau(self) -> None:
@@ -749,10 +770,8 @@ class TestGenerateurVueProjection(unittest.TestCase):
             "sauvegarderScenarioGuiAutomatiquement",
             "restaurerScenarioGuiAutosauvegarde",
             "etat-sauvegarde-scenario",
-            "Sauvegardé",
-            "Restauré",
-            "Aucun scénario local sauvegardé",
             "Sauvegarde impossible",
+            "Restauration impossible",
             "localStorage.setItem(CLE_SCENARIO_GUI",
             "localStorage.getItem(CLE_SCENARIO_GUI)",
             "blocScenarioVersBlocLocalPrototype",
@@ -762,6 +781,9 @@ class TestGenerateurVueProjection(unittest.TestCase):
             self.assertIn(marqueur, html)
 
         self.assertIn("chronotime.planification.prototype.v1", html)
+        self.assertNotIn("Sauvegardé", html)
+        self.assertNotIn("Restauré", html)
+        self.assertNotIn("Aucun scénario local sauvegardé", html)
         self.assertNotIn("localStorage.setItem(CLE_STOCKAGE_PROTO", html)
 
     def test_generation_html_sans_libelle_visible_vivant(self) -> None:
@@ -785,9 +807,8 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("Événements projetés", html)
         self.assertIn("Technique", html)
         self.assertIn("Poser des jours", html)
-        self.assertIn("Scinder", html)
-        self.assertIn("Fusionner", html)
-        self.assertIn("disabled", html)
+        self.assertNotIn("Scinder", html)
+        self.assertNotIn("Fusionner", html)
 
     def test_generation_fichier_html(self) -> None:
         with tempfile.TemporaryDirectory() as repertoire:
@@ -938,7 +959,10 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("selection-planification", html)
         self.assertIn("height: 100%", html)
         self.assertIn("curseur-planification", html)
-        self.assertIn("max-height: 118px", html)
+        self.assertIn("curseur-toujours-visible", html)
+        self.assertIn("position: sticky", html)
+        self.assertIn("max-height: 86px", html)
+        self.assertIn("overflow-y: hidden", html)
         self.assertIn("overflow: hidden", html)
 
 
@@ -948,7 +972,7 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("resume-mini", html)
         self.assertIn("grille-compteurs-droite", html)
         self.assertIn("compteur-mini", html)
-        self.assertIn("expiration-mini", html)
+        self.assertNotIn("expiration-mini", html)
         self.assertIn("grid-template-columns: repeat(3, minmax(0, 1fr))", html)
 
     def test_generation_html_planification_densification_visuelle(self) -> None:
@@ -958,7 +982,7 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("font-size: 0.92rem", html)
         self.assertIn("white-space: nowrap", html)
         self.assertIn("text-overflow: ellipsis", html)
-        self.assertIn("max-height: 96px", html)
+        self.assertIn("max-height: 76px", html)
 
     def _chemin_exemple(self) -> Path:
         return Path("donnees/exemples/projection_demi_journees.exemple.json")

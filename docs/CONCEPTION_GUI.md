@@ -800,6 +800,41 @@ Fonctions encore à implémenter :
 - reconstruire complètement calendrier et frise depuis la projection recalculée ;
 - résoudre réellement le choix `Auto`.
 
+## V0.5.6 Sobriété de la vue Calendrier
+
+La version `V0.5.6` nettoie la vue `Planification > Calendrier` pour appliquer la règle suivante :
+
+```text
+succès silencieux, erreurs visibles
+```
+
+Les sauvegardes, restaurations et recalculs réussis ne sont plus affichés dans l’interface normale. Les erreurs réelles restent visibles avec des messages courts, par exemple `Sauvegarde impossible`, `Restauration impossible` ou `Recalcul impossible`.
+
+La vue normale ne doit plus exposer de vocabulaire de prototype ou de mécanique interne. Les libellés techniques peuvent rester dans le code lorsque cela évite un renommage sans valeur utilisateur, mais ils ne doivent pas apparaître comme texte d’usage courant.
+
+La fiche de sélection utilise désormais des lignes compactes autoporteuses, par exemple :
+
+```text
+Bloc utilisateur · 12 → 17 juin
+6 jours calendaires
+4 jours consommés au total
+4 GCP
+Suppr pour supprimer
+```
+
+Le curseur reste toujours visible sans défilement propre. La zone `Sélection` peut défiler, mais la zone `Curseur` reste compacte et prioritaire.
+
+La barre droite affiche seulement les résultats utiles en état normal : compteurs, total restant, delta éventuel et indicateur `Posés {année}` calculé depuis `consommations_detaillees.quantite_appliquee` de la projection active. Les expirations fines ne sont pas inventées lorsqu’aucune donnée exploitable par compteur n’est disponible.
+
+Un futur onglet `Technique` pourra exposer un journal détaillé des événements de sauvegarde, restauration, recalcul et erreurs. Cette version ne crée pas de fichier journal, n’ajoute pas de serveur local et ne modifie pas Chronotime.
+
+Hors périmètre maintenu :
+
+- refonte de la frise ;
+- résolution réelle de `Auto` ;
+- expirations fines par compteur ;
+- reconstruction complète calendrier/frise depuis la projection recalculée.
+
 ## Vue future des soldes dans le temps
 
 Une future vue `Soldes dans le temps` devra représenter :
