@@ -9,3 +9,4 @@ token.pickle
 .venv/
 __pycache__/
 *.pyc
+SORTIE_PATCH_LOCAL.txt
