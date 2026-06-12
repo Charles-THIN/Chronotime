@@ -835,6 +835,23 @@ Hors périmètre maintenu :
 - expirations fines par compteur ;
 - reconstruction complète calendrier/frise depuis la projection recalculée.
 
+## V0.5.7 Frise synchronisée avec la projection active
+
+La frise de `Planification` devient une vue synchronisée avec la projection active recalculée en JavaScript.
+
+Elle lit la projection déjà calculée et reconstruit ses blocs visibles depuis `projection.demi_journees`, comme les compteurs, le total restant et l’indicateur `Posés {année}`. Les ajouts, suppressions et restaurations de blocs utilisateur sont donc reflétés dans la frise après recalcul.
+
+La frise reste non éditable dans cette version :
+
+- elle ne pose pas de jours ;
+- elle ne déplace pas les blocs ;
+- elle ne les allonge ni ne les raccourcit ;
+- elle ne modifie pas les sorties dérivées `projection.demi_journees`, `mouvements.soldes` ou `chronologie.soldes`.
+
+Elle ne contient pas de logique métier d’allocation des compteurs. Les consommations affichées viennent des détails produits par la projection active. Si aucune projection active n’est disponible, la frise conserve le rendu initial comme repli de lecture.
+
+La pose depuis la frise, le déplacement, le redimensionnement et les règles fines liées à `Auto`, aux congés parentaux ou aux expirations restent des étapes ultérieures.
+
 ## Vue future des soldes dans le temps
 
 Une future vue `Soldes dans le temps` devra représenter :

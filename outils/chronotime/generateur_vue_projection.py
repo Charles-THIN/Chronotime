@@ -870,6 +870,7 @@ def script_onglets() -> str:
       let poseEnCours = false;
       let etatCentralGui = null;
       let projectionVivante = null;
+      const frisesStatiquesInitiales = new WeakMap();
       // localStorage = autosauvegarde prototype du scénario source ; etatCentralGui = état central courant de la page.
       // etatTransitoireInterface = manipulation en cours, non durable.
       let etatTransitoireInterface = {
@@ -2057,10 +2058,12 @@ def script_onglets() -> str:
         if (!entreesProjectionInitiales) {
           projectionVivante = null;
           afficherProjectionVivante('', '');
+          mettreAJourFriseDepuisProjectionActive(null);
           return;
         }
         if (!window.ChronotimeProjecteur || typeof window.ChronotimeProjecteur.projeterDemiJournees !== 'function') {
           projectionVivante = null;
+          mettreAJourFriseDepuisProjectionActive(null);
           afficherProjectionVivante('Recalcul impossible : projecteur JS indisponible.', 'Erreur');
           return;
         }
@@ -2071,9 +2074,11 @@ def script_onglets() -> str:
           mettreAJourCompteursDepuisProjectionVivante(projectionVivante);
           mettreAJourTotalRestantDepuisProjectionVivante(projectionVivante);
           mettreAJourPosesDepuisProjectionVivante(projectionVivante);
+          mettreAJourFriseDepuisProjectionActive(projectionVivante);
           afficherDiagnosticsGui(diagnosticsDepuisProjectionVivante(projectionVivante));
         } catch (erreur) {
           projectionVivante = null;
+          mettreAJourFriseDepuisProjectionActive(null);
           afficherProjectionVivante('Recalcul impossible : ' + (erreur && erreur.message ? erreur.message : String(erreur)), 'Erreur');
         }
       }
@@ -2181,8 +2186,11 @@ def script_onglets() -> str:
       }
 
       function nettoyerRenduBlocsLocaux() {
-        document.querySelectorAll('.bloc-utilisateur-frise').forEach((element) => {
+        document.querySelectorAll('.ligne-blocs-locaux .bloc-utilisateur-frise').forEach((element) => {
           element.remove();
+        });
+        document.querySelectorAll('.ligne-blocs-locaux').forEach((groupe) => {
+          groupe.textContent = '';
         });
         document.querySelectorAll('.bloc-utilisateur-prototype').forEach((element) => {
           element.remove();
@@ -2294,6 +2302,274 @@ def script_onglets() -> str:
         return gauche + (((courant - debut) / 86400000) / duree) * (droite - gauche);
       }
 
+      function memoriserFrisesStatiquesInitiales() {
+        document.querySelectorAll('[data-frise-planification]').forEach((svg) => {
+          if (frisesStatiquesInitiales.has(svg)) { return; }
+          const blocs = svg.querySelector('[data-frise-blocs]');
+          const curseur = svg.querySelector('.donnees-curseur-frise');
+          const polyline = svg.querySelector('polyline');
+          const points = Array.from(svg.querySelectorAll('.point-reste-agrege')).map((point) => point.cloneNode(true));
+          frisesStatiquesInitiales.set(svg, {
+            blocs: blocs ? blocs.innerHTML : '',
+            curseur: curseur ? curseur.innerHTML : '',
+            polyline: polyline ? polyline.getAttribute('points') || '' : '',
+            points: points
+          });
+        });
+      }
+
+      function restaurerFriseStatique(svg) {
+        const initiale = frisesStatiquesInitiales.get(svg);
+        if (!initiale) { return; }
+        const blocs = svg.querySelector('[data-frise-blocs]');
+        const curseur = svg.querySelector('.donnees-curseur-frise');
+        const polyline = svg.querySelector('polyline');
+        if (blocs) {
+          blocs.innerHTML = initiale.blocs;
+          blocs.querySelectorAll('.element-selectionnable').forEach(connecterElementSelectionnable);
+        }
+        if (curseur) {
+          curseur.innerHTML = initiale.curseur;
+        }
+        if (polyline) {
+          polyline.setAttribute('points', initiale.polyline);
+        }
+        svg.querySelectorAll('.point-reste-agrege').forEach((point) => point.remove());
+        initiale.points.forEach((point) => {
+          const clone = point.cloneNode(true);
+          svg.appendChild(clone);
+          connecterElementSelectionnable(clone);
+        });
+        const coucheLocale = svg.querySelector('.ligne-blocs-locaux');
+        if (coucheLocale) { coucheLocale.textContent = ''; }
+        svg.dataset.friseSource = 'projection_initiale';
+      }
+
+      function sommeSoldesFrise(soldes) {
+        return Object.values(soldes || {}).reduce((total, valeur) => (
+          typeof valeur === 'number' && Number.isFinite(valeur) ? total + valeur : total
+        ), 0);
+      }
+
+      function bornesResteFrise(points) {
+        const valeurs = points.map((point) => point.niveau);
+        const minimum = Math.min(0, ...valeurs);
+        const maximum = Math.max(0, ...valeurs);
+        const borneMin = Math.floor(minimum / 5) * 5;
+        let borneMax = Math.ceil(maximum / 5) * 5;
+        if (borneMax === borneMin) { borneMax = borneMin + 5; }
+        return { min: borneMin, max: borneMax };
+      }
+
+      function yResteFrise(svg, valeur, bornes) {
+        const haut = Number(svg.dataset.friseGrapheHaut || '92');
+        const bas = Number(svg.dataset.friseGrapheBas || '282');
+        const amplitude = bornes.max - bornes.min || 1;
+        return bas - ((valeur - bornes.min) * (bas - haut) / amplitude);
+      }
+
+      function pointsResteDepuisProjection(projection) {
+        const demiJournees = projection && Array.isArray(projection.demi_journees) ? projection.demi_journees : [];
+        return demiJournees
+          .filter((demiJournee) => demiJournee && demiJournee.date && demiJournee.soldes_apres)
+          .map((demiJournee) => ({
+            date: String(demiJournee.date),
+            portion: demiJournee.portion || '',
+            niveau: sommeSoldesFrise(demiJournee.soldes_apres)
+          }));
+      }
+
+      function mettreAJourCourbeFriseDepuisProjectionActive(svg, projection) {
+        const points = pointsResteDepuisProjection(projection);
+        const polyline = svg.querySelector('polyline');
+        if (!points.length || !polyline) { return; }
+        const bornes = bornesResteFrise(points);
+        const coordonnees = points.map((point) => ({
+          point: point,
+          x: xFrisePourDate(svg, point.date),
+          y: yResteFrise(svg, point.niveau, bornes)
+        })).filter((coord) => Number.isFinite(coord.x) && Number.isFinite(coord.y));
+        polyline.setAttribute('points', coordonnees.map((coord) => coord.x.toFixed(2) + ',' + coord.y.toFixed(2)).join(' '));
+
+        const curseur = svg.querySelector('.donnees-curseur-frise');
+        if (curseur) {
+          curseur.textContent = '';
+          coordonnees.forEach((coord) => {
+            const point = document.createElementNS(svg.namespaceURI, 'circle');
+            point.setAttribute('class', 'point-curseur-frise');
+            point.setAttribute('data-x', coord.x.toFixed(2));
+            point.dataset.selectionDate = coord.point.date;
+            point.dataset.selectionPortion = coord.point.portion || '';
+            point.dataset.selectionNiveau = formatQuantiteJours(coord.point.niveau);
+            point.setAttribute('r', '0');
+            curseur.appendChild(point);
+          });
+        }
+
+        svg.querySelectorAll('.point-reste-agrege').forEach((point) => point.remove());
+        const pas = Math.max(1, Math.floor(coordonnees.length / 24));
+        coordonnees.forEach((coord, index) => {
+          if (index % pas !== 0 && index !== coordonnees.length - 1) { return; }
+          const point = document.createElementNS(svg.namespaceURI, 'circle');
+          point.setAttribute('class', 'point-reste-agrege element-selectionnable');
+          point.setAttribute('cx', coord.x.toFixed(2));
+          point.setAttribute('cy', coord.y.toFixed(2));
+          point.setAttribute('r', '4');
+          point.setAttribute('role', 'button');
+          point.setAttribute('tabindex', '0');
+          point.dataset.selectionType = 'reste';
+          point.dataset.selectionDate = coord.point.date;
+          point.dataset.selectionPortion = coord.point.portion || '';
+          point.dataset.selectionNiveau = formatQuantiteJours(coord.point.niveau);
+          svg.appendChild(point);
+          connecterElementSelectionnable(point);
+        });
+      }
+
+      function infosEvenementsDepuisProjection(projection) {
+        const infos = {};
+        const demiJournees = projection && Array.isArray(projection.demi_journees) ? projection.demi_journees : [];
+        demiJournees.forEach((demiJournee) => {
+          const evenements = Array.isArray(demiJournee.evenements) ? demiJournee.evenements : [];
+          evenements.forEach((evenement) => {
+            if (!evenement || !evenement.identifiant) { return; }
+            infos[String(evenement.identifiant)] = evenement;
+          });
+        });
+        return infos;
+      }
+
+      function blocsFriseDepuisProjectionActive(projection) {
+        const demiJournees = projection && Array.isArray(projection.demi_journees) ? projection.demi_journees : [];
+        const infosEvenements = infosEvenementsDepuisProjection(projection);
+        const blocs = {};
+        demiJournees.forEach((demiJournee) => {
+          if (!demiJournee || !demiJournee.date) { return; }
+          const details = Array.isArray(demiJournee.consommations_detaillees) ? demiJournee.consommations_detaillees : [];
+          details.forEach((detail) => {
+            if (!detail || !detail.identifiant_evenement) { return; }
+            const identifiant = String(detail.identifiant_evenement);
+            const infoEvenement = infosEvenements[identifiant] || {};
+            const bloc = blocs[identifiant] || {
+              identifiant: identifiant,
+              date_debut: String(demiJournee.date),
+              date_fin: String(demiJournee.date),
+              source: detail.source || infoEvenement.source || '',
+              origine_bloc: infoEvenement.origine_bloc || '',
+              choix_compteur: infoEvenement.choix_compteur || detail.choix_compteur || null,
+              source_decision_compteur: infoEvenement.source_decision_compteur || detail.source_decision_compteur || '',
+              compteurs: {},
+              quantite: 0,
+              alertes: []
+            };
+            bloc.date_debut = bloc.date_debut < String(demiJournee.date) ? bloc.date_debut : String(demiJournee.date);
+            bloc.date_fin = bloc.date_fin > String(demiJournee.date) ? bloc.date_fin : String(demiJournee.date);
+            const compteur = detail.compteur || '';
+            const quantite = typeof detail.quantite_appliquee === 'number' && Number.isFinite(detail.quantite_appliquee)
+              ? detail.quantite_appliquee
+              : 0;
+            if (compteur && quantite !== 0) {
+              bloc.compteurs[compteur] = (bloc.compteurs[compteur] || 0) + quantite;
+            }
+            bloc.quantite += quantite;
+            blocs[identifiant] = bloc;
+          });
+        });
+        return Object.values(blocs).sort((a, b) => (
+          a.date_debut.localeCompare(b.date_debut)
+          || a.date_fin.localeCompare(b.date_fin)
+          || a.identifiant.localeCompare(b.identifiant)
+        ));
+      }
+
+      function resumeCompteursFrise(compteurs) {
+        const lignes = Object.entries(compteurs || {})
+          .filter(([, valeur]) => typeof valeur === 'number' && Number.isFinite(valeur) && valeur !== 0)
+          .sort((a, b) => a[0].localeCompare(b[0]));
+        return lignes.map(([compteur, valeur]) => formaterNombreProjectionVivante(valeur) + ' ' + compteur).join(' · ');
+      }
+
+      function classeCompteurFrise(compteurs) {
+        const codes = Object.keys(compteurs || {}).map((compteur) => compteur.toUpperCase()).sort();
+        if (codes.includes('GCP')) { return 'compteur-frise-gcp'; }
+        if (codes.includes('JRTT')) { return 'compteur-frise-jrtt'; }
+        if (codes.includes('CANC')) { return 'compteur-frise-canc'; }
+        return codes.length ? 'compteur-frise-defaut' : '';
+      }
+
+      function creerBlocFriseProjection(svg, bloc) {
+        const utilisateur = bloc.origine_bloc === 'utilisateur';
+        const x1 = xFrisePourDate(svg, bloc.date_debut);
+        const x2 = xFrisePourDate(svg, bloc.date_fin);
+        if (!Number.isFinite(x1) || !Number.isFinite(x2)) { return null; }
+        const largeur = Math.max(8, Math.abs(x2 - x1) + 8);
+        const rect = document.createElementNS(svg.namespaceURI, 'rect');
+        const classeCompteur = classeCompteurFrise(bloc.compteurs);
+        rect.setAttribute('class', [
+          'bloc-temporel-projete',
+          'element-selectionnable',
+          'bloc-frise-actif',
+          utilisateur ? 'bloc-utilisateur-frise' : '',
+          classeCompteur
+        ].filter(Boolean).join(' '));
+        rect.setAttribute('x', String(Math.min(x1, x2)));
+        rect.setAttribute('y', utilisateur ? '60' : '34');
+        rect.setAttribute('width', String(largeur));
+        rect.setAttribute('height', utilisateur ? '14' : '18');
+        rect.setAttribute('rx', '5');
+        rect.setAttribute('role', 'button');
+        rect.setAttribute('tabindex', '0');
+        rect.dataset.friseSource = 'projection_active';
+        rect.dataset.identifiantBloc = bloc.identifiant;
+        rect.dataset.selectionType = 'bloc';
+        rect.dataset.selectionIdentifiant = bloc.identifiant;
+        rect.dataset.selectionPeriode = periodeLisible(bloc.date_debut, bloc.date_fin);
+        rect.dataset.selectionLibelle = utilisateur ? 'absence locale' : bloc.identifiant;
+        rect.dataset.selectionQuantite = formatQuantiteJours(bloc.quantite);
+        rect.dataset.selectionCompteurs = resumeCompteursFrise(bloc.compteurs);
+        rect.dataset.selectionAlertes = bloc.alertes && bloc.alertes.length ? 'présente' : 'aucune';
+        if (utilisateur) {
+          rect.dataset.selectionOrigine = 'ajoute_par_utilisateur';
+          rect.dataset.selectionOrigineBloc = 'utilisateur';
+          rect.dataset.selectionDateDebut = bloc.date_debut;
+          rect.dataset.selectionDateFin = bloc.date_fin;
+          rect.dataset.selectionJoursCalendairesSelectionnes = String(joursCalendairesSelectionnes(bloc.date_debut, bloc.date_fin));
+          const choix = bloc.choix_compteur || { mode: 'auto', compteur: null };
+          rect.dataset.selectionChoixCompteurMode = choix.mode || 'auto';
+          rect.dataset.selectionChoixCompteurLibelle = choix.mode === 'manuel' ? 'Manuel' : 'Auto';
+          rect.dataset.selectionCompteurDemande = choix.mode === 'manuel' ? (choix.compteur || 'aucun') : 'aucun';
+          rect.dataset.selectionSourceDecisionCompteur = bloc.source_decision_compteur || sourceDecisionCompteurDepuisChoix(choix);
+        }
+        const titre = document.createElementNS(svg.namespaceURI, 'title');
+        titre.textContent = (utilisateur ? 'Bloc utilisateur ' : 'Bloc projeté ') + rect.dataset.selectionPeriode + ' · ' + (rect.dataset.selectionCompteurs || rect.dataset.selectionQuantite);
+        rect.appendChild(titre);
+        return rect;
+      }
+
+      function mettreAJourFriseDepuisProjectionActive(projection) {
+        memoriserFrisesStatiquesInitiales();
+        document.querySelectorAll('[data-frise-planification]').forEach((svg) => {
+          const groupe = svg.querySelector('[data-frise-blocs]');
+          if (!groupe) { return; }
+          const coucheLocale = svg.querySelector('.ligne-blocs-locaux');
+          if (coucheLocale) { coucheLocale.textContent = ''; }
+          if (!projection || !Array.isArray(projection.demi_journees)) {
+            restaurerFriseStatique(svg);
+            return;
+          }
+          groupe.textContent = '';
+          blocsFriseDepuisProjectionActive(projection).forEach((bloc) => {
+            const element = creerBlocFriseProjection(svg, bloc);
+            if (!element) { return; }
+            groupe.appendChild(element);
+            connecterElementSelectionnable(element);
+          });
+          mettreAJourCourbeFriseDepuisProjectionActive(svg, projection);
+          svg.dataset.friseSource = 'projection_active';
+        });
+        initialiserCurseursFrise();
+      }
+
       function rendreBlocsAffichablesFrise(blocsAffichables) {
         document.querySelectorAll('.courbe-reste-agrege').forEach((svg) => {
           const groupe = svg.querySelector('.ligne-blocs-locaux');
@@ -2346,7 +2622,6 @@ def script_onglets() -> str:
       function rendreBlocsAffichablesPrototype(blocsAffichables) {
         nettoyerRenduBlocsLocaux();
         rendreBlocsAffichablesCalendrier(blocsAffichables || []);
-        rendreBlocsAffichablesFrise(blocsAffichables || []);
       }
 
       function afficherEtatCentralGui(etat) {
@@ -2456,14 +2731,16 @@ def script_onglets() -> str:
       function initialiserCurseursFrise() {
         document.querySelectorAll('.courbe-reste-agrege').forEach((svg) => {
           const ligne = svg.querySelector('.ligne-curseur-frise');
-          const points = Array.from(svg.querySelectorAll('.point-curseur-frise')).map((point) => ({
-            x: Number(point.dataset.x || '0'),
-            donnees: point.dataset
-          }));
-          if (!ligne || !points.length) {
+          if (!ligne || svg.dataset.curseurFriseConnecte === 'true') {
             return;
           }
+          svg.dataset.curseurFriseConnecte = 'true';
           svg.addEventListener('mousemove', function (event) {
+            const points = Array.from(svg.querySelectorAll('.point-curseur-frise')).map((point) => ({
+              x: Number(point.dataset.x || '0'),
+              donnees: point.dataset
+            })).filter((point) => Number.isFinite(point.x));
+            if (!points.length) { return; }
             const position = coordonneeSvg(svg, event);
             let meilleur = points[0];
             let distance = Math.abs(position.x - meilleur.x);
@@ -3460,6 +3737,8 @@ def blocs_frise_svg(demi_journees: list[Any], alertes: list[Any], debut: date, f
             liaisons +
             f"<rect class=\"bloc-temporel-projete element-selectionnable\" x=\"{x1:.2f}\" y=\"{y}\" "
             f"width=\"{largeur:.2f}\" height=\"{hauteur}\" rx=\"5\" role=\"button\" tabindex=\"0\" "
+            "data-frise-source=\"projection_initiale\" "
+            f"data-identifiant-bloc=\"{escape(identifiant)}\" "
             "data-selection-type=\"bloc\" "
             f"data-selection-identifiant=\"{escape(identifiant)}\" "
             f"data-selection-periode=\"{escape(periode)}\" "
@@ -3556,13 +3835,17 @@ def courbe_reste_agrege(points: list[dict[str, Any]], demi_journees: list[Any], 
     blocs = blocs_frise_svg(demi_journees, alertes, debut, fin, marge_gauche, largeur - marge_droite)
     return (
         f"<svg class=\"courbe-reste-agrege\" viewBox=\"0 0 {largeur} {hauteur}\" role=\"img\" "
-        "aria-label=\"Courbe du reste agrégé provisoire\">"
+        "aria-label=\"Courbe du reste agrégé provisoire\" "
+        "data-frise-planification=\"projection\" data-frise-source=\"projection_initiale\" "
+        f"data-frise-debut=\"{debut.isoformat()}\" data-frise-fin=\"{fin.isoformat()}\" "
+        f"data-frise-gauche=\"{marge_gauche}\" data-frise-droite=\"{largeur - marge_droite}\" "
+        f"data-frise-graphe-haut=\"{graphe_haut}\" data-frise-graphe-bas=\"{graphe_bas}\">"
         f"<line class=\"ligne-curseur-frise\" x1=\"{marge_gauche}\" y1=\"{graphe_haut - 20}\" "
         f"x2=\"{marge_gauche}\" y2=\"{graphe_bas + 12}\" style=\"display:none\" />"
         "<g class=\"donnees-curseur-frise\" hidden>"
         f"{''.join(points_curseur_svg)}"
         "</g>"
-        "<g class=\"ligne-blocs-temporels\">"
+        "<g class=\"ligne-blocs-temporels\" data-frise-blocs>"
         f"{blocs}"
         "</g>"
         "<g class=\"ligne-blocs-locaux\"></g>"
@@ -4439,6 +4722,22 @@ def feuille_style() -> str:
       stroke: var(--accent-fort);
       stroke-width: 1;
     }
+    .bloc-frise-actif.compteur-frise-gcp {
+      fill: rgba(20, 107, 95, 0.68);
+      stroke: var(--compteur-gcp);
+    }
+    .bloc-frise-actif.compteur-frise-jrtt {
+      fill: rgba(177, 59, 46, 0.22);
+      stroke: var(--compteur-jrtt);
+    }
+    .bloc-frise-actif.compteur-frise-canc {
+      fill: rgba(155, 107, 0, 0.24);
+      stroke: var(--compteur-canc);
+    }
+    .bloc-frise-actif.compteur-frise-defaut {
+      fill: rgba(90, 82, 68, 0.2);
+      stroke: var(--muted);
+    }
     .bloc-temporel-projete.selection-active,
     .bloc-selectionne {
       fill: var(--alerte);
@@ -4450,6 +4749,11 @@ def feuille_style() -> str:
       stroke: var(--accent-fort);
       stroke-width: 1;
       cursor: pointer;
+    }
+    .bloc-utilisateur-frise.bloc-frise-actif {
+      fill: rgba(20, 107, 95, 0.32);
+      stroke: var(--accent-fort);
+      stroke-width: 1.4;
     }
     .bloc-utilisateur-frise.selection-active,
     .bloc-utilisateur-frise.bloc-utilisateur-selectionne {

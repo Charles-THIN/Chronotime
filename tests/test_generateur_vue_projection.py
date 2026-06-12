@@ -243,6 +243,10 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("niveau-reste-agrege", html)
         self.assertIn("courbe-reste-agrege", html)
         self.assertIn("point-reste-agrege", html)
+        self.assertIn("data-frise-planification", html)
+        self.assertIn("data-frise-blocs", html)
+        self.assertIn("data-frise-source", html)
+        self.assertIn("data-identifiant-bloc", html)
         self.assertIn("reste agrégé provisoire", html)
         self.assertIn("Formule temporaire", html)
 
@@ -695,6 +699,13 @@ class TestGenerateurVueProjection(unittest.TestCase):
             "mettreAJourCompteursDepuisProjectionVivante",
             "mettreAJourTotalRestantDepuisProjectionVivante",
             "mettreAJourTotalRestantDepuisProjectionVivante(projectionVivante)",
+            "mettreAJourFriseDepuisProjectionActive",
+            "mettreAJourFriseDepuisProjectionActive(projectionVivante)",
+            "blocsFriseDepuisProjectionActive",
+            "data-frise-blocs",
+            "data-frise-source",
+            "data-identifiant-bloc",
+            "projection_active",
             "data-total-restant",
             "data-total-restant-valeur",
             "data-total-restant-delta",
@@ -718,6 +729,48 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertNotIn("vivant · Δ", html)
         self.assertNotIn("Projection recalculée", html)
         self.assertNotIn("Recalculé ·", html)
+        self.assertNotIn("Moteur non recalculé", html)
+        self.assertNotIn("bloc utilisateur prototype", html)
+        self.assertNotIn("prévisualisation locale", html)
+
+    def test_generation_html_frise_synchronisee_projection_active(self) -> None:
+        html = generer_html(self._charger_exemple(), entrees_projection=self._charger_entrees_projection_minimum())
+
+        for marqueur in (
+            "function mettreAJourFriseDepuisProjectionActive",
+            "function memoriserFrisesStatiquesInitiales",
+            "function restaurerFriseStatique",
+            "function blocsFriseDepuisProjectionActive",
+            "function creerBlocFriseProjection",
+            "mettreAJourCompteursDepuisProjectionVivante(projectionVivante)",
+            "mettreAJourTotalRestantDepuisProjectionVivante(projectionVivante)",
+            "mettreAJourPosesDepuisProjectionVivante(projectionVivante)",
+            "mettreAJourFriseDepuisProjectionActive(projectionVivante)",
+            "blocGuiVersBlocScenario",
+            "identifiant_evenement",
+            "origine_bloc",
+            "bloc-utilisateur-frise",
+            "Bloc utilisateur",
+            "jours consommés au total",
+            "Posés",
+        ):
+            self.assertIn(marqueur, html)
+
+        self.assertIn('data-frise-planification="projection"', html)
+        self.assertIn("data-frise-blocs", html)
+        self.assertIn("data-frise-source=\"projection_initiale\"", html)
+        self.assertIn("data-identifiant-bloc=", html)
+        self.assertIn("rect.dataset.friseSource = 'projection_active'", html)
+        self.assertIn("rect.dataset.identifiantBloc = bloc.identifiant", html)
+        self.assertIn("groupe.textContent = ''", html)
+        self.assertIn("coucheLocale.textContent = ''", html)
+        self.assertIn("svg.dataset.friseSource = 'projection_active'", html)
+
+        self.assertNotIn("Projection recalculée", html)
+        self.assertNotIn("Recalculé ·", html)
+        self.assertNotIn("Moteur non recalculé", html)
+        self.assertNotIn("bloc utilisateur prototype", html)
+        self.assertNotIn("prévisualisation locale", html)
 
     def test_generation_html_quantites_bloc_utilisateur_explicitent_decompte(self) -> None:
         html = generer_html(self._charger_exemple(), entrees_projection=self._charger_entrees_projection_minimum())

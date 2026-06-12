@@ -63,15 +63,20 @@ Ce document liste les points encore ouverts avant de figer un moteur de calcul p
 - Fait : nettoyage des messages de succès et du vocabulaire prototype dans la vue Calendrier.
 - Fait : curseur compact toujours visible.
 - Fait : indicateur `Posés {année}`.
+- Fait : frise synchronisée en lecture avec la projection active.
 - Reste : définir le total métier final, le reste libre et les réserves `N+1`.
 - Reste : ajouter une sauvegarde explicite vers fichier.
 - Reste : ajouter un chargement explicite depuis fichier.
 - Reste : permettre un retour à l’état à l’ouverture.
 - Reste : permettre l’annulation des changements depuis le lancement.
-- Reste : frise interactive.
-- Reste : reconstruction complète calendrier/frise depuis projection recalculée.
+- Reste : pose de jours depuis la frise.
+- Reste : déplacement / allongement / raccourcissement depuis la frise.
 - Reste : Auto réel.
+- Reste : congés parentaux.
 - Reste : expirations fines par compteur.
+- Reste : mise à jour régulière depuis Chronotime.
+- Reste : liste d’actions Chronotime à réaliser.
+- Reste : écriture automatique Chronotime, seulement en toute dernière étape éventuelle.
 - Reste : journal technique consultable.
 - Reste : intégrer les familles de compteurs liées à la parentalité lorsque les blocs parentalité seront modélisés.
 
