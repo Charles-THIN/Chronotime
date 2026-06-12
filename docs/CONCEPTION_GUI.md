@@ -862,6 +862,8 @@ En mode détaillé, la lecture privilégie les compteurs consommés, avec les m�
 
 Cette étape ne découpe pas encore un même bloc en sous-blocs lorsqu’il consomme plusieurs compteurs. Elle prépare seulement un langage visuel commun entre calendrier et frise.
 
+Les décisions visuelles génériques sont portées par des classes communes `visuel-origine-*`, `visuel-compteur-*` et `visuel-trait-*`, utilisées à la fois par le calendrier et par la frise. En mode général, la couleur générique reste verte et cohérente avec le calendrier ; l’origine du bloc est plutôt portée par le type de trait. En mode détaillé, la couleur correspond au compteur consommé et un libellé court de compteur peut être affiché dans les blocs de frise.
+
 ## Vue future des soldes dans le temps
 
 Une future vue `Soldes dans le temps` devra représenter :

@@ -2202,7 +2202,13 @@ def script_onglets() -> str:
             'compteur-manuel-gcp',
             'compteur-manuel-jrtt',
             'compteur-manuel-canc',
-            'compteur-manuel-defaut'
+            'compteur-manuel-defaut',
+            'visuel-origine-utilisateur',
+            'visuel-trait-pointille',
+            'visuel-compteur-gcp',
+            'visuel-compteur-jrtt',
+            'visuel-compteur-canc',
+            'visuel-compteur-defaut'
           );
           const typeCompteur = jour.querySelector('.type-compteur-jour');
           if (typeCompteur && typeCompteur.dataset.libelleProjection !== undefined) {
@@ -2211,12 +2217,27 @@ def script_onglets() -> str:
         });
       }
 
-      function classeCompteurManuel(compteur) {
+      function classeCompteurTechnique(compteur, prefixe) {
         const normalise = String(compteur || '').trim().toUpperCase();
-        if (normalise === 'GCP') { return 'compteur-manuel-gcp'; }
-        if (normalise === 'JRTT') { return 'compteur-manuel-jrtt'; }
-        if (normalise === 'CANC') { return 'compteur-manuel-canc'; }
-        return 'compteur-manuel-defaut';
+        if (normalise === 'GCP') { return prefixe + '-gcp'; }
+        if (normalise === 'JRTT') { return prefixe + '-jrtt'; }
+        if (normalise === 'CANC') { return prefixe + '-canc'; }
+        return prefixe + '-defaut';
+      }
+
+      function classeVisuelleCompteurCode(compteur) {
+        return classeCompteurTechnique(compteur, 'visuel-compteur');
+      }
+
+      function classesCompteurManuel(compteur) {
+        return [
+          classeCompteurTechnique(compteur, 'compteur-manuel'),
+          classeVisuelleCompteurCode(compteur)
+        ].filter(Boolean);
+      }
+
+      function classeCompteurManuel(compteur) {
+        return classeCompteurTechnique(compteur, 'compteur-manuel');
       }
 
       function libelleCompteurManuel(compteur) {
@@ -2273,7 +2294,13 @@ def script_onglets() -> str:
           datesBlocLocal(bloc).forEach((dateIso) => {
             const jour = document.querySelector('.jour-calendrier[data-date-iso="' + dateIso + '"]');
             if (!jour) { return; }
-            jour.classList.add('jour-avec-bloc-utilisateur', 'origine-utilisateur', classeCompteurManuel(bloc.compteur_indicatif));
+            jour.classList.add(
+              'jour-avec-bloc-utilisateur',
+              'origine-utilisateur',
+              'visuel-origine-utilisateur',
+              'visuel-trait-pointille',
+              ...classesCompteurManuel(bloc.compteur_indicatif)
+            );
             const typeCompteur = jour.querySelector('.type-compteur-jour');
             if (typeCompteur) {
               if (typeCompteur.dataset.libelleProjection === undefined) {
@@ -2489,15 +2516,32 @@ def script_onglets() -> str:
         return lignes.map(([compteur, valeur]) => formaterNombreProjectionVivante(valeur) + ' ' + compteur).join(' · ');
       }
 
-      function classeCompteurFrise(compteurs) {
+      function compteurPrincipalDepuisCompteurs(compteurs) {
         const codes = Object.keys(compteurs || {}).map((compteur) => compteur.toUpperCase()).sort();
-        if (codes.includes('GCP')) { return 'compteur-frise-gcp'; }
-        if (codes.includes('JRTT')) { return 'compteur-frise-jrtt'; }
-        if (codes.includes('CANC')) { return 'compteur-frise-canc'; }
-        return codes.length ? 'compteur-frise-defaut' : '';
+        for (const prioritaire of ['GCP', 'JRTT', 'CANC']) {
+          if (codes.includes(prioritaire)) { return prioritaire; }
+        }
+        return codes.length ? codes[0] : '';
       }
 
-      function origineFriseBloc(bloc) {
+      function classeCompteurFrise(compteurs) {
+        const compteur = compteurPrincipalDepuisCompteurs(compteurs);
+        return compteur ? classeCompteurTechnique(compteur, 'compteur-frise') : '';
+      }
+
+      function classeVisuelleCompteurDepuisCompteurs(compteurs) {
+        const compteur = compteurPrincipalDepuisCompteurs(compteurs);
+        return compteur ? classeVisuelleCompteurCode(compteur) : '';
+      }
+
+      function libelleCompteursFriseDetaille(compteurs) {
+        const codes = Object.keys(compteurs || {}).map((compteur) => compteur.toUpperCase()).sort();
+        if (codes.length === 0) { return ''; }
+        if (codes.length === 1) { return codes[0]; }
+        return 'mixte';
+      }
+
+      function origineVisuelleBloc(bloc) {
         const origine = String((bloc && bloc.origine_bloc) || '').trim().toLowerCase();
         const source = String((bloc && bloc.source) || '').trim().toLowerCase();
         if (origine === 'utilisateur') { return 'utilisateur'; }
@@ -2507,8 +2551,33 @@ def script_onglets() -> str:
         return 'autre';
       }
 
+      function origineFriseBloc(bloc) {
+        return origineVisuelleBloc(bloc);
+      }
+
       function classeOrigineFrise(bloc) {
-        return 'origine-frise-' + origineFriseBloc(bloc);
+        return 'origine-frise-' + origineVisuelleBloc(bloc);
+      }
+
+      function classeVisuelleOrigineBloc(bloc) {
+        return 'visuel-origine-' + origineVisuelleBloc(bloc);
+      }
+
+      function classeVisuelleTraitOrigineBloc(bloc) {
+        const origine = origineVisuelleBloc(bloc);
+        if (origine === 'utilisateur') { return 'visuel-trait-pointille'; }
+        if (origine === 'obligation') { return 'visuel-trait-epais'; }
+        return 'visuel-trait-normal';
+      }
+
+      function classesVisuellesBlocFrise(bloc, compteurs) {
+        return [
+          classeOrigineFrise(bloc),
+          classeCompteurFrise(compteurs),
+          classeVisuelleOrigineBloc(bloc),
+          classeVisuelleTraitOrigineBloc(bloc),
+          classeVisuelleCompteurDepuisCompteurs(compteurs)
+        ].filter(Boolean);
       }
 
       function definirDonneesSelectionBlocFrise(element, bloc, utilisateur) {
@@ -2560,15 +2629,13 @@ def script_onglets() -> str:
         const basGraphe = Number(svg.dataset.friseGrapheBas || '282');
 
         const groupeBloc = document.createElementNS(svg.namespaceURI, 'g');
-        const classeCompteur = classeCompteurFrise(bloc.compteurs);
-        const classeOrigine = classeOrigineFrise(bloc);
+        const classesVisuelles = classesVisuellesBlocFrise(bloc, bloc.compteurs);
         groupeBloc.setAttribute('class', [
           'bloc-frise-groupe',
           'element-selectionnable',
           'bloc-frise-actif',
           utilisateur ? 'bloc-utilisateur-frise' : '',
-          classeOrigine,
-          classeCompteur
+          ...classesVisuelles
         ].filter(Boolean).join(' '));
         groupeBloc.setAttribute('role', 'button');
         groupeBloc.setAttribute('tabindex', '0');
@@ -2583,8 +2650,7 @@ def script_onglets() -> str:
           'bloc-frise-rectangle',
           'bloc-frise-actif',
           utilisateur ? 'bloc-utilisateur-frise-rectangle' : '',
-          classeOrigine,
-          classeCompteur
+          ...classesVisuelles
         ].filter(Boolean).join(' '));
         rect.setAttribute('x', String(gauche));
         rect.setAttribute('y', String(y));
@@ -2597,6 +2663,16 @@ def script_onglets() -> str:
         titre.textContent = (utilisateur ? 'Bloc utilisateur ' : 'Bloc projeté ') + groupeBloc.dataset.selectionPeriode + ' · ' + (groupeBloc.dataset.selectionCompteurs || groupeBloc.dataset.selectionQuantite);
         rect.appendChild(titre);
         groupeBloc.appendChild(rect);
+
+        const libelleCompteur = libelleCompteursFriseDetaille(bloc.compteurs);
+        if (libelleCompteur) {
+          const texteCompteur = document.createElementNS(svg.namespaceURI, 'text');
+          texteCompteur.setAttribute('class', 'libelle-compteur-frise');
+          texteCompteur.setAttribute('x', String(gauche + largeur / 2));
+          texteCompteur.setAttribute('y', String(y + hauteur / 2 + 0.5));
+          texteCompteur.textContent = libelleCompteur;
+          groupeBloc.appendChild(texteCompteur);
+        }
         return groupeBloc;
       }
 
@@ -3541,6 +3617,25 @@ def classe_compteur_calendrier(compteur: str) -> str:
     return ""
 
 
+def classe_visuelle_compteur(compteur: str) -> str:
+    compteur_normalise = compteur.strip().upper().replace("_", "-")
+    if compteur_normalise in {"GCP", "JRTT", "CANC"}:
+        return f"visuel-compteur-{compteur_normalise.lower()}"
+    if compteur_normalise:
+        return "visuel-compteur-defaut"
+    return ""
+
+
+def classes_visuelles_calendrier(compteur: str, avec_consommation: bool) -> list[str]:
+    classes: list[str] = []
+    classe_compteur = classe_visuelle_compteur(compteur)
+    if classe_compteur:
+        classes.append(classe_compteur)
+    if avec_consommation:
+        classes.extend(["visuel-origine-projection", "visuel-trait-normal"])
+    return classes
+
+
 def libelle_compteur_calendrier(compteur: str) -> str:
     compteur_normalise = compteur.strip().upper()
     if compteur_normalise == "NON_RECALCULE":
@@ -3633,6 +3728,7 @@ def vue_calendrier_passif(demi_journees: list[Any]) -> str:
             classe_compteur = classe_compteur_calendrier(compteur_principal)
             if classe_compteur:
                 classes.append(classe_compteur)
+            classes.extend(classes_visuelles_calendrier(compteur_principal, bool(info.get("consommations"))))
             if info.get("alertes"):
                 classes.append("jour-avec-alerte")
             date_jour = date_iso_vers_objet(date_iso)
@@ -4771,6 +4867,7 @@ def feuille_style() -> str:
       border-radius: 8px;
       background: linear-gradient(180deg, rgba(255, 250, 240, 0.88), rgba(239, 228, 208, 0.8));
     }
+    /* Décisions visuelles communes calendrier/frise. */
     .bloc-temporel-projete {
       fill: rgba(20, 107, 95, 0.18);
       stroke: var(--accent-fort);
@@ -4779,52 +4876,104 @@ def feuille_style() -> str:
     .bloc-frise-groupe {
       cursor: pointer;
     }
-    .interface-planification[data-mode-planification="general"] .bloc-frise-groupe.origine-frise-utilisateur .bloc-temporel-projete {
-      fill: rgba(20, 107, 95, 0.26);
-      stroke: var(--accent-fort);
-      stroke-width: 1.5;
-      stroke-dasharray: 5 3;
+
+    .interface-planification[data-mode-planification="general"] .jour-calendrier.visuel-origine-projection,
+    .interface-planification[data-mode-planification="general"] .jour-calendrier.visuel-origine-scenario,
+    .interface-planification[data-mode-planification="general"] .jour-calendrier.visuel-origine-utilisateur {
+      background: rgba(20, 107, 95, 0.16);
+      border-color: rgba(20, 107, 95, 0.62);
+      color: var(--accent-fort);
     }
-    .interface-planification[data-mode-planification="general"] .bloc-frise-groupe.origine-frise-obligation .bloc-temporel-projete {
-      fill: rgba(155, 107, 0, 0.24);
-      stroke: var(--confirmation);
-      stroke-width: 1.5;
-    }
-    .interface-planification[data-mode-planification="general"] .bloc-frise-groupe.origine-frise-scenario .bloc-temporel-projete {
+    .interface-planification[data-mode-planification="general"] .bloc-frise-groupe.origine-frise-utilisateur .bloc-temporel-projete,
+    .interface-planification[data-mode-planification="general"] .bloc-frise-groupe.visuel-origine-utilisateur .bloc-temporel-projete,
+    .interface-planification[data-mode-planification="general"] .bloc-frise-groupe.visuel-origine-obligation .bloc-temporel-projete,
+    .interface-planification[data-mode-planification="general"] .bloc-frise-groupe.visuel-origine-scenario .bloc-temporel-projete,
+    .interface-planification[data-mode-planification="general"] .bloc-frise-groupe.visuel-origine-chronotime .bloc-temporel-projete,
+    .interface-planification[data-mode-planification="general"] .bloc-frise-groupe.visuel-origine-autre .bloc-temporel-projete {
       fill: rgba(20, 107, 95, 0.20);
       stroke: var(--accent-fort);
       stroke-width: 1.2;
     }
-    .interface-planification[data-mode-planification="general"] .bloc-frise-groupe.origine-frise-chronotime .bloc-temporel-projete {
-      fill: rgba(79, 134, 198, 0.18);
-      stroke: var(--info);
-      stroke-width: 1.3;
+
+    .jour-calendrier.visuel-trait-pointille {
+      border-style: dashed;
+      border-width: 1.5px;
     }
-    .interface-planification[data-mode-planification="general"] .bloc-frise-groupe.origine-frise-autre .bloc-temporel-projete {
-      fill: rgba(90, 82, 68, 0.18);
-      stroke: var(--muted);
+    .jour-calendrier.visuel-trait-epais {
+      border-width: 2px;
+    }
+    .bloc-frise-groupe.visuel-trait-pointille .bloc-temporel-projete {
+      stroke-dasharray: 5 3;
+      stroke-width: 1.5;
+    }
+    .bloc-frise-groupe.visuel-trait-epais .bloc-temporel-projete {
+      stroke-width: 1.9;
+    }
+    .bloc-frise-groupe.visuel-trait-normal .bloc-temporel-projete {
       stroke-width: 1.2;
     }
+
+    .interface-planification[data-mode-planification="detaille"] .jour-calendrier.visuel-compteur-gcp,
     .interface-planification[data-mode-planification="detaille"] .bloc-frise-groupe.compteur-frise-gcp .bloc-temporel-projete,
-    .interface-planification[data-mode-planification="detaille"] .bloc-frise-rectangle.compteur-frise-gcp {
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-groupe.visuel-compteur-gcp .bloc-temporel-projete,
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-rectangle.compteur-frise-gcp,
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-rectangle.visuel-compteur-gcp {
+      background: rgba(201, 111, 117, 0.22);
       fill: rgba(201, 111, 117, 0.22);
+      border-color: var(--compteur-gcp);
       stroke: var(--compteur-gcp);
+      color: #743c42;
     }
+    .interface-planification[data-mode-planification="detaille"] .jour-calendrier.visuel-compteur-jrtt,
     .interface-planification[data-mode-planification="detaille"] .bloc-frise-groupe.compteur-frise-jrtt .bloc-temporel-projete,
-    .interface-planification[data-mode-planification="detaille"] .bloc-frise-rectangle.compteur-frise-jrtt {
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-groupe.visuel-compteur-jrtt .bloc-temporel-projete,
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-rectangle.compteur-frise-jrtt,
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-rectangle.visuel-compteur-jrtt {
+      background: rgba(79, 134, 198, 0.22);
       fill: rgba(79, 134, 198, 0.22);
+      border-color: var(--compteur-jrtt);
       stroke: var(--compteur-jrtt);
+      color: #28547f;
     }
+    .interface-planification[data-mode-planification="detaille"] .jour-calendrier.visuel-compteur-canc,
     .interface-planification[data-mode-planification="detaille"] .bloc-frise-groupe.compteur-frise-canc .bloc-temporel-projete,
-    .interface-planification[data-mode-planification="detaille"] .bloc-frise-rectangle.compteur-frise-canc {
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-groupe.visuel-compteur-canc .bloc-temporel-projete,
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-rectangle.compteur-frise-canc,
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-rectangle.visuel-compteur-canc {
+      background: rgba(79, 155, 115, 0.22);
       fill: rgba(79, 155, 115, 0.22);
+      border-color: var(--compteur-canc);
       stroke: var(--compteur-canc);
+      color: #2d6b4b;
     }
+    .interface-planification[data-mode-planification="detaille"] .jour-calendrier.visuel-compteur-defaut,
     .interface-planification[data-mode-planification="detaille"] .bloc-frise-groupe.compteur-frise-defaut .bloc-temporel-projete,
-    .interface-planification[data-mode-planification="detaille"] .bloc-frise-rectangle.compteur-frise-defaut {
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-groupe.visuel-compteur-defaut .bloc-temporel-projete,
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-rectangle.compteur-frise-defaut,
+    .interface-planification[data-mode-planification="detaille"] .bloc-frise-rectangle.visuel-compteur-defaut {
+      background: rgba(20, 107, 95, 0.14);
       fill: rgba(20, 107, 95, 0.14);
+      border-color: var(--compteur-defaut);
       stroke: var(--compteur-defaut);
+      color: var(--accent-fort);
     }
+
+    .libelle-compteur-frise {
+      display: none;
+      pointer-events: none;
+      fill: var(--accent-fort);
+      font-size: 10px;
+      font-weight: 800;
+      text-anchor: middle;
+      dominant-baseline: central;
+      paint-order: stroke;
+      stroke: rgba(255, 250, 240, 0.9);
+      stroke-width: 2px;
+    }
+    .interface-planification[data-mode-planification="detaille"] .libelle-compteur-frise {
+      display: block;
+    }
+
     .bloc-temporel-projete.selection-active,
     .bloc-selectionne {
       fill: var(--alerte);

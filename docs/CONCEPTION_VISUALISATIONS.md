@@ -64,7 +64,7 @@ La frise est la vue principale d’édition, mais ses modifications doivent êtr
 
 État courant : la frise est d’abord une vue synchronisée en lecture. Elle affiche les blocs et le niveau issus de la projection active recalculée, reflète les ajouts, suppressions et restaurations de blocs utilisateur, et ne modifie pas le scénario source. Les vues lisent les sorties de projection ; elles ne deviennent pas sources métier et ne portent pas de logique d’allocation des compteurs. La pose, le déplacement et le redimensionnement depuis la frise restent des étapes ultérieures.
 
-La frise suit les mêmes modes de lecture que le calendrier : le mode général privilégie l’origine du bloc, tandis que le mode détaillé privilégie les compteurs consommés.
+La frise suit les mêmes modes de lecture que le calendrier : le mode général privilégie l’origine du bloc, tandis que le mode détaillé privilégie les compteurs consommés. Les classes visuelles communes `visuel-origine-*`, `visuel-compteur-*` et `visuel-trait-*` servent de vocabulaire partagé entre les vues.
 
 ## Vue 3 : Projection Des Soldes
 
