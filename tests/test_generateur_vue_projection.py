@@ -553,6 +553,7 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("Pose impossible : plage déjà occupée", html)
         self.assertIn("jours ouvrés possibles", html)
         self.assertNotIn("prévisualisation locale", html)
+        self.assertNotIn("afficherFantomeFrise(dateA, dateB, impossible);", html)
         self.assertNotIn("Compteur indicatif", html)
         self.assertNotIn("non recalculé par le moteur", html)
         self.assertNotIn("j projeté(s)", html)
@@ -732,6 +733,7 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertNotIn("Moteur non recalculé", html)
         self.assertNotIn("bloc utilisateur prototype", html)
         self.assertNotIn("prévisualisation locale", html)
+        self.assertNotIn("afficherFantomeFrise(dateA, dateB, impossible);", html)
 
     def test_generation_html_frise_synchronisee_projection_active(self) -> None:
         html = generer_html(self._charger_exemple(), entrees_projection=self._charger_entrees_projection_minimum())
@@ -742,6 +744,8 @@ class TestGenerateurVueProjection(unittest.TestCase):
             "function restaurerFriseStatique",
             "function blocsFriseDepuisProjectionActive",
             "function creerBlocFriseProjection",
+            "function creerLiaisonBlocFrise",
+            "function definirDonneesSelectionBlocFrise",
             "mettreAJourCompteursDepuisProjectionVivante(projectionVivante)",
             "mettreAJourTotalRestantDepuisProjectionVivante(projectionVivante)",
             "mettreAJourPosesDepuisProjectionVivante(projectionVivante)",
@@ -771,6 +775,7 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertNotIn("Moteur non recalculé", html)
         self.assertNotIn("bloc utilisateur prototype", html)
         self.assertNotIn("prévisualisation locale", html)
+        self.assertNotIn("afficherFantomeFrise(dateA, dateB, impossible);", html)
 
     def test_generation_html_quantites_bloc_utilisateur_explicitent_decompte(self) -> None:
         html = generer_html(self._charger_exemple(), entrees_projection=self._charger_entrees_projection_minimum())

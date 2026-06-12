@@ -1359,7 +1359,7 @@ def script_onglets() -> str:
           if (index === 0) { jour.classList.add('bloc-fantome-debut'); }
           if (index === dates.length - 1) { jour.classList.add('bloc-fantome-fin'); }
         });
-        afficherFantomeFrise(dateA, dateB, impossible);
+        // La frise reste une vue synchronisée : pas de mini-bloc fantôme pendant la pose calendrier.
         afficherCurseurPrototype(dateA, dateB, impossible);
         afficherDiagnosticsGui(resultatPrevisualisation.diagnostics || []);
       }
@@ -2497,53 +2497,89 @@ def script_onglets() -> str:
         return codes.length ? 'compteur-frise-defaut' : '';
       }
 
+      function definirDonneesSelectionBlocFrise(element, bloc, utilisateur) {
+        element.dataset.friseSource = 'projection_active';
+        element.dataset.identifiantBloc = bloc.identifiant;
+        element.dataset.selectionType = 'bloc';
+        element.dataset.selectionIdentifiant = bloc.identifiant;
+        element.dataset.selectionPeriode = periodeLisible(bloc.date_debut, bloc.date_fin);
+        element.dataset.selectionLibelle = utilisateur ? 'absence locale' : bloc.identifiant;
+        element.dataset.selectionQuantite = formatQuantiteJours(bloc.quantite);
+        element.dataset.selectionCompteurs = resumeCompteursFrise(bloc.compteurs);
+        element.dataset.selectionAlertes = bloc.alertes && bloc.alertes.length ? 'présente' : 'aucune';
+        if (utilisateur) {
+          element.dataset.selectionOrigine = 'ajoute_par_utilisateur';
+          element.dataset.selectionOrigineBloc = 'utilisateur';
+          element.dataset.selectionDateDebut = bloc.date_debut;
+          element.dataset.selectionDateFin = bloc.date_fin;
+          element.dataset.selectionJoursCalendairesSelectionnes = String(joursCalendairesSelectionnes(bloc.date_debut, bloc.date_fin));
+          const choix = bloc.choix_compteur || { mode: 'auto', compteur: null };
+          element.dataset.selectionChoixCompteurMode = choix.mode || 'auto';
+          element.dataset.selectionChoixCompteurLibelle = choix.mode === 'manuel' ? 'Manuel' : 'Auto';
+          element.dataset.selectionCompteurDemande = choix.mode === 'manuel' ? (choix.compteur || 'aucun') : 'aucun';
+          element.dataset.selectionSourceDecisionCompteur = bloc.source_decision_compteur || sourceDecisionCompteurDepuisChoix(choix);
+        }
+      }
+
+      function creerLiaisonBlocFrise(svg, classe, x, y1, y2) {
+        const ligne = document.createElementNS(svg.namespaceURI, 'line');
+        ligne.setAttribute('class', 'liaison-bloc-courbe ' + classe);
+        ligne.setAttribute('x1', x.toFixed(2));
+        ligne.setAttribute('x2', x.toFixed(2));
+        ligne.setAttribute('y1', y1.toFixed(2));
+        ligne.setAttribute('y2', y2.toFixed(2));
+        return ligne;
+      }
+
       function creerBlocFriseProjection(svg, bloc) {
         const utilisateur = bloc.origine_bloc === 'utilisateur';
         const x1 = xFrisePourDate(svg, bloc.date_debut);
         const x2 = xFrisePourDate(svg, bloc.date_fin);
         if (!Number.isFinite(x1) || !Number.isFinite(x2)) { return null; }
+
+        const gauche = Math.min(x1, x2);
         const largeur = Math.max(8, Math.abs(x2 - x1) + 8);
-        const rect = document.createElementNS(svg.namespaceURI, 'rect');
+        const droite = gauche + largeur;
+        const y = utilisateur ? 60 : 34;
+        const hauteur = utilisateur ? 14 : 18;
+        const basGraphe = Number(svg.dataset.friseGrapheBas || '282');
+
+        const groupeBloc = document.createElementNS(svg.namespaceURI, 'g');
         const classeCompteur = classeCompteurFrise(bloc.compteurs);
-        rect.setAttribute('class', [
-          'bloc-temporel-projete',
+        groupeBloc.setAttribute('class', [
+          'bloc-frise-groupe',
           'element-selectionnable',
           'bloc-frise-actif',
           utilisateur ? 'bloc-utilisateur-frise' : '',
           classeCompteur
         ].filter(Boolean).join(' '));
-        rect.setAttribute('x', String(Math.min(x1, x2)));
-        rect.setAttribute('y', utilisateur ? '60' : '34');
+        groupeBloc.setAttribute('role', 'button');
+        groupeBloc.setAttribute('tabindex', '0');
+        definirDonneesSelectionBlocFrise(groupeBloc, bloc, utilisateur);
+
+        groupeBloc.appendChild(creerLiaisonBlocFrise(svg, 'borne-bloc-debut', gauche, y + hauteur, basGraphe));
+        groupeBloc.appendChild(creerLiaisonBlocFrise(svg, 'borne-bloc-fin', droite, y + hauteur, basGraphe));
+
+        const rect = document.createElementNS(svg.namespaceURI, 'rect');
+        rect.setAttribute('class', [
+          'bloc-temporel-projete',
+          'bloc-frise-rectangle',
+          'bloc-frise-actif',
+          utilisateur ? 'bloc-utilisateur-frise-rectangle' : '',
+          classeCompteur
+        ].filter(Boolean).join(' '));
+        rect.setAttribute('x', String(gauche));
+        rect.setAttribute('y', String(y));
         rect.setAttribute('width', String(largeur));
-        rect.setAttribute('height', utilisateur ? '14' : '18');
+        rect.setAttribute('height', String(hauteur));
         rect.setAttribute('rx', '5');
-        rect.setAttribute('role', 'button');
-        rect.setAttribute('tabindex', '0');
-        rect.dataset.friseSource = 'projection_active';
-        rect.dataset.identifiantBloc = bloc.identifiant;
-        rect.dataset.selectionType = 'bloc';
-        rect.dataset.selectionIdentifiant = bloc.identifiant;
-        rect.dataset.selectionPeriode = periodeLisible(bloc.date_debut, bloc.date_fin);
-        rect.dataset.selectionLibelle = utilisateur ? 'absence locale' : bloc.identifiant;
-        rect.dataset.selectionQuantite = formatQuantiteJours(bloc.quantite);
-        rect.dataset.selectionCompteurs = resumeCompteursFrise(bloc.compteurs);
-        rect.dataset.selectionAlertes = bloc.alertes && bloc.alertes.length ? 'présente' : 'aucune';
-        if (utilisateur) {
-          rect.dataset.selectionOrigine = 'ajoute_par_utilisateur';
-          rect.dataset.selectionOrigineBloc = 'utilisateur';
-          rect.dataset.selectionDateDebut = bloc.date_debut;
-          rect.dataset.selectionDateFin = bloc.date_fin;
-          rect.dataset.selectionJoursCalendairesSelectionnes = String(joursCalendairesSelectionnes(bloc.date_debut, bloc.date_fin));
-          const choix = bloc.choix_compteur || { mode: 'auto', compteur: null };
-          rect.dataset.selectionChoixCompteurMode = choix.mode || 'auto';
-          rect.dataset.selectionChoixCompteurLibelle = choix.mode === 'manuel' ? 'Manuel' : 'Auto';
-          rect.dataset.selectionCompteurDemande = choix.mode === 'manuel' ? (choix.compteur || 'aucun') : 'aucun';
-          rect.dataset.selectionSourceDecisionCompteur = bloc.source_decision_compteur || sourceDecisionCompteurDepuisChoix(choix);
-        }
+        definirDonneesSelectionBlocFrise(rect, bloc, utilisateur);
+
         const titre = document.createElementNS(svg.namespaceURI, 'title');
-        titre.textContent = (utilisateur ? 'Bloc utilisateur ' : 'Bloc projeté ') + rect.dataset.selectionPeriode + ' · ' + (rect.dataset.selectionCompteurs || rect.dataset.selectionQuantite);
+        titre.textContent = (utilisateur ? 'Bloc utilisateur ' : 'Bloc projeté ') + groupeBloc.dataset.selectionPeriode + ' · ' + (groupeBloc.dataset.selectionCompteurs || groupeBloc.dataset.selectionQuantite);
         rect.appendChild(titre);
-        return rect;
+        groupeBloc.appendChild(rect);
+        return groupeBloc;
       }
 
       function mettreAJourFriseDepuisProjectionActive(projection) {
@@ -4744,22 +4780,20 @@ def feuille_style() -> str:
       stroke: #5f1d16;
       stroke-width: 3;
     }
-    .bloc-utilisateur-frise {
-      fill: rgba(20, 107, 95, 0.28);
-      stroke: var(--accent-fort);
-      stroke-width: 1;
+    .bloc-frise-groupe {
       cursor: pointer;
     }
-    .bloc-utilisateur-frise.bloc-frise-actif {
-      fill: rgba(20, 107, 95, 0.32);
-      stroke: var(--accent-fort);
-      stroke-width: 1.4;
-    }
-    .bloc-utilisateur-frise.selection-active,
-    .bloc-utilisateur-frise.bloc-utilisateur-selectionne {
+    .bloc-frise-groupe.selection-active .bloc-temporel-projete,
+    .bloc-frise-groupe.bloc-utilisateur-selectionne .bloc-temporel-projete {
       fill: rgba(20, 107, 95, 0.34);
       stroke: var(--accent-fort);
       stroke-width: 3;
+    }
+    .bloc-utilisateur-frise .bloc-temporel-projete,
+    .bloc-utilisateur-frise-rectangle {
+      fill: rgba(20, 107, 95, 0.32);
+      stroke: var(--accent-fort);
+      stroke-width: 1.4;
     }
     .liaison-bloc-courbe {
       stroke: rgba(177, 59, 46, 0.42);
