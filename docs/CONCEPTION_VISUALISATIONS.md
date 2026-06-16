@@ -66,6 +66,12 @@ La frise est la vue principale d’édition, mais ses modifications doivent êtr
 
 La frise suit les mêmes modes de lecture que le calendrier : le mode général privilégie l’origine du bloc, tandis que le mode détaillé privilégie les compteurs consommés. Les classes visuelles communes `visuel-origine-*`, `visuel-compteur-*` et `visuel-trait-*` servent de vocabulaire partagé entre les vues.
 
+En mode détaillé, les libellés courts de compteur sont adaptatifs : dans un bloc large, le libellé reste centré dans le bloc ; dans un bloc étroit, il passe au-dessus pour préserver la lisibilité.
+
+La frise affiche un axe temporel supérieur aligné sur l’axe inférieur. Les labels principaux restent en bas si leur duplication surcharge la lecture, mais les repères et les marqueurs de début et de fin de bloc doivent relier visuellement les deux axes.
+
+La sélection est partagée entre les sous-vues de planification. Un changement `Calendrier` / `Frise` ne doit pas réinitialiser la sélection logique ; chaque vue réapplique cette sélection selon sa propre structure.
+
 ## Vue 3 : Projection Des Soldes
 
 La projection des soldes montre l’impact futur des blocs sur chaque compteur.

@@ -65,11 +65,16 @@ Ce document liste les points encore ouverts avant de figer un moteur de calcul p
 - Fait : indicateur `Posés {année}`.
 - Fait : frise synchronisée en lecture avec la projection active.
 - Fait : modes visuels général/détaillé alignés entre calendrier et frise.
+- Fait : axe supérieur de frise.
+- Fait : sélection persistante entre calendrier et frise.
+- Fait : curseur ancré en bas de barre droite, avec défilement limité à la zone `Sélection`.
 - Reste : définir le total métier final, le reste libre et les réserves `N+1`.
 - Reste : ajouter une sauvegarde explicite vers fichier.
 - Reste : ajouter un chargement explicite depuis fichier.
 - Reste : permettre un retour à l’état à l’ouverture.
 - Reste : permettre l’annulation des changements depuis le lancement.
+- Reste : zoom de frise.
+- Reste : découpe des blocs multi-compteurs en sous-blocs.
 - Reste : pose de jours depuis la frise.
 - Reste : déplacement / allongement / raccourcissement depuis la frise.
 - Reste : Auto réel.

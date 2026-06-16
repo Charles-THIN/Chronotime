@@ -10,7 +10,7 @@ Il distingue :
 - les règles stables à respecter ;
 - l’historique du prototype HTML local `V0.x`.
 
-Les sections `V0.1` à `V0.5.5` décrivent les étapes du prototype local. Elles restent utiles pour comprendre l’ergonomie explorée, mais elles ne définissent pas à elles seules l’architecture cible.
+Les sections `V0.1` à `V0.5.9` décrivent les étapes du prototype local. Elles restent utiles pour comprendre l’ergonomie explorée, mais elles ne définissent pas à elles seules l’architecture cible.
 
 Règle de sobriété d’interface : un contrôle explicite ne doit pas répéter inutilement un titre, un sous-titre et un libellé. La vue affiche le texte strictement nécessaire ; les explications longues restent en aide discrète, en infobulle ou dans la documentation.
 
@@ -863,6 +863,16 @@ En mode détaillé, la lecture privilégie les compteurs consommés, avec les m�
 Cette étape ne découpe pas encore un même bloc en sous-blocs lorsqu’il consomme plusieurs compteurs. Elle prépare seulement un langage visuel commun entre calendrier et frise.
 
 Les décisions visuelles génériques sont portées par des classes communes `visuel-origine-*`, `visuel-compteur-*` et `visuel-trait-*`, utilisées à la fois par le calendrier et par la frise. En mode général, la couleur générique reste verte et cohérente avec le calendrier ; l’origine du bloc est plutôt portée par le type de trait. En mode détaillé, la couleur correspond au compteur consommé et un libellé court de compteur peut être affiché dans les blocs de frise.
+
+## V0.5.9 Frise détaillée lisible et curseur ancré
+
+La frise détaillée adapte les libellés courts de compteur à la largeur disponible. Les blocs assez larges affichent le libellé dans le bloc ; les blocs étroits l’affichent au-dessus pour éviter un texte coupé ou illisible. Ces libellés restent masqués en mode général.
+
+La frise dispose d’un axe temporel supérieur cohérent avec l’axe inférieur. Les repères supérieurs restent sobres pour ne pas surcharger la lecture, tandis que les marqueurs de début et de fin de bloc s’étendent entre les deux axes.
+
+La sélection est mémorisée comme une sélection logique de planification. Un bloc sélectionné dans le calendrier reste sélectionné lors du passage à la frise lorsque le bloc correspondant existe, et une sélection de frise peut être réappliquée au calendrier.
+
+Le curseur de planification doit rester visible en bas de la barre droite. La zone `Sélection` peut défiler localement, mais le curseur reste une zone compacte et non défilante. La mise en page ne doit pas dépendre d’une hauteur minimale qui pousserait le curseur sous la fenêtre.
 
 ## Vue future des soldes dans le temps
 

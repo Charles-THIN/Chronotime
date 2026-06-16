@@ -870,6 +870,7 @@ def script_onglets() -> str:
       let poseEnCours = false;
       let etatCentralGui = null;
       let projectionVivante = null;
+      let derniereSelectionPlanification = null;
       const frisesStatiquesInitiales = new WeakMap();
       // localStorage = autosauvegarde prototype du scénario source ; etatCentralGui = état central courant de la page.
       // etatTransitoireInterface = manipulation en cours, non durable.
@@ -910,6 +911,7 @@ def script_onglets() -> str:
         if (etatTransitoireInterface && etatTransitoireInterface.plage_en_cours) {
           afficherEtatTransitoireInterface();
         }
+        reappliquerSelectionPlanification();
       }
 
       function activerModePlanification(mode) {
@@ -1102,6 +1104,66 @@ def script_onglets() -> str:
         });
       }
 
+      function copierDonneesSelection(donnees) {
+        const copie = {};
+        Object.keys(donnees || {}).forEach((cle) => {
+          copie[cle] = donnees[cle];
+        });
+        return copie;
+      }
+
+      function memoriserSelectionPlanification(donnees) {
+        derniereSelectionPlanification = copierDonneesSelection(donnees);
+      }
+
+      function trouverElementFrisePourSelection(donnees) {
+        if (!donnees || donnees.selectionType !== 'bloc') { return null; }
+        const identifiant = donnees.selectionIdentifiant || donnees.selectionParent || '';
+        if (!identifiant) { return null; }
+        return document.querySelector(
+          '.sous-vue-planification-active .bloc-frise-groupe[data-selection-identifiant="' + identifiant + '"], ' +
+          '.sous-vue-planification-active .bloc-utilisateur-frise[data-selection-identifiant="' + identifiant + '"]'
+        );
+      }
+
+      function trouverElementCalendrierPourSelection(donnees) {
+        if (!donnees) { return null; }
+        if (donnees.selectionDate) {
+          return document.querySelector('.jour-calendrier[data-date-iso="' + donnees.selectionDate + '"]');
+        }
+        if (donnees.selectionDateDebut) {
+          return document.querySelector('.jour-calendrier[data-date-iso="' + donnees.selectionDateDebut + '"]');
+        }
+        const identifiant = donnees.selectionIdentifiant || donnees.selectionParent || '';
+        if (!identifiant) { return null; }
+        const niveau = document.querySelector(
+          '.jour-calendrier .niveau-selection[data-selection-identifiant="' + identifiant + '"], ' +
+          '.jour-calendrier .niveau-selection[data-selection-parent="' + identifiant + '"]'
+        );
+        return niveau ? niveau.closest('.jour-calendrier') : null;
+      }
+
+      function reappliquerSelectionPlanification() {
+        if (!derniereSelectionPlanification) { return; }
+        const donnees = derniereSelectionPlanification;
+        nettoyerSelectionVisuelle();
+        if (document.querySelector('.sous-vue-planification-active[data-sous-vue="frise"]')) {
+          const elementFrise = trouverElementFrisePourSelection(donnees);
+          if (elementFrise) {
+            elementFrise.classList.add('selection-active');
+            if (donnees.selectionOrigine === 'ajoute_par_utilisateur') {
+              elementFrise.classList.add('bloc-utilisateur-selectionne');
+            }
+          }
+        } else {
+          const elementCalendrier = trouverElementCalendrierPourSelection(donnees);
+          if (elementCalendrier) {
+            appliquerSelectionCalendrier(elementCalendrier, donnees);
+          }
+        }
+        afficherSelectionPlanification(donnees);
+      }
+
       function appliquerSelectionCalendrier(element, donnees) {
         if (donnees.selectionType !== 'bloc' && donnees.selectionType !== 'sous-bloc') {
           element.classList.add('selection-active', 'selection-jour-courant');
@@ -1254,6 +1316,7 @@ def script_onglets() -> str:
       function deselectionnerPlanification() {
         nettoyerSelectionVisuelle();
         reinitialiserCyclesSelection();
+        derniereSelectionPlanification = null;
         blocLocalSelectionne = null;
         const cible = document.getElementById('selection-planification');
         if (cible) {
@@ -2615,6 +2678,16 @@ def script_onglets() -> str:
         return ligne;
       }
 
+      function classeLibelleCompteurFrise(largeur) {
+        return largeur < 34
+          ? 'libelle-compteur-frise libelle-compteur-frise-dessus'
+          : 'libelle-compteur-frise libelle-compteur-frise-interieur';
+      }
+
+      function yLibelleCompteurFrise(y, hauteur, largeur) {
+        return largeur < 34 ? y - 7 : y + hauteur / 2 + 0.5;
+      }
+
       function creerBlocFriseProjection(svg, bloc) {
         const utilisateur = bloc.origine_bloc === 'utilisateur';
         const x1 = xFrisePourDate(svg, bloc.date_debut);
@@ -2626,6 +2699,7 @@ def script_onglets() -> str:
         const droite = gauche + largeur;
         const y = utilisateur ? 60 : 34;
         const hauteur = utilisateur ? 14 : 18;
+        const hautGraphe = Number(svg.dataset.friseGrapheHaut || '92');
         const basGraphe = Number(svg.dataset.friseGrapheBas || '282');
 
         const groupeBloc = document.createElementNS(svg.namespaceURI, 'g');
@@ -2641,8 +2715,8 @@ def script_onglets() -> str:
         groupeBloc.setAttribute('tabindex', '0');
         definirDonneesSelectionBlocFrise(groupeBloc, bloc, utilisateur);
 
-        groupeBloc.appendChild(creerLiaisonBlocFrise(svg, 'borne-bloc-debut', gauche, y + hauteur, basGraphe));
-        groupeBloc.appendChild(creerLiaisonBlocFrise(svg, 'borne-bloc-fin', droite, y + hauteur, basGraphe));
+        groupeBloc.appendChild(creerLiaisonBlocFrise(svg, 'borne-bloc-debut', gauche, hautGraphe, basGraphe));
+        groupeBloc.appendChild(creerLiaisonBlocFrise(svg, 'borne-bloc-fin', droite, hautGraphe, basGraphe));
 
         const rect = document.createElementNS(svg.namespaceURI, 'rect');
         rect.setAttribute('class', [
@@ -2667,9 +2741,9 @@ def script_onglets() -> str:
         const libelleCompteur = libelleCompteursFriseDetaille(bloc.compteurs);
         if (libelleCompteur) {
           const texteCompteur = document.createElementNS(svg.namespaceURI, 'text');
-          texteCompteur.setAttribute('class', 'libelle-compteur-frise');
+          texteCompteur.setAttribute('class', classeLibelleCompteurFrise(largeur));
           texteCompteur.setAttribute('x', String(gauche + largeur / 2));
-          texteCompteur.setAttribute('y', String(y + hauteur / 2 + 0.5));
+          texteCompteur.setAttribute('y', String(yLibelleCompteurFrise(y, hauteur, largeur)));
           texteCompteur.textContent = libelleCompteur;
           groupeBloc.appendChild(texteCompteur);
         }
@@ -2698,6 +2772,7 @@ def script_onglets() -> str:
           svg.dataset.friseSource = 'projection_active';
         });
         initialiserCurseursFrise();
+        reappliquerSelectionPlanification();
       }
 
       function rendreBlocsAffichablesFrise(blocsAffichables) {
@@ -2792,10 +2867,12 @@ def script_onglets() -> str:
         });
         if (donnees) {
           afficherSelectionPlanification(donnees);
+          memoriserSelectionPlanification(donnees);
+          reappliquerSelectionPlanification();
           return;
         }
         const choix = bloc.choix_compteur || { mode: 'auto', compteur: null, libelle: 'Auto' };
-        afficherSelectionPlanification({
+        const donneesRepli = {
           selectionType: 'bloc',
           selectionOrigine: 'ajoute_par_utilisateur',
           selectionOrigineBloc: 'utilisateur',
@@ -2813,7 +2890,10 @@ def script_onglets() -> str:
           selectionCompteurDemande: choix.mode === 'manuel' ? choix.compteur : 'aucun',
           selectionSourceDecisionCompteur: sourceDecisionCompteurDepuisChoix(choix),
           selectionAlertes: 'aucune'
-        });
+        };
+        afficherSelectionPlanification(donneesRepli);
+        memoriserSelectionPlanification(donneesRepli);
+        reappliquerSelectionPlanification();
       }
 
       function supprimerBlocLocalSelectionne() {
@@ -2847,7 +2927,45 @@ def script_onglets() -> str:
           element.classList.add('selection-active');
         }
         afficherSelectionPlanification(donnees);
+        memoriserSelectionPlanification(donnees);
+        reappliquerSelectionPlanification();
       }
+
+      function rectangleMesureSelectionPlanification(selecteur) {
+        const element = document.querySelector(selecteur);
+        if (!element) { return null; }
+        const rect = element.getBoundingClientRect();
+        const style = window.getComputedStyle(element);
+        return {
+          top: Number(rect.top.toFixed(2)),
+          bottom: Number(rect.bottom.toFixed(2)),
+          height: Number(rect.height.toFixed(2)),
+          position: style.position,
+          overflow: style.overflow,
+          overflowY: style.overflowY,
+          minHeight: style.minHeight,
+          maxHeight: style.maxHeight,
+          gridTemplateRows: style.gridTemplateRows
+        };
+      }
+
+      function diagnostiquerDispositionCurseurPlanification() {
+        const mesures = {
+          windowInnerHeight: window.innerHeight,
+          interfacePlanification: rectangleMesureSelectionPlanification('.interface-planification'),
+          barreInfosDroite: rectangleMesureSelectionPlanification('.barre-infos-droite'),
+          blocInfoFixe: rectangleMesureSelectionPlanification('.bloc-info-fixe'),
+          blocInfoSelection: rectangleMesureSelectionPlanification('.bloc-info-selection'),
+          separateurInfos: rectangleMesureSelectionPlanification('.separateur-infos'),
+          blocInfoCurseur: rectangleMesureSelectionPlanification('.bloc-info-curseur'),
+          curseurPlanification: rectangleMesureSelectionPlanification('.curseur-planification')
+        };
+        mesures.barreDepasseFenetre = Boolean(
+          mesures.barreInfosDroite && mesures.barreInfosDroite.bottom > window.innerHeight
+        );
+        return mesures;
+      }
+      window.diagnostiquerDispositionCurseurPlanification = diagnostiquerDispositionCurseurPlanification;
 
       function coordonneeSvg(svg, event) {
         const rectangle = svg.getBoundingClientRect();
@@ -3880,8 +3998,8 @@ def blocs_frise_svg(demi_journees: list[Any], alertes: list[Any], debut: date, f
         compteurs_texte = resume_compteurs_selection(compteurs)
         alertes_texte = "présente" if evenement.get("alertes") else "aucune"
         liaisons = (
-            f"<line class=\"liaison-bloc-courbe borne-bloc-debut\" x1=\"{x1:.2f}\" y1=\"{y + hauteur}\" x2=\"{x1:.2f}\" y2=\"276\" />"
-            f"<line class=\"liaison-bloc-courbe borne-bloc-fin\" x1=\"{x1 + largeur:.2f}\" y1=\"{y + hauteur}\" x2=\"{x1 + largeur:.2f}\" y2=\"276\" />"
+            f"<line class=\"liaison-bloc-courbe borne-bloc-debut\" x1=\"{x1:.2f}\" y1=\"92\" x2=\"{x1:.2f}\" y2=\"282\" />"
+            f"<line class=\"liaison-bloc-courbe borne-bloc-fin\" x1=\"{x1 + largeur:.2f}\" y1=\"92\" x2=\"{x1 + largeur:.2f}\" y2=\"282\" />"
         )
         blocs.append(
             liaisons +
@@ -3947,6 +4065,7 @@ def courbe_reste_agrege(points: list[dict[str, Any]], demi_journees: list[Any], 
         )
 
     jours_svg = []
+    reperes_superieurs_svg = []
     for jour in graduations_jours(debut, fin):
         x = x_temps(jour, debut, fin, marge_gauche, largeur - marge_droite)
         jours_svg.append(
@@ -3954,6 +4073,9 @@ def courbe_reste_agrege(points: list[dict[str, Any]], demi_journees: list[Any], 
             f"<line x1=\"{x:.2f}\" y1=\"{graphe_bas}\" x2=\"{x:.2f}\" y2=\"{graphe_bas + 7}\" />"
             f"<text x=\"{x:.2f}\" y=\"{hauteur - 34}\" text-anchor=\"middle\">{jour.day:02d}</text>"
             "</g>"
+        )
+        reperes_superieurs_svg.append(
+            f"<line class=\"repere-jour-superieur\" x1=\"{x:.2f}\" y1=\"{graphe_haut - 7}\" x2=\"{x:.2f}\" y2=\"{graphe_haut}\" />"
         )
 
     points_svg = []
@@ -4002,8 +4124,12 @@ def courbe_reste_agrege(points: list[dict[str, Any]], demi_journees: list[Any], 
         "<g class=\"axe-vertical\">"
         f"{''.join(lignes_reste)}"
         "</g>"
+        f"<line class=\"axe-horizontal axe-horizontal-superieur\" x1=\"{marge_gauche}\" y1=\"{graphe_haut}\" x2=\"{largeur - marge_droite}\" y2=\"{graphe_haut}\" />"
         f"<line class=\"axe-horizontal\" x1=\"{marge_gauche}\" y1=\"{graphe_bas}\" x2=\"{largeur - marge_droite}\" y2=\"{graphe_bas}\" />"
         f"<line class=\"axe-vertical\" x1=\"{marge_gauche}\" y1=\"{graphe_haut}\" x2=\"{marge_gauche}\" y2=\"{graphe_bas}\" />"
+        "<g class=\"axe-horizontal-superieur-reperes\">"
+        f"{''.join(reperes_superieurs_svg)}"
+        "</g>"
         "<g class=\"axe-horizontal-reperes\">"
         f"{''.join(mois_svg)}{''.join(jours_svg)}"
         "</g>"
@@ -4529,8 +4655,9 @@ def feuille_style() -> str:
       display: grid;
       width: 100%;
       max-width: none;
-      height: calc(100vh - 150px);
-      min-height: 560px;
+      height: calc(100dvh - 150px);
+      min-height: 0;
+      max-height: calc(100dvh - 150px);
       overflow: hidden;
       grid-template-columns: minmax(150px, 180px) minmax(0, 1fr) minmax(220px, 280px);
       gap: 16px;
@@ -4574,8 +4701,9 @@ def feuille_style() -> str:
     }
     .barre-infos-droite {
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto auto;
+      grid-template-rows: minmax(0, auto) minmax(0, 1fr) auto;
       height: 100%;
+      min-height: 0;
       max-height: 100%;
       overflow: hidden;
     }
@@ -4973,6 +5101,13 @@ def feuille_style() -> str:
     .interface-planification[data-mode-planification="detaille"] .libelle-compteur-frise {
       display: block;
     }
+    .interface-planification[data-mode-planification="detaille"] .libelle-compteur-frise-dessus {
+      dominant-baseline: baseline;
+      font-size: 9px;
+    }
+    .interface-planification[data-mode-planification="detaille"] .libelle-compteur-frise-interieur {
+      dominant-baseline: central;
+    }
 
     .bloc-temporel-projete.selection-active,
     .bloc-selectionne {
@@ -4998,8 +5133,16 @@ def feuille_style() -> str:
       pointer-events: none;
     }
     .axe-horizontal,
+    .axe-horizontal-superieur,
     .axe-vertical line {
       stroke: #917f62;
+      stroke-width: 1;
+    }
+    .axe-horizontal-superieur {
+      stroke: rgba(145, 127, 98, 0.82);
+    }
+    .repere-jour-superieur {
+      stroke: rgba(145, 127, 98, 0.45);
       stroke-width: 1;
     }
     .repere-reste line {
@@ -5177,7 +5320,9 @@ def feuille_style() -> str:
     }
     .bloc-info-fixe {
       min-height: 0;
-      overflow: visible;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 2px;
     }
     .bloc-info-selection {
       min-height: 0;
@@ -5193,19 +5338,18 @@ def feuille_style() -> str:
       padding-right: 2px;
     }
     .separateur-infos {
-      min-height: 0;
-      margin: 10px 0;
-      border-top: 1px solid rgba(216, 201, 174, 0.95);
+      display: none;
     }
     .bloc-info-curseur {
-      position: sticky;
-      bottom: 0;
       z-index: 2;
       min-height: 0;
       overflow: hidden;
       display: grid;
       grid-template-rows: auto minmax(0, auto);
       background: var(--carte);
+      border-top: 1px solid rgba(216, 201, 174, 0.95);
+      padding-top: 8px;
+      align-self: end;
     }
     .curseur-planification {
       min-height: 0;
@@ -5317,8 +5461,9 @@ def feuille_style() -> str:
       font-size: 1.08rem;
     }
     .interface-planification {
-      height: calc(100vh - 118px);
-      min-height: 500px;
+      height: calc(100dvh - 118px);
+      min-height: 0;
+      max-height: calc(100dvh - 118px);
       gap: 12px;
       grid-template-columns: minmax(130px, 165px) minmax(0, 1fr) minmax(250px, 310px);
       overflow: hidden;
@@ -5331,8 +5476,9 @@ def feuille_style() -> str:
     }
     .barre-infos-droite {
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto auto;
+      grid-template-rows: minmax(0, auto) minmax(0, 1fr) auto;
       height: 100%;
+      min-height: 0;
       max-height: 100%;
       overflow: hidden;
     }
@@ -5483,18 +5629,18 @@ def feuille_style() -> str:
       padding-right: 2px;
     }
     .separateur-infos {
-      margin: 8px 0;
-      border-top: 1px solid rgba(216, 201, 174, 0.95);
+      display: none;
     }
     .bloc-info-curseur {
-      position: sticky;
-      bottom: 0;
       z-index: 2;
       min-height: 0;
       overflow: hidden;
       display: grid;
       grid-template-rows: auto minmax(0, auto);
       background: var(--carte);
+      border-top: 1px solid rgba(216, 201, 174, 0.95);
+      padding-top: 6px;
+      align-self: end;
     }
     .curseur-planification {
       min-height: 0;

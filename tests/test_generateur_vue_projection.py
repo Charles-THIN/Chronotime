@@ -281,8 +281,11 @@ class TestGenerateurVueProjection(unittest.TestCase):
         html = generer_html(self._charger_exemple())
 
         self.assertIn("axe-horizontal", html)
+        self.assertIn("axe-horizontal-superieur", html)
+        self.assertIn("axe-horizontal-superieur-reperes", html)
         self.assertIn("repere-mois", html)
         self.assertIn("repere-jour", html)
+        self.assertIn("repere-jour-superieur", html)
         self.assertIn("axe-vertical", html)
         self.assertIn("repere-reste", html)
         self.assertIn("liaison-bloc-courbe", html)
@@ -763,12 +766,21 @@ class TestGenerateurVueProjection(unittest.TestCase):
             "visuel-trait-pointille",
             "visuel-trait-epais",
             "libelle-compteur-frise",
+            "libelle-compteur-frise-interieur",
+            "libelle-compteur-frise-dessus",
+            "classeLibelleCompteurFrise",
+            "yLibelleCompteurFrise",
+            "axe-horizontal-superieur",
+            "repere-jour-superieur",
+            "memoriserSelectionPlanification",
+            "reappliquerSelectionPlanification",
+            "derniereSelectionPlanification",
+            "trouverElementFrisePourSelection",
+            "trouverElementCalendrierPourSelection",
+            "diagnostiquerDispositionCurseurPlanification",
             "Décisions visuelles communes calendrier/frise",
             "element.dataset.friseOrigine",
             "origine-frise-utilisateur",
-            "origine-frise-obligation",
-            "origine-frise-scenario",
-            "origine-frise-chronotime",
             "data-mode-planification=\"general\"] .bloc-frise-groupe.origine-frise-utilisateur",
             "data-mode-planification=\"detaille\"] .bloc-frise-groupe.compteur-frise-gcp .bloc-temporel-projete",
             "rgba(201, 111, 117, 0.22)",
@@ -1023,7 +1035,11 @@ class TestGenerateurVueProjection(unittest.TestCase):
         self.assertIn("bloc-info-selection", html)
         self.assertIn("curseur-planification", html)
         self.assertIn("separateur-infos", html)
-        self.assertIn("height: calc(100vh", html)
+        self.assertIn("height: calc(100dvh", html)
+        self.assertIn("max-height: calc(100dvh", html)
+        self.assertIn("diagnostiquerDispositionCurseurPlanification", html)
+        self.assertIn("rectangleMesureSelectionPlanification", html)
+        self.assertIn("barreDepasseFenetre", html)
         self.assertIn("overflow-y: auto", html)
         self.assertIn("overflow-x: hidden", html)
 
@@ -1045,15 +1061,17 @@ class TestGenerateurVueProjection(unittest.TestCase):
     def test_generation_html_barre_droite_cloisonnee_zid_curseur(self) -> None:
         html = generer_html(self._charger_exemple())
         self.assertIn("barre-infos-droite-stable", html)
-        self.assertIn("grid-template-rows: auto minmax(0, 1fr) auto auto", html)
+        self.assertIn("grid-template-rows: minmax(0, auto) minmax(0, 1fr) auto", html)
         self.assertIn("bloc-info-selection", html)
         self.assertIn("grid-template-rows: auto minmax(0, 1fr)", html)
         self.assertIn("selection-planification", html)
         self.assertIn("height: 100%", html)
         self.assertIn("curseur-planification", html)
         self.assertIn("curseur-toujours-visible", html)
-        self.assertIn("position: sticky", html)
         self.assertIn("max-height: 86px", html)
+        self.assertIn("window.diagnostiquerDispositionCurseurPlanification", html)
+        self.assertIn("separateurInfos", html)
+        self.assertIn("align-self: end", html)
         self.assertIn("overflow-y: hidden", html)
         self.assertIn("overflow: hidden", html)
 
@@ -1070,7 +1088,9 @@ class TestGenerateurVueProjection(unittest.TestCase):
     def test_generation_html_planification_densification_visuelle(self) -> None:
         html = generer_html(self._charger_exemple())
         self.assertIn("V0.4.6", html)
-        self.assertIn("height: calc(100vh - 118px)", html)
+        self.assertIn("height: calc(100dvh - 118px)", html)
+        self.assertIn("max-height: calc(100dvh - 118px)", html)
+        self.assertNotIn("min-height: 500px", html)
         self.assertIn("font-size: 0.92rem", html)
         self.assertIn("white-space: nowrap", html)
         self.assertIn("text-overflow: ellipsis", html)
